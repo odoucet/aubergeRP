@@ -164,7 +164,9 @@ All connectors are configured by the user via the admin interface. See [06 — C
 
 ### Security (MVP)
 
-- **Internal API token**: An auto-generated session token protects all write and generation endpoints. The token is created at startup (`secrets.token_hex(32)`), injected into the served HTML pages as a `<meta>` tag, and required via `X-Internal-Token` header on all POST/PUT/DELETE endpoints. This prevents unauthorized callers on the local network from abusing generation routes (which consume API credits or GPU resources). See [03 — Backend API](03-backend-api.md) for the full route protection table.
-- No user authentication beyond the internal token (single-user, local only).
+- **Two-tier internal token system**: AubergeLLM uses two auto-generated tokens at startup, with distinct scopes:
+  - **Session token** (Tier 1): Injected into served HTML pages as a `<meta>` tag. The frontend JS sends it as `X-Session-Token` header on all write endpoints. Protects against external/network-level abuse (bots, port scanners, other LAN devices). Visible to the frontend user via dev tools — this is intentional.
+  - **Internal token** (Tier 2): **Never exposed to the frontend**. Used only for backend-internal calls to expensive generation endpoints (`POST /api/generate/image`). Even if a user extracts the session token from the HTML source, they cannot directly trigger image generation — generation is always mediated by the backend through controlled chat-level endpoints. See [03 — Backend API](03-backend-api.md) § 2 for the full route protection table and flow diagram.
+- No user authentication beyond the two-tier tokens (single-user, local only).
 - No secrets stored in code — configuration in a local file, API keys in connector configs.
 - Input sanitization on character card imports (prevent XSS in HTML rendering).

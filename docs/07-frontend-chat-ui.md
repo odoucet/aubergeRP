@@ -140,10 +140,13 @@ The sidebar has two sections, togglable:
    - An editable text field for the prompt.
    - A "Generate" button.
 3. User clicks "Generate".
-4. A progress indicator appears in the chat (e.g., "Generating image... 45%").
-5. Progress is updated via polling `GET /api/generate/image/{id}/status`.
-6. When complete, the image is displayed inline in the chat.
-7. The image message is saved to the conversation.
+4. Frontend sends `POST /api/chat/{conversation_id}/generate-image` with the session token (`X-Session-Token` header).
+5. A progress indicator appears in the chat (e.g., "Generating image... 45%").
+6. Progress is updated via polling `GET /api/generate/image/{id}/status`.
+7. When complete, the image is displayed inline in the chat.
+8. The image message is saved to the conversation.
+
+> **Note:** The frontend never calls `POST /api/generate/image` directly — that endpoint requires an internal-only token. The chat-level endpoint mediates the request.
 
 ### 5.5 Switching Conversations
 
@@ -162,7 +165,7 @@ The sidebar has two sections, togglable:
 | Get conversation | `GET /api/conversations/{id}` | fetch |
 | Create conversation | `POST /api/conversations` | fetch |
 | Delete conversation | `DELETE /api/conversations/{id}` | fetch |
-| Generate image | `POST /api/generate/image` | fetch |
+| Generate image | `POST /api/chat/{id}/generate-image` | fetch |
 | Check generation status | `GET /api/generate/image/{id}/status` | fetch (polling) |
 | Health check | `GET /api/health` | fetch (periodic) |
 

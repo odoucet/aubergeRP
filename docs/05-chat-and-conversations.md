@@ -217,12 +217,15 @@ The chat service:
 
 For the MVP, image generation is **explicitly triggered by the user**, not automatically by the LLM. The user clicks a "Generate Image" button in the chat interface, which:
 
-1. Sends a `POST /api/generate/image` request.
-2. The backend calls the **active image connector** with the prompt.
-3. The prompt is either:
+1. Sends a `POST /api/chat/{conversation_id}/generate-image` request (protected by the session token — Tier 1).
+2. The backend validates the session token and builds the image prompt.
+3. The backend **internally** calls the active image connector using the internal token (Tier 2). The frontend never calls the image generation endpoint directly.
+4. The prompt is either:
    - Manually entered by the user.
    - Auto-generated from the last assistant message (using the character's `image_prompt_prefix` + a summary of the scene).
-4. The generated image URL is attached to the conversation and displayed inline.
+5. The generated image URL is attached to the conversation and displayed inline.
+
+> **Why this flow?** The direct generation endpoint (`POST /api/generate/image`) is protected by the internal-only token (never in HTML). This prevents a frontend user from extracting the session token via browser dev tools and directly triggering image generation to burn API credits. Generation is always mediated by the backend through the chat-level endpoint. See [03 — Backend API](03-backend-api.md) § 2 for the two-tier token architecture.
 
 ### Image in Conversation
 

@@ -16,31 +16,49 @@
 
 AubergeLLM exposes REST endpoints for resource-intensive operations (LLM chat, image generation). Even in a single-user deployment, the API should not allow arbitrary external callers to trigger generation — an attacker or bot scanning the local network could abuse these endpoints, consuming API credits or GPU resources.
 
-### Solution: Auto-Generated Session Token
+Additionally, even the legitimate frontend user should not be able to call generation endpoints directly (e.g., image generation), since these consume expensive API credits. Generation must be mediated by the backend through controlled flows (chat, admin connector tests).
 
-AubergeLLM uses a **zero-configuration internal token** mechanism:
+### Solution: Two-Tier Token Architecture
 
-1. **On startup**, the backend generates a random 256-bit token (hex-encoded) and stores it in memory only (never persisted to disk).
+AubergeLLM uses **two separate auto-generated tokens** at startup, with distinct scopes:
+
+#### Tier 1 — Session Token (frontend-facing)
+
+1. **On startup**, the backend generates a random 256-bit session token and stores it in memory only.
 2. **The frontend HTML** pages served by FastAPI include this token as a `<meta>` tag:
    ```html
-   <meta name="aubergellm-token" content="a1b2c3...random-hex...">
+   <meta name="aubergellm-session-token" content="a1b2c3...random-hex...">
    ```
 3. **The frontend JS** reads this token and includes it in all API requests as a header:
    ```
-   X-Internal-Token: a1b2c3...random-hex...
+   X-Session-Token: a1b2c3...random-hex...
    ```
-4. **The backend validates** this token on every protected endpoint. Requests without a valid token receive `403 Forbidden`.
+4. **The backend validates** this token on all write endpoints. Requests without a valid token receive `403 Forbidden`.
 
-### Why This Approach?
+This token protects against **external/network-level abuse**: bots, port scanners, or other devices on the local network cannot call write endpoints.
 
-| Alternative | Problem |
+⚠️ **This token is visible to the frontend user** (via browser dev tools). It intentionally does **not** protect against the user themselves — only against external callers.
+
+#### Tier 2 — Internal Token (backend-only, never exposed)
+
+1. **On startup**, the backend generates a **second** random 256-bit token, also stored in memory only.
+2. **This token is never injected into HTML pages** and is never sent to the frontend.
+3. It is used exclusively for **backend-internal calls** to expensive generation endpoints (`POST /api/generate/image`, etc.).
+4. When the backend needs to trigger image generation (e.g., from the chat flow or admin connector test), it calls the generation endpoint internally, passing this token as `X-Internal-Token`.
+5. Direct calls to generation endpoints without this token receive `403 Forbidden` — even if the caller has the session token.
+
+This ensures that **even a frontend user who inspects the HTML source cannot trigger image generation directly**. Generation is always mediated by the backend through controlled endpoints.
+
+### Why Two Tiers?
+
+| Approach | Problem |
 |---|---|
-| No auth at all | External callers can freely use expensive generation routes |
+| No auth at all | Anyone on the network can burn API credits |
+| Single token in HTML | Protects against external attackers, but frontend user can extract it and call generation endpoints directly |
 | User-configured API key | Adds setup friction, breaks the "time-to-first-roleplay < 1 hour" goal |
-| Session cookies | Adds state management complexity, CSRF concerns |
-| **Auto-generated token (chosen)** | **Zero config, effective against network-level abuse, simple to implement** |
+| **Two-tier tokens (chosen)** | **Zero config, blocks both external attackers AND direct user abuse of generation routes** |
 
-### Protected vs. Public Routes
+### Route Protection Table
 
 | Route | Protection | Reason |
 |---|---|---|
@@ -48,38 +66,70 @@ AubergeLLM uses a **zero-configuration internal token** mechanism:
 | `GET /api/characters/*` | 🔓 Public | Read-only, no cost |
 | `GET /api/conversations/*` | 🔓 Public | Read-only, no cost |
 | `GET /api/images/*` | 🔓 Public | Read-only, serves stored files |
-| `POST /api/chat/*/message` | 🔒 Token required | Triggers LLM generation (costs credits/GPU) |
-| `POST /api/generate/image` | 🔒 Token required | Triggers image generation (costs credits/GPU) |
-| `POST /api/characters` | 🔒 Token required | Write operation |
-| `PUT /api/characters/*` | 🔒 Token required | Write operation |
-| `DELETE /api/characters/*` | 🔒 Token required | Write operation |
-| `POST /api/characters/import` | 🔒 Token required | Write operation |
-| `POST /api/conversations` | 🔒 Token required | Write operation |
-| `DELETE /api/conversations/*` | 🔒 Token required | Write operation |
-| `POST /api/connectors` | 🔒 Token required | Admin write operation |
-| `PUT /api/connectors/*` | 🔒 Token required | Admin write operation |
-| `DELETE /api/connectors/*` | 🔒 Token required | Admin write operation |
-| `POST /api/connectors/*/test` | 🔒 Token required | Triggers external call |
-| `POST /api/connectors/*/activate` | 🔒 Token required | Admin write operation |
-| `PUT /api/config` | 🔒 Token required | Admin write operation |
 | `GET /api/connectors/*` | 🔓 Public | Read-only config display |
 | `GET /api/config` | 🔓 Public | Read-only (sensitive fields redacted) |
+| `POST /api/chat/*/message` | 🔒 Session token | Triggers LLM generation (costs credits/GPU) |
+| `POST /api/chat/*/generate-image` | 🔒 Session token | Requests image generation via chat flow (backend mediates) |
+| `POST /api/characters` | 🔒 Session token | Write operation |
+| `PUT /api/characters/*` | 🔒 Session token | Write operation |
+| `DELETE /api/characters/*` | 🔒 Session token | Write operation |
+| `POST /api/characters/import` | 🔒 Session token | Write operation |
+| `POST /api/conversations` | 🔒 Session token | Write operation |
+| `DELETE /api/conversations/*` | 🔒 Session token | Write operation |
+| `POST /api/connectors` | 🔒 Session token | Admin write operation |
+| `PUT /api/connectors/*` | 🔒 Session token | Admin write operation |
+| `DELETE /api/connectors/*` | 🔒 Session token | Admin write operation |
+| `POST /api/connectors/*/test` | 🔒 Session token | Admin test operation |
+| `POST /api/connectors/*/activate` | 🔒 Session token | Admin write operation |
+| `PUT /api/config` | 🔒 Session token | Admin write operation |
+| `POST /api/generate/image` | 🔐 Internal token | Direct generation — backend-only, never called by frontend |
+| `GET /api/generate/image/*/status` | 🔒 Session token | Polls generation progress |
 
-### Error Response
+### How Image Generation Works with Two Tiers
+
+```
+Frontend user clicks 📷 "Generate Image"
+        │
+        ▼
+POST /api/chat/{id}/generate-image   ← requires X-Session-Token (in HTML)
+        │
+        ▼
+   Backend validates session token
+   Backend builds image prompt from conversation context
+        │
+        ▼
+   Backend internally calls image connector   ← uses X-Internal-Token (never in HTML)
+   (or calls POST /api/generate/image with internal token)
+        │
+        ▼
+   Image connector calls external API (OpenRouter, OpenAI, etc.)
+        │
+        ▼
+   Image saved to data/images/{uuid}.png
+   Image URL returned to frontend via SSE or response
+```
+
+### Error Responses
 
 ```json
-// 403 Forbidden — missing or invalid token
+// 403 Forbidden — missing or invalid session token
 {
-  "detail": "Invalid or missing internal token"
+  "detail": "Invalid or missing session token"
+}
+
+// 403 Forbidden — missing or invalid internal token (direct generation call)
+{
+  "detail": "This endpoint is restricted to internal backend calls"
 }
 ```
 
 ### Implementation Notes
 
-- The token is generated using Python's `secrets.token_hex(32)` (256 bits).
-- The token is injected into the HTML at serve time via a simple string replacement or template variable — no build step.
-- The token changes on every server restart, which is acceptable for a single-user local app.
-- This is **not** a substitute for full authentication (which is post-MVP). It prevents unauthorized API access from the local network.
+- Both tokens are generated using Python's `secrets.token_hex(32)` (256 bits each).
+- The **session token** is injected into HTML at serve time via a simple string replacement or template variable — no build step.
+- The **internal token** is stored in a module-level variable, accessible only within the backend process. It is never serialized, logged, or exposed in any response.
+- Both tokens change on every server restart, which is acceptable for a single-user local app.
+- This is **not** a substitute for full authentication (which is post-MVP). It prevents unauthorized API access from the local network and prevents frontend users from directly triggering expensive generation operations.
 
 ---
 
@@ -370,13 +420,45 @@ data: {"detail": "LLM backend unreachable"}
 
 The full assistant message is saved to the conversation after streaming completes.
 
+### `POST /api/chat/{conversation_id}/generate-image`
+
+Request image generation within a conversation context. This is the **frontend-facing endpoint** for image generation — it requires only the session token (Tier 1). The backend internally calls the image connector using the internal token (Tier 2).
+
+**Request body:**
+```json
+{
+  "prompt": "A beautiful elf woman standing in an enchanted forest",
+  "negative_prompt": "blurry, low quality"
+}
+```
+
+If `prompt` is omitted or empty, the backend auto-generates one from the last assistant message combined with the character's `image_prompt_prefix`.
+
+**Response: 202 Accepted**
+```json
+{
+  "generation_id": "uuid-string",
+  "status": "queued"
+}
+```
+
+The backend:
+1. Validates the session token.
+2. Builds the image prompt from the provided prompt or the conversation context.
+3. Calls the active image connector internally (with the internal token).
+4. Returns a `generation_id` for polling.
+
+The frontend polls `GET /api/generate/image/{generation_id}/status` to track progress.
+
 ---
 
-## 7. Image Generation
+## 7. Image Generation (Backend-Internal)
+
+> ⚠️ **These routes are protected by the internal token (Tier 2)**. They are **not callable from the frontend**. The frontend uses `POST /api/chat/{conversation_id}/generate-image` instead.
 
 ### `POST /api/generate/image`
 
-Trigger an image generation using the active image connector.
+Trigger an image generation using the active image connector. **Requires `X-Internal-Token` header** (backend-only, never exposed to frontend).
 
 **Request body:**
 ```json
@@ -592,7 +674,7 @@ All error responses follow this structure:
 | Status Code | Usage |
 |---|---|
 | 400 | Bad request (invalid input, missing fields) |
-| 403 | Forbidden (missing or invalid internal token) |
+| 403 | Forbidden (missing or invalid session token, or missing internal token on backend-only routes) |
 | 404 | Resource not found (character, conversation, image) |
 | 409 | Conflict (duplicate resource) |
 | 422 | Validation error (Pydantic) |
