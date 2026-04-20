@@ -142,6 +142,8 @@ All connectors are configured by the user via the admin interface. See [06 — C
 - Database storage.
 - Quota management per conversation.
 - Enforced NSFW protection.
+- GUI customization via admin (custom CSS stylesheet, header/footer HTML injection, static asset management).
+- Admin interface protection (password and/or IP-based access control).
 
 ## 8. Cross-Cutting Concerns
 

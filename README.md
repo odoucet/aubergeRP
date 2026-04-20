@@ -117,6 +117,8 @@ Full specifications are in the [`docs/`](docs/) directory:
 - [ ] Audio/TTS connectors
 - [ ] Quota management per conversation
 - [ ] Enforced NSFW protection
+- [ ] GUI customization via admin (custom CSS stylesheet, header/footer HTML injection, static asset management)
+- [ ] Admin interface protection (password and/or IP-based access control)
 - [ ] Advanced orchestration (automatic image triggers, style inference)
 - [ ] Multi-user / authentication
 - [ ] Database storage
