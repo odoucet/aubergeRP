@@ -10,7 +10,80 @@
 - **IDs:** UUID v4 strings (e.g., `"a1b2c3d4-e5f6-7890-abcd-ef1234567890"`).
 - **Error responses:** All errors return a JSON body with `{ "detail": "Human-readable error message" }` and an appropriate HTTP status code.
 
-## 2. Health
+## 2. Internal API Security
+
+### Problem
+
+AubergeLLM exposes REST endpoints for resource-intensive operations (LLM chat, image generation). Even in a single-user deployment, the API should not allow arbitrary external callers to trigger generation — an attacker or bot scanning the local network could abuse these endpoints, consuming API credits or GPU resources.
+
+### Solution: Auto-Generated Session Token
+
+AubergeLLM uses a **zero-configuration internal token** mechanism:
+
+1. **On startup**, the backend generates a random 256-bit token (hex-encoded) and stores it in memory only (never persisted to disk).
+2. **The frontend HTML** pages served by FastAPI include this token as a `<meta>` tag:
+   ```html
+   <meta name="aubergellm-token" content="a1b2c3...random-hex...">
+   ```
+3. **The frontend JS** reads this token and includes it in all API requests as a header:
+   ```
+   X-Internal-Token: a1b2c3...random-hex...
+   ```
+4. **The backend validates** this token on every protected endpoint. Requests without a valid token receive `403 Forbidden`.
+
+### Why This Approach?
+
+| Alternative | Problem |
+|---|---|
+| No auth at all | External callers can freely use expensive generation routes |
+| User-configured API key | Adds setup friction, breaks the "time-to-first-roleplay < 1 hour" goal |
+| Session cookies | Adds state management complexity, CSRF concerns |
+| **Auto-generated token (chosen)** | **Zero config, effective against network-level abuse, simple to implement** |
+
+### Protected vs. Public Routes
+
+| Route | Protection | Reason |
+|---|---|---|
+| `GET /api/health` | 🔓 Public | Health checks should be accessible |
+| `GET /api/characters/*` | 🔓 Public | Read-only, no cost |
+| `GET /api/conversations/*` | 🔓 Public | Read-only, no cost |
+| `GET /api/images/*` | 🔓 Public | Read-only, serves stored files |
+| `POST /api/chat/*/message` | 🔒 Token required | Triggers LLM generation (costs credits/GPU) |
+| `POST /api/generate/image` | 🔒 Token required | Triggers image generation (costs credits/GPU) |
+| `POST /api/characters` | 🔒 Token required | Write operation |
+| `PUT /api/characters/*` | 🔒 Token required | Write operation |
+| `DELETE /api/characters/*` | 🔒 Token required | Write operation |
+| `POST /api/characters/import` | 🔒 Token required | Write operation |
+| `POST /api/conversations` | 🔒 Token required | Write operation |
+| `DELETE /api/conversations/*` | 🔒 Token required | Write operation |
+| `POST /api/connectors` | 🔒 Token required | Admin write operation |
+| `PUT /api/connectors/*` | 🔒 Token required | Admin write operation |
+| `DELETE /api/connectors/*` | 🔒 Token required | Admin write operation |
+| `POST /api/connectors/*/test` | 🔒 Token required | Triggers external call |
+| `POST /api/connectors/*/activate` | 🔒 Token required | Admin write operation |
+| `PUT /api/config` | 🔒 Token required | Admin write operation |
+| `GET /api/connectors/*` | 🔓 Public | Read-only config display |
+| `GET /api/config` | 🔓 Public | Read-only (sensitive fields redacted) |
+
+### Error Response
+
+```json
+// 403 Forbidden — missing or invalid token
+{
+  "detail": "Invalid or missing internal token"
+}
+```
+
+### Implementation Notes
+
+- The token is generated using Python's `secrets.token_hex(32)` (256 bits).
+- The token is injected into the HTML at serve time via a simple string replacement or template variable — no build step.
+- The token changes on every server restart, which is acceptable for a single-user local app.
+- This is **not** a substitute for full authentication (which is post-MVP). It prevents unauthorized API access from the local network.
+
+---
+
+## 3. Health
 
 ### `GET /api/health`
 
@@ -32,7 +105,7 @@ Returns the server status and connectivity information.
 
 ---
 
-## 3. Characters
+## 4. Characters
 
 ### `GET /api/characters`
 
@@ -178,7 +251,7 @@ Duplicate an existing character (creates a new character with a new ID).
 
 ---
 
-## 4. Conversations
+## 5. Conversations
 
 ### `GET /api/conversations`
 
@@ -261,7 +334,7 @@ Delete a conversation and all its messages.
 
 ---
 
-## 5. Chat
+## 6. Chat
 
 ### `POST /api/chat/{conversation_id}/message`
 
@@ -299,7 +372,7 @@ The full assistant message is saved to the conversation after streaming complete
 
 ---
 
-## 6. Image Generation
+## 7. Image Generation
 
 ### `POST /api/generate/image`
 
@@ -346,7 +419,7 @@ Retrieve a generated image file.
 
 ---
 
-## 7. Connectors
+## 8. Connectors
 
 ### `GET /api/connectors`
 
@@ -465,7 +538,7 @@ List available connector backend types and their supported modalities.
 
 ---
 
-## 8. Configuration
+## 9. Configuration
 
 ### `GET /api/config`
 
@@ -506,7 +579,7 @@ Update configuration. Only provided fields are updated.
 
 ---
 
-## 9. Error Response Format
+## 10. Error Response Format
 
 All error responses follow this structure:
 
@@ -519,6 +592,7 @@ All error responses follow this structure:
 | Status Code | Usage |
 |---|---|
 | 400 | Bad request (invalid input, missing fields) |
+| 403 | Forbidden (missing or invalid internal token) |
 | 404 | Resource not found (character, conversation, image) |
 | 409 | Conflict (duplicate resource) |
 | 422 | Validation error (Pydantic) |

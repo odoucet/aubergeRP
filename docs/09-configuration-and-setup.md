@@ -263,11 +263,12 @@ When `main.py` runs, the following happens:
 
 1. **Load configuration** from `config.yaml` + environment variables.
 2. **Initialize data directory** (create missing directories, including `connectors/`).
-3. **Load connectors** from `data/connectors/` and activate the configured ones.
-4. **Create FastAPI app** with metadata (title, version, description).
-5. **Mount routers** under `/api/`.
-6. **Mount static files** (serve `frontend/` at `/`).
-7. **Log startup info** (listening address, active connectors, data directory path).
+3. **Generate internal API token** using `secrets.token_hex(32)`. Stored in memory only, never persisted. This token is injected into served HTML pages and required for all write/generation API endpoints (see [03 — Backend API](03-backend-api.md)).
+4. **Load connectors** from `data/connectors/` and activate the configured ones.
+5. **Create FastAPI app** with metadata (title, version, description).
+6. **Mount routers** under `/api/` with internal token validation middleware on protected routes.
+7. **Mount static files** (serve `frontend/` at `/`, injecting the internal token into HTML pages).
+8. **Log startup info** (listening address, active connectors, data directory path). The internal token is **not** logged.
 
 ## 12. Quick Start Guide (README-ready)
 
