@@ -49,7 +49,7 @@ The Chat UI is the primary user-facing interface of AubergeLLM. It provides:
 │ │+ New │ │                                           │
 │ └──────┘ │                                           │
 ├──────────┴───────────────────────────────────────────┤
-│  Status bar: LLM connected ✓ | ComfyUI connected ✓  │
+│  Status bar: Text ✓ | Image ✓ | Video — | Audio —  │
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -101,8 +101,8 @@ The sidebar has two sections, togglable:
 
 ### 4.4 Status Bar
 
-- Shows connection status for LLM and ComfyUI.
-- Green checkmark if connected, red X if not.
+- Shows connection status for each active connector type (text, image, video, audio).
+- Green checkmark if connected, red X if disconnected, dash if no connector configured.
 - Polls `/api/health` periodically (every 30 seconds).
 
 ## 5. User Flows
@@ -216,8 +216,9 @@ const decoder = new TextDecoder();
 | State | Display |
 |---|---|
 | No characters | "No characters available. Go to Admin to import characters." |
-| LLM disconnected | Status bar red; sending a message shows inline error |
-| ComfyUI disconnected | Status bar red; image generation button disabled with tooltip |
+| Text connector disconnected | Status bar red; sending a message shows inline error |
+| No image connector | Status bar dash; image generation button disabled with tooltip |
+| Image connector disconnected | Status bar red; image generation button disabled with tooltip |
 | LLM error during streaming | Error message below the last message, option to retry |
 | Image generation failed | Error message where the image would appear |
 | Network error | Toast/banner notification at the top |

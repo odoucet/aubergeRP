@@ -1,130 +1,127 @@
 # AubergeLLM
 
-AubergeLLM is a lightweight, self-hostable roleplay engine designed to combine large language models (LLMs) with multimodal generation (image and video) through ComfyUI.
+AubergeLLM is a lightweight, self-hostable roleplay engine that combines large language models (LLMs) with multimodal generation (image, video, audio) through a **pluggable connector system**.
 
 The goal of AubergeLLM is to provide a clean, minimal, and extensible alternative to tools like SillyTavern, while enabling advanced workflows such as:
 
-* Automatic image generation during roleplay
+* Roleplay chat with SillyTavern-compatible character cards
+* Image generation during roleplay via API connectors (OpenRouter, OpenAI, etc.)
 * Character-consistent visuals
-* Integration with Stable Diffusion / ComfyUI workflows
-* Future support for image-to-video pipelines
+* Future support for ComfyUI workflows, video, and audio generation
 
-## Key Features
+## Architecture — Connector System
 
-### LLM-Driven Roleplay
-* Local or remote LLM support (Ollama, OpenAI-compatible APIs)
-* Structured prompting and system instructions
-* Character and world configuration
+AubergeLLM uses a **connector-based architecture** where all external generation backends are pluggable modules. Each connector handles a specific modality:
 
-### Multimodal Generation
-* Native integration with ComfyUI
-* Support for:
-  * Text-to-Image (T2I)
-  * Image-to-Image (I2I)
-  * Future: Image-to-Video (I2V)
+| Connector Type | Description | MVP Backend |
+|---|---|---|
+| **Text** | Chat completions / LLM | OpenAI-compatible API (Ollama, OpenRouter, OpenAI, vLLM, etc.) |
+| **Image** | Image generation | OpenAI-compatible API (OpenRouter → Gemini/DALL-E/Flux, OpenAI, etc.) |
+| **Video** | Video generation | Post-MVP |
+| **Audio** | TTS / audio generation | Post-MVP |
 
-### Workflow Abstraction
-* Decouples UI from ComfyUI graphs
-* Normalized input/output interface
-* Workflow selection based on context (scene, style, NSFW level, etc.)
-
-### Tool Calling / Orchestration
-* LLM can trigger structured actions such as:
-  * `generate_image`
-  * `generate_video` (planned)
-* Hybrid decision system (LLM + rules)
-
-### Modular Architecture
-* Frontend (chat / RP UI)
-* Backend (API + orchestration)
-* ComfyUI (generation engine)
-
-## Architecture Overview
+This means:
+- Adding a new backend = implementing a new connector (no core changes needed)
+- Whether the image comes from an API call or a ComfyUI workflow is transparent to the rest of the app
+- The MVP uses the simplest possible connectors (OpenAI-compatible APIs) for instant setup
 
 ```
 [ Frontend UI ]
         ↓
 [ AubergeLLM API (FastAPI) ]
         ↓
-[ LLM Runtime (Ollama / vLLM) ]
-        ↓
-[ Orchestrator Layer ]
-        ↓
-[ ComfyUI API ]
+[ Connector Manager ]
+   ↓              ↓
+[ Text           [ Image
+  Connector ]      Connector ]
+   ↓              ↓
+[ LLM Backend ]  [ Image API ]
 ```
 
-### Components
-* **Frontend**: Chat interface focused on roleplay
-* **Backend API**: Handles requests, routing, and normalization
-* **LLM Runtime**: Generates text and tool calls
-* **Orchestrator**: Decides when/how to generate visuals
-* **ComfyUI**: Executes workflows for image/video generation
+## Key Features
 
-## Workflow System
-AubergeLLM does not expose raw ComfyUI graphs directly.
+### LLM-Driven Roleplay
+* Local or remote LLM support via text connectors (Ollama, OpenAI-compatible APIs)
+* Structured prompting and system instructions
+* SillyTavern-compatible character cards (import/export JSON and PNG)
 
-Instead, each workflow is defined with a normalized schema:
+### Multimodal Generation
+* Image generation via image connectors (OpenRouter, OpenAI, etc.)
+* Future: ComfyUI connector for local Stable Diffusion workflows
+* Future: Video and audio connectors
 
-```yaml
-name: character_portrait
-inputs:
-  prompt: string
-  negative_prompt: string
-  character_ref: image
-  pose_ref: image
-  style: string
-  seed: int
-outputs:
-  image: file
+### Connector System
+* Pluggable backends for each modality (text, image, video, audio)
+* One active connector per type at a time
+* Add, configure, test, and switch connectors via Admin UI
+* Easy to extend: implement a new connector class to add a new backend
+
+### Modular Architecture
+* Frontend (chat / RP UI) — static HTML + vanilla JS
+* Backend (API + connector management) — Python / FastAPI
+* External backends accessed only through connectors
+
+## Quick Start
+
+### Prerequisites
+- Python 3.10+
+- An LLM backend (e.g., [Ollama](https://ollama.com)) for text generation
+- (Optional) An image API key (e.g., [OpenRouter](https://openrouter.ai)) for image generation
+
+### Installation
+
+```bash
+git clone https://github.com/odoucet/aubergellm.git
+cd aubergellm
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp config.example.yaml config.yaml
 ```
 
-The backend maps these inputs to ComfyUI nodes and executes the corresponding workflow.
+### Run
 
-## Orchestration Logic
-
-AubergeLLM uses a hybrid approach:
-* **LLM-driven suggestions** (tool calling)
-* **Rule-based validation** (cooldowns, scene changes, etc.)
-
-Example:
-
-```json
-{
-  "tool": "generate_image",
-  "scene_type": "portrait",
-  "style": "anime",
-  "nsfw_level": 1
-}
+```bash
+python run.py
 ```
 
-The orchestrator then:
-* selects the appropriate workflow
-* chooses models and LoRAs
-* executes the generation
+### Configure
 
-## Getting Started
+1. Open `http://localhost:8000/admin/`
+2. Add a **text connector** (e.g., Ollama at `http://localhost:11434/v1`)
+3. (Optional) Add an **image connector** (e.g., OpenRouter at `https://openrouter.ai/api/v1`)
+4. Import a character card (SillyTavern-compatible JSON or PNG)
+5. Go to `http://localhost:8000` and start chatting!
 
-### Requirements
-* NVIDIA GPU (recommended: 3090 or higher)
-* Python 3.10+
-* ComfyUI
-* Ollama or compatible LLM backend (can be remote)
+## Documentation
 
-### Setup
+Full specifications are in the [`docs/`](docs/) directory:
 
-WIP
+| Document | Description |
+|---|---|
+| [00 — Architecture Overview](docs/00-architecture-overview.md) | High-level architecture, components, communication patterns |
+| [01 — Technology Stack](docs/01-technology-stack.md) | Technology choices and justifications |
+| [02 — Project Structure](docs/02-project-structure.md) | Directory layout, module organization |
+| [03 — Backend API](docs/03-backend-api.md) | REST/SSE API specification |
+| [04 — Character System](docs/04-character-system.md) | Character card format, SillyTavern compatibility |
+| [05 — Chat and Conversations](docs/05-chat-and-conversations.md) | Chat flow, conversation model, prompt construction |
+| [06 — Connector System](docs/06-connector-system.md) | Connector architecture, interfaces, implementations |
+| [07 — Frontend Chat UI](docs/07-frontend-chat-ui.md) | Chat interface specification |
+| [08 — Admin Interface](docs/08-admin-interface.md) | Admin panel for connectors, characters, health |
+| [09 — Configuration and Setup](docs/09-configuration-and-setup.md) | Installation, config files, startup |
 
+## Post-MVP Roadmap
 
-## ComfyUI Integration
-
-AubergeLLM interacts with ComfyUI via:
-* `POST /prompt` → submit workflow
-* `GET /history/{id}` → retrieve results
-* `GET /view` → fetch generated files
-* WebSocket → execution updates
-
-Workflows must be exported and versioned. You can start by using the provided (but simple) workflows, then read the future doc on how to use your own workflow.
-
+- [ ] ComfyUI connector backend (advanced local image generation)
+- [ ] Video generation connectors
+- [ ] Audio/TTS connectors
+- [ ] Quota management per conversation
+- [ ] Enforced NSFW protection
+- [ ] Advanced orchestration (automatic image triggers, style inference)
+- [ ] Multi-user / authentication
+- [ ] Database storage
+- [ ] Plugin system
+- [ ] Docker deployment
 
 ## Disclaimer
 
@@ -137,10 +134,3 @@ Apache 2.0
 ## Contributing
 
 Contributions are welcome. Please open issues and pull requests.
-
-
-## Vision
-
-AubergeLLM aims to become a lightweight, extensible storytelling engine where text, images, and video seamlessly merge into a single interactive experience. Project can be usable in seconds, then tweaked easily through : 
-* character prompting
-* new ComfyUI workflows for image or video generation

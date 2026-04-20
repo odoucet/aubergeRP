@@ -28,22 +28,26 @@ aubergellm/
 │   ├── character.py             # Character card models (internal + SillyTavern)
 │   ├── conversation.py          # Conversation and message models
 │   ├── chat.py                  # Chat request/response models
-│   ├── comfyui.py               # ComfyUI workflow and result models
+│   ├── connector.py             # Connector instance and config models
 │   └── config.py                # Configuration models
+├── connectors/                  # Connector implementations (pluggable backends)
+│   ├── __init__.py
+│   ├── base.py                  # Abstract base classes (TextConnector, ImageConnector, etc.)
+│   ├── manager.py               # ConnectorManager — registry and lifecycle
+│   ├── openai_text.py           # OpenAI-compatible text connector
+│   └── openai_image.py          # OpenAI-compatible image connector
 ├── services/                    # Business logic services
 │   ├── __init__.py
 │   ├── character_service.py     # Character CRUD, import/export
 │   ├── conversation_service.py  # Conversation persistence and retrieval
-│   ├── chat_service.py          # Prompt building, LLM interaction, response streaming
-│   ├── llm_client.py            # OpenAI-compatible API client
-│   ├── comfyui_client.py        # ComfyUI HTTP + WebSocket client
-│   └── comfyui_service.py       # Workflow abstraction, execution, result retrieval
+│   └── chat_service.py          # Prompt building, LLM interaction, response streaming
 ├── routers/                     # FastAPI route handlers
 │   ├── __init__.py
 │   ├── chat.py                  # POST /api/chat/... , SSE streaming
 │   ├── characters.py            # GET/POST/PUT/DELETE /api/characters/...
 │   ├── conversations.py         # GET/POST/DELETE /api/conversations/...
-│   ├── comfyui.py               # POST /api/generate/image, GET /api/images/...
+│   ├── connectors.py            # GET/POST/PUT/DELETE /api/connectors/...
+│   ├── generate.py              # POST /api/generate/image, GET /api/images/...
 │   ├── config.py                # GET/PUT /api/config
 │   └── health.py                # GET /api/health
 └── utils/                       # Shared utilities
@@ -70,7 +74,7 @@ frontend/
 │   ├── admin/
 │   │   ├── config.js            # Admin config management logic
 │   │   ├── characters.js        # Admin character CRUD logic
-│   │   └── workflows.js         # Admin workflow management logic
+│   │   └── connectors.js        # Admin connector management logic
 │   └── vendor/
 │       └── marked.min.js        # Vendored markdown parser
 └── assets/
@@ -86,17 +90,18 @@ tests/
 ├── test_character_service.py    # Character CRUD, import/export logic
 ├── test_conversation_service.py # Conversation persistence
 ├── test_chat_service.py         # Prompt building
-├── test_comfyui_service.py      # Workflow mapping, abstraction
-├── test_llm_client.py           # LLM client (mocked HTTP)
-├── test_comfyui_client.py       # ComfyUI client (mocked HTTP/WS)
+├── test_connector_manager.py    # Connector manager lifecycle
+├── test_openai_text.py          # OpenAI text connector (mocked HTTP)
+├── test_openai_image.py         # OpenAI image connector (mocked HTTP)
 ├── test_api_characters.py       # Character API endpoints
 ├── test_api_chat.py             # Chat API endpoints
+├── test_api_connectors.py       # Connector API endpoints
 ├── test_api_config.py           # Config API endpoints
 ├── test_png_metadata.py         # PNG metadata extraction
 └── fixtures/                    # Test data files
     ├── sample_character.json    # Sample SillyTavern character card
     ├── sample_character.png     # Sample PNG with embedded metadata
-    └── sample_workflow.json     # Sample ComfyUI workflow
+    └── sample_connector.json    # Sample connector config
 ```
 
 ## 5. Data Directory: `data/`
@@ -106,7 +111,8 @@ data/
 ├── characters/                  # Character JSON files ({uuid}.json)
 ├── conversations/               # Conversation JSON files ({uuid}.json)
 ├── images/                      # Generated images ({uuid}.png)
-├── workflows/                   # ComfyUI workflow templates
+├── connectors/                  # Connector instance configs ({uuid}.json)
+├── workflows/                   # ComfyUI workflow templates (post-MVP)
 │   └── default_t2i.json        # Default text-to-image workflow
 └── avatars/                     # Character avatar images ({uuid}.png)
 ```
@@ -143,10 +149,17 @@ The `data/` directory is created automatically on first startup if it doesn't ex
 - Pure Pydantic models. No business logic.
 - Used for API request/response validation and internal data passing.
 
+### `connectors/`
+
+- Connector implementations. Each backend is a separate file.
+- All connectors inherit from base classes in `base.py`.
+- `manager.py` handles connector lifecycle (create, configure, activate, test).
+- Must not import from `routers/`.
+
 ### `services/`
 
 - All business logic lives here.
-- Services are stateless functions or classes that accept dependencies (config, file paths) explicitly.
+- Services are stateless functions or classes that accept dependencies (config, file paths, connectors) explicitly.
 - Services never import from `routers/`.
 
 ### `routers/`
@@ -164,9 +177,13 @@ The `data/` directory is created automatically on first startup if it doesn't ex
 
 ```
 routers/ → services/ → models/
+routers/ → connectors/
 routers/ → models/
+services/ → connectors/
 services/ → utils/
 services/ → models/
+connectors/ → models/
+connectors/ → utils/
 routers/ → utils/
 ```
 
@@ -174,8 +191,8 @@ Circular imports are forbidden. The dependency graph is strictly:
 
 ```
 routers → services → models
-              ↓
-            utils
+    ↓        ↓
+connectors → utils
 ```
 
 ## 9. Naming Conventions

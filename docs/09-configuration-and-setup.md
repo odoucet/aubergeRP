@@ -11,8 +11,9 @@ This document specifies how AubergeLLM is configured, installed, and started. Th
 | Python | 3.10+ | Required for the backend |
 | pip | Latest | Comes with Python |
 | LLM backend | Any OpenAI-compatible API | Ollama recommended for local use |
-| ComfyUI | Any recent version | Optional for MVP (chat works without it) |
-| GPU | NVIDIA recommended | For LLM and ComfyUI (can use CPU for LLM) |
+| Image API | Any OpenAI-compatible image API | OpenRouter recommended for easy setup |
+| ComfyUI | Any recent version | Optional, post-MVP (advanced image generation) |
+| GPU | NVIDIA recommended | For local LLM; not needed if using remote APIs |
 | OS | Linux, macOS, Windows | All supported |
 
 ## 3. Installation Steps
@@ -62,9 +63,9 @@ The application is now accessible at `http://localhost:8000`.
 ### 3.4 First-Time Configuration via Admin UI
 
 1. Open `http://localhost:8000/admin/` in a browser.
-2. Configure the LLM backend URL (e.g., `http://localhost:11434/v1` for Ollama).
+2. Add a **text connector** (e.g., OpenAI-compatible API pointing to Ollama at `http://localhost:11434/v1`).
 3. Test the connection.
-4. Configure ComfyUI URL (e.g., `http://localhost:8188`).
+4. Add an **image connector** (e.g., OpenAI-compatible API pointing to OpenRouter at `https://openrouter.ai/api/v1`).
 5. Test the connection.
 6. Import at least one character.
 7. Navigate to the Chat UI and start roleplaying.
@@ -87,32 +88,13 @@ app:
   # Data directory (relative to project root or absolute path)
   data_dir: "data"
 
-llm:
-  # Base URL of the OpenAI-compatible LLM API
-  # Examples:
-  #   Ollama: http://localhost:11434/v1
-  #   LM Studio: http://localhost:1234/v1
-  #   vLLM: http://localhost:8000/v1
-  #   OpenAI: https://api.openai.com/v1
-  base_url: "http://localhost:11434/v1"
-  # Model name to use
-  model: "llama3"
-  # API key (optional, required for OpenAI and some providers)
-  api_key: ""
-  # Maximum tokens in LLM response
-  max_tokens: 1024
-  # Generation temperature (0.0 = deterministic, 2.0 = very creative)
-  temperature: 0.8
-  # Request timeout in seconds
-  timeout: 120
-
-comfyui:
-  # Base URL of the ComfyUI instance
-  base_url: "http://localhost:8188"
-  # Request timeout in seconds
-  timeout: 120
-  # WebSocket monitoring timeout in seconds
-  ws_timeout: 300
+# Active connector IDs (set via Admin UI or here)
+# Leave empty to configure via Admin UI on first start
+active_connectors:
+  text: ""    # UUID of the active text connector
+  image: ""   # UUID of the active image connector
+  # video: ""  # Post-MVP
+  # audio: ""  # Post-MVP
 
 user:
   # Display name for the user in chat (used for {{user}} macro)
@@ -128,26 +110,16 @@ class AppConfig(BaseModel):
     log_level: str = "INFO"
     data_dir: str = "data"
 
-class LLMConfig(BaseModel):
-    base_url: str = "http://localhost:11434/v1"
-    model: str = "llama3"
-    api_key: str = ""
-    max_tokens: int = 1024
-    temperature: float = 0.8
-    timeout: int = 120
-
-class ComfyUIConfig(BaseModel):
-    base_url: str = "http://localhost:8188"
-    timeout: int = 120
-    ws_timeout: int = 300
+class ActiveConnectorsConfig(BaseModel):
+    text: str = ""   # UUID of active text connector
+    image: str = ""  # UUID of active image connector
 
 class UserConfig(BaseModel):
     name: str = "User"
 
 class Config(BaseModel):
     app: AppConfig = AppConfig()
-    llm: LLMConfig = LLMConfig()
-    comfyui: ComfyUIConfig = ComfyUIConfig()
+    active_connectors: ActiveConnectorsConfig = ActiveConnectorsConfig()
     user: UserConfig = UserConfig()
 ```
 
@@ -164,10 +136,6 @@ class Config(BaseModel):
 
 | Environment Variable | Config Path | Example |
 |---|---|---|
-| `AUBERGELLM_LLM_BASE_URL` | `llm.base_url` | `http://remote:11434/v1` |
-| `AUBERGELLM_LLM_MODEL` | `llm.model` | `mistral` |
-| `AUBERGELLM_LLM_API_KEY` | `llm.api_key` | `sk-...` |
-| `AUBERGELLM_COMFYUI_BASE_URL` | `comfyui.base_url` | `http://remote:8188` |
 | `AUBERGELLM_APP_PORT` | `app.port` | `9000` |
 | `AUBERGELLM_APP_LOG_LEVEL` | `app.log_level` | `DEBUG` |
 | `AUBERGELLM_USER_NAME` | `user.name` | `Alice` |
@@ -189,7 +157,7 @@ On startup, the backend ensures the data directory structure exists:
 ```python
 def initialize_data_dir(data_dir: str):
     """Create data directory structure if it doesn't exist."""
-    for subdir in ["characters", "conversations", "images", "workflows", "avatars"]:
+    for subdir in ["characters", "conversations", "images", "connectors", "workflows", "avatars"]:
         Path(data_dir, subdir).mkdir(parents=True, exist_ok=True)
 ```
 
@@ -233,6 +201,7 @@ config.yaml
 data/characters/
 data/conversations/
 data/images/
+data/connectors/
 data/avatars/
 
 # Keep workflow templates
@@ -255,7 +224,6 @@ Thumbs.db
 fastapi>=0.111,<1.0
 uvicorn[standard]>=0.30,<1.0
 httpx>=0.27,<1.0
-websockets>=12.0,<14.0
 pydantic>=2.0,<3.0
 sse-starlette>=2.0,<3.0
 Pillow>=10.0,<12.0
@@ -294,12 +262,12 @@ strict = true
 When `main.py` runs, the following happens:
 
 1. **Load configuration** from `config.yaml` + environment variables.
-2. **Initialize data directory** (create missing directories).
-3. **Copy default workflows** if `data/workflows/` is empty.
+2. **Initialize data directory** (create missing directories, including `connectors/`).
+3. **Load connectors** from `data/connectors/` and activate the configured ones.
 4. **Create FastAPI app** with metadata (title, version, description).
 5. **Mount routers** under `/api/`.
 6. **Mount static files** (serve `frontend/` at `/`).
-7. **Log startup info** (listening address, config summary, data directory path).
+7. **Log startup info** (listening address, active connectors, data directory path).
 
 ## 12. Quick Start Guide (README-ready)
 
@@ -310,8 +278,8 @@ This section can be used as the basis for a quick start section in the README:
 
 ### Prerequisites
 - Python 3.10+
-- An LLM backend (e.g., [Ollama](https://ollama.com))
-- (Optional) A [ComfyUI](https://github.com/comfyanonymous/ComfyUI) instance for image generation
+- An LLM backend (e.g., [Ollama](https://ollama.com)) for text generation
+- (Optional) An image API key (e.g., [OpenRouter](https://openrouter.ai)) for image generation
 
 ### Installation
 git clone https://github.com/odoucet/aubergellm.git
@@ -326,8 +294,8 @@ python run.py
 
 ### Configure
 1. Open http://localhost:8000/admin/
-2. Set your LLM backend URL and test the connection
-3. (Optional) Set your ComfyUI URL
+2. Add a text connector (e.g., Ollama at http://localhost:11434/v1)
+3. (Optional) Add an image connector (e.g., OpenRouter)
 4. Import a character card (SillyTavern-compatible JSON or PNG)
 5. Go to http://localhost:8000 and start chatting!
 ```

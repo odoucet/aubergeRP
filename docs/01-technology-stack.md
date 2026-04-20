@@ -2,7 +2,9 @@
 
 ## 1. Overview
 
-AubergeLLM follows a deliberate strategy of minimal dependencies and zero-build-step frontend to maximize simplicity, reduce onboarding friction, and ensure a time-to-first-roleplay under one hour.
+AubergeLLM follows a deliberate strategy of minimal dependencies, zero-build-step frontend, and a **connector-based architecture** to maximize simplicity, reduce onboarding friction, and ensure a time-to-first-roleplay under one hour.
+
+The connector pattern means that all external generation backends (text, image, video, audio) are accessed through a unified abstraction layer, and the MVP ships with the simplest possible connectors (OpenAI-compatible APIs).
 
 ## 2. Backend
 
@@ -14,7 +16,7 @@ AubergeLLM follows a deliberate strategy of minimal dependencies and zero-build-
 | Package manager | pip (with `requirements.txt`) | — |
 | Virtual environment | venv (standard library) | — |
 
-**Rationale:** Python has the best ecosystem for LLM and ComfyUI integration, and is familiar to the target audience (ML/AI hobbyists).
+**Rationale:** Python has the best ecosystem for LLM and AI integration, and is familiar to the target audience (ML/AI hobbyists).
 
 ### Framework & Libraries
 
@@ -22,13 +24,18 @@ AubergeLLM follows a deliberate strategy of minimal dependencies and zero-build-
 |---|---|---|
 | `fastapi` | Web framework, REST API, SSE | ≥ 0.111 |
 | `uvicorn` | ASGI server | ≥ 0.30 |
-| `httpx` | Async HTTP client (LLM + ComfyUI calls) | ≥ 0.27 |
-| `websockets` | WebSocket client for ComfyUI monitoring | ≥ 12.0 |
+| `httpx` | Async HTTP client (connector backends) | ≥ 0.27 |
 | `pydantic` | Data validation and serialization (comes with FastAPI) | ≥ 2.0 |
 | `sse-starlette` | Server-Sent Events support for FastAPI | ≥ 2.0 |
 | `Pillow` | PNG metadata read/write for character cards | ≥ 10.0 |
 | `python-multipart` | File upload handling (FastAPI dependency) | ≥ 0.0.9 |
 | `pyyaml` | YAML configuration file parsing | ≥ 6.0 |
+
+**Post-MVP additions (for ComfyUI connector):**
+
+| Library | Purpose | Version (pinned) |
+|---|---|---|
+| `websockets` | WebSocket client for ComfyUI monitoring | ≥ 12.0 |
 
 ### Storage
 
@@ -38,7 +45,7 @@ AubergeLLM follows a deliberate strategy of minimal dependencies and zero-build-
 | Conversation data | JSON files on disk | Same rationale; one file per conversation |
 | Configuration | YAML file (`config.yaml`) | Human-readable, supports comments |
 | Generated images | Files on disk (`data/images/`) | Simple, served directly by the backend |
-| Workflow templates | JSON files on disk (`data/workflows/`) | ComfyUI native format |
+| Connector configs | JSON files on disk (`data/connectors/`) | One file per connector instance |
 
 ### Directory Structure for Data
 
@@ -53,7 +60,10 @@ data/
 ├── images/              # Generated images
 │   ├── {uuid}.png
 │   └── ...
-├── workflows/           # ComfyUI workflow templates
+├── connectors/          # Connector instance configs
+│   ├── {uuid}.json
+│   └── ...
+├── workflows/           # ComfyUI workflow templates (post-MVP)
 │   └── default_t2i.json
 └── avatars/             # Character avatar images
     ├── {uuid}.png
@@ -101,13 +111,19 @@ frontend/
 
 ## 4. External Dependencies (Runtime)
 
-### LLM Backend
+### Text Generation Backend (via Text Connector)
 
 - **Protocol:** OpenAI-compatible Chat Completions API (`/v1/chat/completions`).
-- **Supported backends:** Ollama, vLLM, LM Studio, text-generation-webui (with OpenAI extension), OpenAI API, any OpenAI-compatible server.
-- **Streaming:** Uses `stream: true` in the request to receive tokens via SSE from the LLM backend.
+- **Supported backends:** Ollama, vLLM, LM Studio, text-generation-webui (with OpenAI extension), OpenRouter, OpenAI API, any OpenAI-compatible server.
+- **Streaming:** Uses `stream: true` in the request to receive tokens via SSE from the backend.
 
-### ComfyUI
+### Image Generation Backend (via Image Connector)
+
+- **Protocol:** OpenAI-compatible Images API (`/v1/images/generations`).
+- **Supported backends:** OpenRouter (→ Gemini, DALL-E, Flux), OpenAI directly, any compatible endpoint.
+- **No GPU required locally** — images can be generated via remote APIs.
+
+### ComfyUI (Post-MVP, via ComfyUI Image Connector)
 
 - **Protocol:** ComfyUI native HTTP + WebSocket API.
   - `POST /prompt` — submit a workflow for execution.
@@ -126,7 +142,7 @@ frontend/
 
 ### Testing Strategy
 
-- **Unit tests** for services (character parsing, workflow mapping, prompt building).
+- **Unit tests** for services (character parsing, connector logic, prompt building).
 - **Integration tests** for API endpoints (using FastAPI test client).
 - **No frontend tests in MVP** (manual testing only).
 

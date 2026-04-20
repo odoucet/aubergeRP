@@ -4,9 +4,8 @@
 
 The Admin interface is a separate page within the AubergeLLM web application that provides:
 
-- Configuration of external services (LLM backend, ComfyUI).
+- **Connector management** — add, configure, test, and switch between connectors for text, image, video, and audio.
 - Character library management (import, edit, duplicate, export, delete).
-- Workflow management (view available workflows).
 - System health overview.
 
 ## 2. Technology
@@ -27,9 +26,8 @@ The Admin interface is a separate page within the AubergeLLM web application tha
 │ Nav Menu │            Content Area                   │
 │          │                                           │
 │ ┌──────┐ │  (Changes based on selected section)      │
-│ │Config│ │                                           │
+│ │Connec│ │                                           │
 │ │Chars │ │                                           │
-│ │Wflows│ │                                           │
 │ │Health│ │                                           │
 │ └──────┘ │                                           │
 │          │                                           │
@@ -40,41 +38,78 @@ The Admin interface is a separate page within the AubergeLLM web application tha
 
 ## 4. Sections
 
-### 4.1 Configuration Section
+### 4.1 Connectors Section
 
-This is the landing page of the admin interface. It allows configuring the two external services.
+This is the landing page of the admin interface. It shows all configured connectors organized by type, and allows adding, editing, testing, and activating connectors.
 
-#### LLM Configuration
+#### Layout
 
-| Field | Type | Description |
-|---|---|---|
-| Base URL | Text input | URL of the LLM API (e.g., `http://localhost:11434/v1`) |
-| Model | Dropdown / text | Model name (e.g., `llama3`). If connection is active, populate from available models |
-| API Key | Password input | Optional API key |
-| Max Tokens | Number input | Maximum response tokens (default: 1024) |
-| Temperature | Slider / number | Generation temperature (default: 0.8, range: 0.0 - 2.0) |
+```
+┌──────────────────────────────────────────────────────┐
+│  Connectors                             [+ Add New]  │
+├──────────────────────────────────────────────────────┤
+│                                                      │
+│  ── Text Connectors ──                               │
+│                                                      │
+│  ⭐ My Ollama (openai_api)              [Test] [⋮]  │
+│     URL: http://localhost:11434/v1                    │
+│     Model: llama3                                    │
+│     Status: ✅ Connected                             │
+│                                                      │
+│  ── Image Connectors ──                              │
+│                                                      │
+│  ⭐ OpenRouter Images (openai_api)      [Test] [⋮]  │
+│     URL: https://openrouter.ai/api/v1               │
+│     Model: google/gemini-2.0-flash-exp:free          │
+│     Status: ✅ Connected                             │
+│                                                      │
+│  ── Video Connectors ──                              │
+│     (No connectors configured)                       │
+│                                                      │
+│  ── Audio Connectors ──                              │
+│     (No connectors configured)                       │
+│                                                      │
+└──────────────────────────────────────────────────────┘
+```
 
-**Actions:**
-- "Test Connection" button → calls `POST /api/config/test-llm`.
-- "Save" button → calls `PUT /api/config` with LLM fields.
+- ⭐ indicates the active connector for that type.
+- The `[⋮]` overflow menu contains: Edit, Activate, Deactivate, Delete.
+- "Test" button → calls `POST /api/connectors/{id}/test`.
+
+#### Add/Edit Connector Dialog
+
+```
+┌──────────────────────────────────────────────────────┐
+│  Add New Connector                                   │
+├──────────────────────────────────────────────────────┤
+│                                                      │
+│  Name:     [My Ollama______________________]         │
+│  Type:     [text ▼]                                  │
+│  Backend:  [openai_api ▼]                            │
+│                                                      │
+│  ── Backend Configuration ──                         │
+│  (fields change based on selected backend)           │
+│                                                      │
+│  Base URL:    [http://localhost:11434/v1___]          │
+│  API Key:     [________________________________]     │
+│  Model:       [llama3_________________________]      │
+│  Max Tokens:  [1024]                                 │
+│  Temperature: [0.8]                                  │
+│  Timeout:     [120]                                  │
+│                                                      │
+│                   [Cancel] [Test] [Save]             │
+└──────────────────────────────────────────────────────┘
+```
+
+**Field behavior:**
+- When "Type" changes, the "Backend" dropdown updates to show only compatible backends.
+- When "Backend" changes, the configuration fields update to match the backend's schema.
+- "Test" validates the connection before saving.
+- For image connectors with `openai_api` backend, fields are: Base URL, API Key, Model, Size, Quality, Timeout.
 
 **Feedback:**
-- On successful test: green banner "Connected to LLM. Available models: llama3, mistral, ..."
-- On failure: red banner "Cannot connect to LLM at {url}. Error: {detail}"
-
-#### ComfyUI Configuration
-
-| Field | Type | Description |
-|---|---|---|
-| Base URL | Text input | URL of ComfyUI (e.g., `http://localhost:8188`) |
-
-**Actions:**
-- "Test Connection" button → calls `POST /api/config/test-comfyui`.
-- "Save" button → calls `PUT /api/config` with ComfyUI fields.
-
-**Feedback:**
-- On successful test: green banner "Connected to ComfyUI (version X.Y.Z)"
-- On failure: red banner "Cannot connect to ComfyUI at {url}. Error: {detail}"
+- On successful test: green banner "Connected. Available models: ..."
+- On failure: red banner "Cannot connect: {detail}"
 
 ### 4.2 Characters Section
 
@@ -144,7 +179,6 @@ Triggered by "Edit" or "New" button.
 │  ── AubergeLLM Extensions ──                         │
 │                                                      │
 │  Image Prompt Prefix: [elf woman, fantasy___]        │
-│  Default Workflow:    [default_t2i ▼]                │
 │  Negative Prompt:     [blurry, low quality__]        │
 │                                                      │
 │  Creator:     [Creator name________________]        │
@@ -157,7 +191,6 @@ Triggered by "Edit" or "New" button.
 **Fields:**
 - All text fields are multi-line textareas except Name, Tags, Creator.
 - Tags are comma-separated in the input, stored as an array.
-- Default Workflow is a dropdown populated from `GET /api/workflows`.
 - Avatar upload opens a file picker (images only, ≤ 10 MB).
 
 **Validation:**
@@ -169,30 +202,7 @@ Triggered by "Edit" or "New" button.
 - "Save" → `POST /api/characters` (new) or `PUT /api/characters/{id}` (edit).
 - "Cancel" → return to list view without saving.
 
-### 4.3 Workflows Section
-
-A read-only view of available ComfyUI workflow templates.
-
-```
-┌──────────────────────────────────────────────────────┐
-│  Workflows                                           │
-├──────────────────────────────────────────────────────┤
-│                                                      │
-│  default_t2i — Default Text-to-Image                 │
-│  Generates an image from a text prompt               │
-│  Inputs: prompt (string, required),                  │
-│          negative_prompt (string, optional)           │
-│  Output: image                                       │
-│                                                      │
-│  (More workflows can be added by placing files in    │
-│   data/workflows/)                                   │
-│                                                      │
-└──────────────────────────────────────────────────────┘
-```
-
-For MVP, workflows are not editable through the UI. They are managed by placing files in the `data/workflows/` directory.
-
-### 4.4 Health Section
+### 4.3 Health Section
 
 Displays system health and diagnostic information.
 
@@ -203,20 +213,24 @@ Displays system health and diagnostic information.
 │                                                      │
 │  AubergeLLM Version: 0.1.0                          │
 │                                                      │
-│  LLM Backend:                                       │
-│    Status: ✅ Connected                              │
-│    URL: http://localhost:11434/v1                    │
-│    Model: llama3                                    │
+│  Active Connectors:                                 │
 │                                                      │
-│  ComfyUI:                                           │
-│    Status: ❌ Disconnected                           │
-│    URL: http://localhost:8188                        │
-│    Error: Connection refused                        │
+│  Text:  ✅ My Ollama                                │
+│         http://localhost:11434/v1                    │
+│         Model: llama3                               │
+│                                                      │
+│  Image: ✅ OpenRouter Images                        │
+│         https://openrouter.ai/api/v1                │
+│         Model: google/gemini-2.0-flash-exp:free     │
+│                                                      │
+│  Video: — Not configured                            │
+│  Audio: — Not configured                            │
 │                                                      │
 │  Storage:                                           │
 │    Characters: 5                                    │
 │    Conversations: 12                                │
 │    Images: 34                                       │
+│    Connectors: 2                                    │
 │                                                      │
 └──────────────────────────────────────────────────────┘
 ```
@@ -226,26 +240,36 @@ Data is fetched from `GET /api/health` plus `GET /api/characters` and `GET /api/
 ## 5. User Flow — First-Time Setup
 
 1. User opens `http://localhost:8000/admin/`.
-2. Configuration section is displayed.
-3. User enters LLM backend URL and clicks "Test Connection".
-4. On success, the model dropdown is populated.
-5. User selects a model and clicks "Save".
-6. User enters ComfyUI URL and clicks "Test Connection".
-7. On success, user clicks "Save".
-8. User navigates to Characters section.
-9. User clicks "Import" and uploads a SillyTavern character card.
-10. Character appears in the list.
-11. User optionally edits AubergeLLM-specific fields (image prompt prefix, etc.).
-12. User clicks "← Chat" to go to the chat interface and start roleplaying.
+2. Connectors section is displayed (empty).
+3. User clicks "+ Add New" to create a text connector.
+4. User selects type "text", backend "openai_api".
+5. User enters the LLM backend URL (e.g., `http://localhost:11434/v1` for Ollama).
+6. User clicks "Test" to verify the connection.
+7. On success, user clicks "Save". The connector is automatically activated.
+8. User clicks "+ Add New" again to create an image connector.
+9. User selects type "image", backend "openai_api".
+10. User enters the image API URL (e.g., `https://openrouter.ai/api/v1`) and API key.
+11. User tests and saves.
+12. User navigates to Characters section.
+13. User clicks "Import" and uploads a SillyTavern character card.
+14. Character appears in the list.
+15. User optionally edits AubergeLLM-specific fields (image prompt prefix, etc.).
+16. User clicks "← Chat" to go to the chat interface and start roleplaying.
 
 ## 6. API Integration
 
 | Action | Endpoint | Method |
 |---|---|---|
+| List connectors | `GET /api/connectors` | fetch |
+| Get connector | `GET /api/connectors/{id}` | fetch |
+| Create connector | `POST /api/connectors` | fetch |
+| Update connector | `PUT /api/connectors/{id}` | fetch |
+| Delete connector | `DELETE /api/connectors/{id}` | fetch |
+| Test connector | `POST /api/connectors/{id}/test` | fetch |
+| Activate connector | `POST /api/connectors/{id}/activate` | fetch |
+| List backends | `GET /api/connectors/backends` | fetch |
 | Get config | `GET /api/config` | fetch |
 | Save config | `PUT /api/config` | fetch |
-| Test LLM | `POST /api/config/test-llm` | fetch |
-| Test ComfyUI | `POST /api/config/test-comfyui` | fetch |
 | List characters | `GET /api/characters` | fetch |
 | Get character | `GET /api/characters/{id}` | fetch |
 | Create character | `POST /api/characters` | fetch |
@@ -256,7 +280,6 @@ Data is fetched from `GET /api/health` plus `GET /api/characters` and `GET /api/
 | Export JSON | `GET /api/characters/{id}/export/json` | fetch (download) |
 | Export PNG | `GET /api/characters/{id}/export/png` | fetch (download) |
 | Upload avatar | `POST /api/characters/{id}/avatar` | fetch (multipart) |
-| List workflows | `GET /api/workflows` | fetch |
 | Health check | `GET /api/health` | fetch |
 
 ## 7. File Structure
@@ -271,7 +294,7 @@ frontend/css/
 frontend/js/admin/
 ├── config.js           # Configuration section logic
 ├── characters.js       # Character management logic
-└── workflows.js        # Workflows section logic
+└── connectors.js       # Connector management logic
 ```
 
 ## 8. Navigation

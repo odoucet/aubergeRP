@@ -56,7 +56,7 @@ The chat system is the central user-facing feature of AubergeLLM. It manages:
 1. User sends a message via `POST /api/chat/{conversation_id}/message`.
 2. Backend appends the user message to the conversation.
 3. Backend builds the full LLM prompt (see Section 5).
-4. Backend calls the LLM API with streaming enabled.
+4. Backend calls the **active text connector** with streaming enabled.
 5. Tokens are streamed to the client via SSE (`event: token`).
 6. When streaming completes, the full assistant message is saved to the conversation.
 7. A `event: done` SSE event is sent with the complete message.
@@ -155,9 +155,13 @@ The final messages array sent to the LLM:
 
 Before building the prompt, all `{{char}}` and `{{user}}` macros in character fields and messages are replaced with actual names.
 
-## 6. LLM Client
+## 6. LLM Client (via Text Connector)
+
+The chat service uses the **active text connector** from the connector manager to communicate with the LLM backend. See [06 — Connector System](06-connector-system.md) for details on the connector interface.
 
 ### Configuration
+
+Text connector configuration is stored in the connector instance (not in global config). Typical settings:
 
 | Setting | Description | Default |
 |---|---|---|
@@ -169,6 +173,8 @@ Before building the prompt, all `{{char}}` and `{{user}}` macros in character fi
 | `llm.timeout` | Request timeout in seconds | `120` |
 
 ### Request Format
+
+The text connector sends requests in the OpenAI-compatible format:
 
 ```http
 POST {base_url}/chat/completions
@@ -194,12 +200,16 @@ data: {"choices": [{"delta": {}}], "finish_reason": "stop"}
 data: [DONE]
 ```
 
-The chat service:
+The text connector:
 1. Reads each SSE line from the LLM.
 2. Extracts the `content` delta.
-3. Forwards it to the client as an SSE event.
-4. Accumulates the full response.
-5. On `[DONE]`, saves the full message and sends the `done` event.
+3. Yields each token.
+
+The chat service:
+1. Receives tokens from the connector.
+2. Forwards each token to the client as an SSE event.
+3. Accumulates the full response.
+4. On completion, saves the full message and sends the `done` event.
 
 ## 7. Image Generation Trigger
 
@@ -208,10 +218,11 @@ The chat service:
 For the MVP, image generation is **explicitly triggered by the user**, not automatically by the LLM. The user clicks a "Generate Image" button in the chat interface, which:
 
 1. Sends a `POST /api/generate/image` request.
-2. The prompt is either:
+2. The backend calls the **active image connector** with the prompt.
+3. The prompt is either:
    - Manually entered by the user.
    - Auto-generated from the last assistant message (using the character's `image_prompt_prefix` + a summary of the scene).
-3. The generated image URL is attached to the conversation and displayed inline.
+4. The generated image URL is attached to the conversation and displayed inline.
 
 ### Image in Conversation
 
@@ -256,5 +267,6 @@ When an image is generated for a conversation, it is:
 | LLM backend unreachable | Return SSE `error` event; conversation is preserved up to the last saved message |
 | LLM returns empty response | Return SSE `error` event with descriptive message |
 | LLM timeout | Return SSE `error` event; partial response is NOT saved |
+| No active text connector | Return 400 error: "No text connector configured" |
 | Invalid conversation ID | Return 404 |
 | Character deleted mid-conversation | Conversation remains accessible; character name shown from stored data |

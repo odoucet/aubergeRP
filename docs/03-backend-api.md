@@ -21,8 +21,12 @@ Returns the server status and connectivity information.
 {
   "status": "ok",
   "version": "0.1.0",
-  "llm_connected": true,
-  "comfyui_connected": false
+  "connectors": {
+    "text": {"id": "uuid", "name": "My Ollama", "connected": true},
+    "image": {"id": "uuid", "name": "OpenRouter Images", "connected": true},
+    "video": null,
+    "audio": null
+  }
 }
 ```
 
@@ -70,7 +74,7 @@ Get full character details.
   "extensions": {
     "aubergellm": {
       "image_prompt_prefix": "elf woman, fantasy setting",
-      "default_workflow": "default_t2i"
+      "negative_prompt": "blurry, low quality"
     }
   },
   "created_at": "2025-01-15T10:30:00Z",
@@ -97,7 +101,7 @@ Create a new character manually.
   "extensions": {
     "aubergellm": {
       "image_prompt_prefix": "",
-      "default_workflow": "default_t2i"
+      "negative_prompt": ""
     }
   }
 }
@@ -299,14 +303,13 @@ The full assistant message is saved to the conversation after streaming complete
 
 ### `POST /api/generate/image`
 
-Trigger an image generation for a conversation.
+Trigger an image generation using the active image connector.
 
 **Request body:**
 ```json
 {
   "conversation_id": "uuid-string",
   "prompt": "A beautiful elf woman standing in an enchanted forest",
-  "workflow": "default_t2i",
   "negative_prompt": "blurry, low quality"
 }
 ```
@@ -343,35 +346,122 @@ Retrieve a generated image file.
 
 ---
 
-## 7. ComfyUI Workflows
+## 7. Connectors
 
-### `GET /api/workflows`
+### `GET /api/connectors`
 
-List available workflow templates.
+List all configured connectors.
+
+**Query parameters:**
+- `type` (optional): Filter by type (`text`, `image`, `video`, `audio`).
 
 **Response: 200 OK**
 ```json
 [
   {
-    "id": "default_t2i",
-    "name": "Default Text-to-Image",
-    "description": "Generates an image from a text prompt",
-    "inputs": [
-      {"name": "prompt", "type": "string", "required": true},
-      {"name": "negative_prompt", "type": "string", "required": false}
-    ],
-    "outputs": [
-      {"name": "image", "type": "image"}
-    ]
+    "id": "uuid-string",
+    "name": "My Ollama",
+    "type": "text",
+    "backend": "openai_api",
+    "enabled": true,
+    "is_active": true,
+    "config": {
+      "base_url": "http://localhost:11434/v1",
+      "model": "llama3",
+      "api_key_set": false
+    },
+    "created_at": "2025-01-15T10:30:00Z",
+    "updated_at": "2025-01-15T10:30:00Z"
   }
 ]
 ```
 
-### `GET /api/workflows/{workflow_id}`
+### `GET /api/connectors/{connector_id}`
 
-Get details of a specific workflow template.
+Get full connector details.
 
-**Response: 200 OK** — Same structure as list item.
+**Response: 200 OK** — Full connector object (API key redacted).
+
+### `POST /api/connectors`
+
+Create a new connector.
+
+**Request body:**
+```json
+{
+  "name": "OpenRouter Images",
+  "type": "image",
+  "backend": "openai_api",
+  "config": {
+    "base_url": "https://openrouter.ai/api/v1",
+    "api_key": "sk-or-...",
+    "model": "google/gemini-2.0-flash-exp:free"
+  }
+}
+```
+
+**Response: 201 Created** — The created connector object.
+
+### `PUT /api/connectors/{connector_id}`
+
+Update connector configuration.
+
+**Request body:** Same as POST (without `id`).
+
+**Response: 200 OK** — Updated connector object.
+
+### `DELETE /api/connectors/{connector_id}`
+
+Delete a connector.
+
+**Response: 204 No Content**
+
+### `POST /api/connectors/{connector_id}/test`
+
+Test a connector's connection to its backend.
+
+**Response: 200 OK**
+```json
+{
+  "connected": true,
+  "details": {
+    "models_available": ["llama3", "mistral"]
+  }
+}
+```
+
+### `POST /api/connectors/{connector_id}/activate`
+
+Set a connector as the active one for its type.
+
+**Response: 200 OK**
+```json
+{
+  "id": "uuid-string",
+  "type": "text",
+  "is_active": true
+}
+```
+
+### `GET /api/connectors/backends`
+
+List available connector backend types and their supported modalities.
+
+**Response: 200 OK**
+```json
+[
+  {
+    "id": "openai_api",
+    "name": "OpenAI-Compatible API",
+    "supported_types": ["text", "image"],
+    "config_schema": {
+      "base_url": {"type": "string", "required": true},
+      "api_key": {"type": "string", "required": false},
+      "model": {"type": "string", "required": true}
+    }
+  }
+]
+```
 
 ---
 
@@ -384,14 +474,9 @@ Get current configuration (sensitive fields redacted).
 **Response: 200 OK**
 ```json
 {
-  "llm": {
-    "base_url": "http://localhost:11434/v1",
-    "model": "llama3",
-    "api_key_set": true
-  },
-  "comfyui": {
-    "base_url": "http://localhost:8188",
-    "connected": true
+  "connectors": {
+    "text": {"id": "uuid", "name": "My Ollama", "connected": true},
+    "image": {"id": "uuid", "name": "OpenRouter Images", "connected": true}
   },
   "app": {
     "host": "0.0.0.0",
@@ -407,43 +492,17 @@ Update configuration. Only provided fields are updated.
 **Request body:**
 ```json
 {
-  "llm": {
-    "base_url": "http://localhost:11434/v1",
-    "model": "llama3",
-    "api_key": "optional-api-key"
+  "app": {
+    "host": "0.0.0.0",
+    "port": 8000
   },
-  "comfyui": {
-    "base_url": "http://localhost:8188"
+  "user": {
+    "name": "Alice"
   }
 }
 ```
 
 **Response: 200 OK** — Updated config (same as GET).
-
-### `POST /api/config/test-llm`
-
-Test connectivity to the configured LLM backend.
-
-**Response: 200 OK**
-```json
-{
-  "connected": true,
-  "model": "llama3",
-  "models_available": ["llama3", "mistral"]
-}
-```
-
-### `POST /api/config/test-comfyui`
-
-Test connectivity to the configured ComfyUI instance.
-
-**Response: 200 OK**
-```json
-{
-  "connected": true,
-  "version": "0.2.3"
-}
-```
 
 ---
 

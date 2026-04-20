@@ -4,12 +4,13 @@
 
 AubergeLLM is a self-hosted, single-user roleplay frontend that combines:
 
-- An **LLM backend** for text-based roleplay chat.
+- A **text connector** for LLM-based roleplay chat (via any OpenAI-compatible API).
 - A **character library** with SillyTavern-compatible character cards.
-- A **ComfyUI backend** for image generation triggered from conversations.
+- An **image connector** for image generation triggered from conversations (via API or ComfyUI).
 - A lightweight **web UI** (chat + admin) served as static HTML/JS.
+- A **connector-based architecture** where text, image, video, and audio backends are all pluggable modules.
 
-**Product positioning:** AubergeLLM is a simplified alternative to SillyTavern, focused on text + image roleplay with structured ComfyUI integration.
+**Product positioning:** AubergeLLM is a simplified alternative to SillyTavern, focused on text + image roleplay with a pluggable connector system for all generation backends.
 
 **MVP success criterion:** Time-to-first-roleplay < 1 hour.
 
@@ -29,19 +30,20 @@ AubergeLLM is a self-hosted, single-user roleplay frontend that combines:
 ┌─────────────────────────────────────────────────────────┐
 │              AubergeLLM Backend (Python / FastAPI)       │
 │                                                         │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐  │
-│  │ Chat     │ │ Character│ │ ComfyUI  │ │ Config    │  │
-│  │ Service  │ │ Service  │ │ Service  │ │ Service   │  │
-│  └────┬─────┘ └──────────┘ └────┬─────┘ └───────────┘  │
-│       │                         │                       │
-└───────┼─────────────────────────┼───────────────────────┘
-        │                         │
-        ▼                         ▼
-┌───────────────┐        ┌────────────────┐
-│  LLM Backend  │        │   ComfyUI      │
-│  (Ollama,     │        │   Instance     │
-│   OpenAI API) │        │                │
-└───────────────┘        └────────────────┘
+│  ┌──────────┐ ┌──────────┐ ┌───────────┐ ┌───────────┐ │
+│  │ Chat     │ │ Character│ │ Connector │ │ Config    │ │
+│  │ Service  │ │ Service  │ │ Manager   │ │ Service   │ │
+│  └────┬─────┘ └──────────┘ └─────┬─────┘ └───────────┘ │
+│       │                          │                      │
+└───────┼──────────────────────────┼──────────────────────┘
+        │                          │
+        ▼                          ▼
+┌───────────────┐  ┌───────────────────┐  ┌──────────────┐
+│ Text Backend  │  │ Image Backend     │  │ (Post-MVP)   │
+│ (Ollama,      │  │ (OpenRouter,      │  │ Video, Audio │
+│  OpenAI API,  │  │  OpenAI, ComfyUI) │  │ backends     │
+│  OpenRouter)  │  │                   │  │              │
+└───────────────┘  └───────────────────┘  └──────────────┘
 ```
 
 ## 3. Components
@@ -56,7 +58,7 @@ AubergeLLM is a self-hosted, single-user roleplay frontend that combines:
 ### 3.2 Frontend — Admin UI
 
 - Static HTML + vanilla JavaScript (separate page/section).
-- Allows configuration of LLM backend URL, ComfyUI URL.
+- Connector management: add, configure, test, and switch between connectors for each type (text, image, video, audio).
 - Character management: import (JSON/PNG), edit, duplicate, export.
 - Communicates with the backend via **REST** only.
 
@@ -68,39 +70,38 @@ AubergeLLM is a self-hosted, single-user roleplay frontend that combines:
 - Organized as internal services (not microservices—just logical modules within one process).
 - Stores all data locally as JSON files (no database for MVP).
 
-### 3.4 External: LLM Backend
+### 3.4 External: Generation Backends (via Connectors)
 
-- Any OpenAI-compatible API (Ollama, vLLM, LM Studio, text-generation-webui, remote OpenAI, etc.).
-- The backend communicates with it using the OpenAI chat completions format.
-- Configured by the user via the admin interface.
+AubergeLLM communicates with external services through **connectors**. Each connector is a pluggable module for a specific modality:
 
-### 3.5 External: ComfyUI
+- **Text connectors** — Any OpenAI-compatible API (Ollama, vLLM, LM Studio, OpenRouter, OpenAI, etc.) using the chat completions format.
+- **Image connectors** — Any OpenAI-compatible image API (OpenRouter → Gemini/DALL-E/Flux, OpenAI directly, etc.) using the `/v1/images/generations` format. Post-MVP: ComfyUI as an advanced image connector.
+- **Video connectors** — Post-MVP.
+- **Audio connectors** — Post-MVP.
 
-- A running ComfyUI instance, local or remote.
-- AubergeLLM interacts with it via its HTTP + WebSocket API.
-- Configured by the user via the admin interface.
+All connectors are configured by the user via the admin interface. See [06 — Connector System](06-connector-system.md) for details.
 
 ## 4. Communication Patterns
 
 | Path | Protocol | Usage |
 |---|---|---|
 | Browser → Backend (chat) | REST POST + SSE | Send user message, stream LLM response tokens |
-| Browser → Backend (admin) | REST | CRUD characters, update config |
+| Browser → Backend (admin) | REST | CRUD characters, manage connectors, update config |
 | Browser → Backend (images) | REST GET | Retrieve generated images |
-| Backend → LLM | HTTP (OpenAI-compatible) | Chat completions (streaming) |
-| Backend → ComfyUI | HTTP POST + WebSocket | Submit workflow, monitor execution, retrieve output |
+| Backend → Text connector | HTTP (OpenAI-compatible) | Chat completions (streaming) |
+| Backend → Image connector | HTTP (OpenAI-compatible) | Image generation |
+| Backend → ComfyUI (post-MVP) | HTTP POST + WebSocket | Submit workflow, monitor execution, retrieve output |
 
 ## 5. Data Flow — Chat Message Lifecycle
 
 1. User sends a message via the Chat UI (REST POST to `/api/chat/{conversation_id}/message`).
 2. Backend builds the full prompt (system prompt from character card + conversation history + user message).
-3. Backend streams the LLM response back to the client via SSE.
-4. If the LLM response or user message triggers image generation, the backend:
-   a. Builds a ComfyUI workflow payload from the configured workflow template.
-   b. Submits it to ComfyUI.
-   c. Monitors execution via WebSocket.
-   d. Retrieves the generated image.
-   e. Sends an SSE event to the client with the image URL.
+3. Backend calls the **active text connector** to stream the LLM response back to the client via SSE.
+4. If the user triggers image generation, the backend:
+   a. Sends the prompt to the **active image connector**.
+   b. The connector handles the backend-specific protocol (API call, ComfyUI workflow, etc.).
+   c. Retrieves the generated image.
+   d. Sends an SSE event to the client with the image URL.
 5. The conversation (including image references) is persisted to a JSON file on disk.
 
 ## 6. Key Architectural Decisions
@@ -108,11 +109,11 @@ AubergeLLM is a self-hosted, single-user roleplay frontend that combines:
 | Decision | Rationale |
 |---|---|
 | **Static HTML + vanilla JS** (no React/Vue) | Simplicity, zero build step, easy to serve, easy to modify. |
-| **FastAPI (Python)** | Mature async support, native SSE, good OpenAI/ComfyUI ecosystem, fast prototyping. |
+| **FastAPI (Python)** | Mature async support, native SSE, good AI ecosystem, fast prototyping. |
 | **JSON file storage** (no DB) | Simplest possible persistence for single-user MVP. |
 | **SSE** (not WebSocket for chat) | Simpler than WebSocket for unidirectional streaming; sufficient for MVP. |
-| **OpenAI-compatible API format** | De facto standard supported by Ollama, vLLM, LM Studio, etc. |
-| **Workflow abstraction layer** | Decouples UI/business logic from raw ComfyUI graph format. |
+| **Connector-based architecture** | Decouples core logic from specific backends; new backends = new connector only. |
+| **OpenAI-compatible API as default** | De facto standard — works for text (Ollama, vLLM, etc.) and images (OpenRouter, OpenAI). |
 | **Single process** | No separate frontend server; FastAPI serves everything. |
 
 ## 7. MVP Scope Boundaries
@@ -120,12 +121,12 @@ AubergeLLM is a self-hosted, single-user roleplay frontend that combines:
 ### In Scope
 
 - Single-user, single-process, local deployment.
-- One LLM backend at a time.
-- One ComfyUI instance at a time.
-- One image generation workflow (text-to-image).
+- Connector system with text and image connector types.
+- OpenAI-compatible API backend for both text and image connectors (MVP).
+- One active connector per type at a time.
 - Character library with SillyTavern-compatible import/export.
 - Conversation persistence as JSON files.
-- Admin UI for configuration and character management.
+- Admin UI for connector management, configuration, and character management.
 - Chat UI for roleplay with character selection and image display.
 
 ### Out of Scope (Post-MVP)
@@ -133,10 +134,14 @@ AubergeLLM is a self-hosted, single-user roleplay frontend that combines:
 - Multi-user / authentication.
 - Cloud deployment / sync.
 - Advanced orchestration (automatic image triggers, style inference).
-- Video generation (i2v).
+- ComfyUI connector backend (image/video).
+- Video generation connectors (i2v).
+- Audio/TTS connectors.
 - Plugin system.
 - Character marketplace.
 - Database storage.
+- Quota management per conversation.
+- Enforced NSFW protection.
 
 ## 8. Cross-Cutting Concerns
 
@@ -144,7 +149,7 @@ AubergeLLM is a self-hosted, single-user roleplay frontend that combines:
 
 - Backend returns structured JSON error responses with HTTP status codes.
 - Frontend displays user-friendly error messages (e.g., "Cannot reach LLM backend").
-- ComfyUI connection failures are handled gracefully (chat continues without images).
+- Image connector failures are handled gracefully (chat continues without images).
 
 ### Logging
 

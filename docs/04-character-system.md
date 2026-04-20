@@ -36,7 +36,6 @@ AubergeLLM uses its own internal JSON format which is a **superset** of the Sill
     "extensions": {
       "aubergellm": {
         "image_prompt_prefix": "elf woman, fantasy setting, medieval tavern",
-        "default_workflow": "default_t2i",
         "negative_prompt": "blurry, low quality, deformed"
       }
     }
@@ -77,7 +76,6 @@ AubergeLLM uses its own internal JSON format which is a **superset** of the Sill
 | Field | Type | Description |
 |---|---|---|
 | `image_prompt_prefix` | string | Text prepended to image generation prompts for this character |
-| `default_workflow` | string | ID of the default ComfyUI workflow for this character |
 | `negative_prompt` | string | Default negative prompt for image generation |
 
 ## 3. SillyTavern Compatibility
