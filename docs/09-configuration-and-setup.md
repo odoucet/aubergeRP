@@ -8,7 +8,7 @@ This document specifies how AubergeLLM is configured, installed, and started. Th
 
 | Requirement | Minimum | Notes |
 |---|---|---|
-| Python | 3.10+ | Required for the backend |
+| Python | 3.12+ | Required for the backend |
 | pip | Latest | Comes with Python |
 | LLM backend | Any OpenAI-compatible API | Ollama recommended for local use |
 | Image API | Any OpenAI-compatible image API | OpenRouter recommended for easy setup |
@@ -52,10 +52,7 @@ cp config.example.yaml config.yaml
 
 ```bash
 # Start AubergeLLM
-python -m uvicorn aubergellm.main:app --host 0.0.0.0 --port 8000
-
-# Or use the convenience script (if provided)
-python run.py
+make run
 ```
 
 The application is now accessible at `http://localhost:8000`.
@@ -127,10 +124,11 @@ class Config(BaseModel):
 
 ### Priority Order (highest to lowest)
 
-1. **Admin UI changes** — saved to `config.yaml` in real-time.
-2. **`config.yaml`** — primary configuration file.
-3. **Environment variables** — override config file values (prefixed with `AUBERGELLM_`).
-4. **Default values** — built into the Pydantic models.
+1. **Environment variables** — override all other config values (prefixed with `AUBERGELLM_`).
+2. **`config.yaml`** — primary configuration file, written by the Admin UI.
+3. **Default values** — built into the Pydantic models.
+
+> **Note:** All secrets (connector API keys, etc.) are editable through the Admin UI, so users who are unfamiliar with environment variables can configure everything from the browser. Power users can use environment variables to override any setting. The Admin UI writes changes to `config.yaml` (which is `.gitignore`d).
 
 ### Environment Variable Mapping
 
@@ -145,7 +143,7 @@ class Config(BaseModel):
 ```
 1. Load default Config() with all defaults.
 2. If config.yaml exists, read it and overlay values.
-3. Check for AUBERGELLM_* environment variables and overlay.
+3. Check for AUBERGELLM_* environment variables and overlay (env vars take highest priority).
 4. Validate the final config with Pydantic.
 5. Store as a module-level singleton.
 ```
@@ -157,11 +155,11 @@ On startup, the backend ensures the data directory structure exists:
 ```python
 def initialize_data_dir(data_dir: str):
     """Create data directory structure if it doesn't exist."""
-    for subdir in ["characters", "conversations", "images", "connectors", "workflows", "avatars"]:
+    for subdir in ["characters", "conversations", "images", "connectors", "comfyui_workflows", "avatars"]:
         Path(data_dir, subdir).mkdir(parents=True, exist_ok=True)
 ```
 
-If the `data/workflows/` directory is empty, copy the default workflow files from the package.
+If the `data/comfyui_workflows/` directory is empty, default ComfyUI workflow templates will be available as part of the package in a future release.
 
 ## 7. `run.py` Convenience Script
 
@@ -203,9 +201,10 @@ data/conversations/
 data/images/
 data/connectors/
 data/avatars/
+data/comfyui_workflows/
 
-# Keep workflow templates
-!data/workflows/
+# Default ComfyUI workflow templates will be shipped with the package (not in data/)
+# so the above gitignore is appropriate for user-customized workflows only
 
 # IDE
 .vscode/
@@ -238,11 +237,11 @@ pyyaml>=6.0,<7.0
 name = "aubergellm"
 version = "0.1.0"
 description = "A lightweight roleplay frontend with LLM and ComfyUI integration"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = "Apache-2.0"
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]
@@ -253,7 +252,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 strict = true
 ```
 
@@ -263,10 +262,7 @@ When `main.py` runs, the following happens:
 
 1. **Load configuration** from `config.yaml` + environment variables.
 2. **Initialize data directory** (create missing directories, including `connectors/`).
-3. **Generate two internal tokens** using `secrets.token_hex(32)`:
-   - **Session token** (Tier 1): Injected into served HTML pages as a `<meta>` tag. Required for all write endpoints called by the frontend.
-   - **Internal token** (Tier 2): Never exposed to the frontend. Required for backend-internal generation endpoints (`POST /api/generate/image`).
-   Both tokens are stored in memory only, never persisted. See [03 — Backend API](03-backend-api.md) § 2 for the full two-tier token architecture.
+3. **Generate two internal tokens** using `secrets.token_hex(32)` (see [03 — Backend API](03-backend-api.md) § 2 for the full two-tier token architecture and per-user session design).
 4. **Load connectors** from `data/connectors/` and activate the configured ones.
 5. **Create FastAPI app** with metadata (title, version, description).
 6. **Mount routers** under `/api/` with session token validation middleware on protected routes, and internal token validation on generation routes.
@@ -281,7 +277,7 @@ This section can be used as the basis for a quick start section in the README:
 ## Quick Start
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.12+
 - An LLM backend (e.g., [Ollama](https://ollama.com)) for text generation
 - (Optional) An image API key (e.g., [OpenRouter](https://openrouter.ai)) for image generation
 
@@ -294,7 +290,7 @@ pip install -r requirements.txt
 cp config.example.yaml config.yaml
 
 ### Run
-python run.py
+make run
 
 ### Configure
 1. Open http://localhost:8000/admin/

@@ -22,18 +22,19 @@ Additionally, even the legitimate frontend user should not be able to call gener
 
 AubergeLLM uses **two separate auto-generated tokens** at startup, with distinct scopes:
 
-#### Tier 1 — Session Token (frontend-facing)
+#### Tier 1 — Session Token (frontend-facing, per-user)
 
-1. **On startup**, the backend generates a random 256-bit session token and stores it in memory only.
-2. **The frontend HTML** pages served by FastAPI include this token as a `<meta>` tag:
+1. **On startup**, the backend generates a session token mechanism. Each connecting client gets a **unique session token** — the session token IS the session ID.
+2. **Sessions are stored on disk** as `data/sessions/{uuid}.json`, where the UUID is the session token. On startup, if no session exists for a connecting client (identified by a cookie or browser fingerprint), a new session file is created.
+3. **The frontend HTML** pages served by FastAPI include this token as a `<meta>` tag:
    ```html
    <meta name="aubergellm-session-token" content="a1b2c3...random-hex...">
    ```
-3. **The frontend JS** reads this token and includes it in all API requests as a header:
+4. **The frontend JS** reads this token and includes it in all API requests as a header:
    ```
    X-Session-Token: a1b2c3...random-hex...
    ```
-4. **The backend validates** this token on all write endpoints. Requests without a valid token receive `403 Forbidden`.
+5. **The backend validates** this token on all write endpoints. Requests without a valid token receive `403 Forbidden`.
 
 This token protects against **external/network-level abuse**: bots, port scanners, or other devices on the local network cannot call write endpoints.
 
@@ -88,13 +89,14 @@ This ensures that **even a frontend user who inspects the HTML source cannot tri
 ### How Image Generation Works with Two Tiers
 
 ```
-Frontend user clicks 📷 "Generate Image"
+User sends a message like "please send me a picture"
         │
         ▼
-POST /api/chat/{id}/generate-image   ← requires X-Session-Token (in HTML)
+POST /api/chat/{id}/message   ← requires X-Session-Token (in HTML)
         │
         ▼
    Backend validates session token
+   LLM processes the message and signals that image generation is needed
    Backend builds image prompt from conversation context
         │
         ▼

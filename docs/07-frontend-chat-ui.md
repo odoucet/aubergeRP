@@ -7,8 +7,16 @@ The Chat UI is the primary user-facing interface of AubergeLLM. It provides:
 - Character selection from the library.
 - Conversation management (create, switch, delete).
 - Real-time chat with streamed LLM responses.
-- Image generation triggering and inline display.
+- Image generation (triggered automatically by the LLM) and inline display.
 - A clean, responsive layout.
+
+## 1.1 Multi-User Isolation
+
+The Chat UI supports multiple concurrent users from different browsers — there is no login, but users are isolated by their session token:
+
+- Each browser session has its own **unique session token** (stored in `localStorage` and tied to a session file on the server — see [03 — Backend API](03-backend-api.md) § 2).
+- Each user's conversation list is stored in `localStorage` — the frontend only shows conversations belonging to the current session token.
+- **Shareable conversation links:** A user can share a conversation URL (e.g., `http://localhost:8000/?conversation=<uuid>`) with another user. The recipient can view the conversation in **read-only** mode without needing the original session token — this is intentional for sharing purposes.
 
 ## 2. Technology
 
@@ -41,7 +49,7 @@ The Chat UI is the primary user-facing interface of AubergeLLM. It provides:
 │ │      │ │  │                                     │  │
 │ └──────┘ │  └─────────────────────────────────────┘  │
 │          │  ┌─────────────────────────────────────┐  │
-│ [Convs]  │  │ Message input          [📷] [Send]  │  │
+│ [Convs]  │  │ Message input                  [Send]  │  │
 │          │  └─────────────────────────────────────┘  │
 │ ┌──────┐ │                                           │
 │ │Conv 1│ │                                           │
@@ -95,9 +103,10 @@ The sidebar has two sections, togglable:
 #### Input Area
 - Multi-line text input (textarea, auto-expanding).
 - "Send" button.
-- "Generate Image" button (📷 icon) to trigger image generation.
 - Send on Enter (Shift+Enter for new line).
 - Disabled while LLM is generating.
+
+> **Note:** Image generation is triggered automatically by the LLM when the user requests it conversationally (e.g., "please send me a picture"). There is no dedicated "Generate Image" button — the backend handles generation as part of the normal chat flow.
 
 ### 4.4 Status Bar
 
@@ -132,21 +141,19 @@ The sidebar has two sections, togglable:
 6. On `done` event, the typing indicator is removed and the message is finalized.
 7. On `error` event, an error message is displayed below the last message.
 
-### 5.4 Generating an Image
+### 5.4 Image Generation (LLM-Triggered)
 
-1. User clicks the 📷 button.
-2. A small dialog/popover appears with:
-   - A pre-filled prompt (based on last assistant message + character's `image_prompt_prefix`).
-   - An editable text field for the prompt.
-   - A "Generate" button.
-3. User clicks "Generate".
-4. Frontend sends `POST /api/chat/{conversation_id}/generate-image` with the session token (`X-Session-Token` header).
-5. A progress indicator appears in the chat (e.g., "Generating image... 45%").
-6. Progress is updated via polling `GET /api/generate/image/{id}/status`.
-7. When complete, the image is displayed inline in the chat.
-8. The image message is saved to the conversation.
+Image generation is **not** triggered by a dedicated button. Instead, it happens automatically when the user makes a conversational request:
 
-> **Note:** The frontend never calls `POST /api/generate/image` directly — that endpoint requires an internal-only token. The chat-level endpoint mediates the request.
+1. User sends a message like "please send me a picture of the forest" via the normal chat input.
+2. The backend sends the message to the LLM, which interprets the request.
+3. The backend detects that image generation is needed and triggers it internally using the internal token.
+4. A progress indicator appears in the chat (e.g., "Generating image... 45%").
+5. Progress is updated via polling `GET /api/generate/image/{id}/status`.
+6. When complete, the image is displayed inline in the chat as part of the assistant's response.
+7. The image message is saved to the conversation.
+
+> **Note:** The frontend never calls `POST /api/generate/image` directly — that endpoint requires an internal-only token. All generation is mediated by the backend through the standard chat endpoint.
 
 ### 5.5 Switching Conversations
 

@@ -1,5 +1,7 @@
 # 02 — Project Structure
 
+> **Cross-references:** This document details the precise file and module layout. For architecture rationale, see [`00-architecture-overview.md`](00-architecture-overview.md). For technology choices and the data directory structure, see [`01-technology-stack.md`](01-technology-stack.md).
+
 ## 1. Top-Level Layout
 
 ```
@@ -12,6 +14,7 @@ aubergellm/
 ├── config.example.yaml          # Example configuration file
 ├── requirements.txt             # Python dependencies
 ├── pyproject.toml               # Project metadata and tool configuration
+├── Makefile                     # Developer convenience targets (lint, test, run)
 ├── README.md                    # Project README
 └── LICENSE                      # Apache 2.0 license
 ```
@@ -104,7 +107,11 @@ tests/
     └── sample_connector.json    # Sample connector config
 ```
 
+> **SillyTavern compatibility:** A dedicated unit test **must** verify that both SillyTavern V1 and V2 character cards are fully compatible and can be correctly parsed. Test fixtures (sample `.json` and `.png` character card files for both versions) will be provided in `tests/fixtures/`.
+
 ## 5. Data Directory: `data/`
+
+See [`01-technology-stack.md`](01-technology-stack.md) § 2 "Directory Structure for Data" for the full layout.
 
 ```
 data/
@@ -112,12 +119,14 @@ data/
 ├── conversations/               # Conversation JSON files ({uuid}.json)
 ├── images/                      # Generated images ({uuid}.png)
 ├── connectors/                  # Connector instance configs ({uuid}.json)
-├── workflows/                   # ComfyUI workflow templates (post-MVP)
+├── comfyui_workflows/           # ComfyUI workflow templates (post-MVP)
 │   └── default_t2i.json        # Default text-to-image workflow
 └── avatars/                     # Character avatar images ({uuid}.png)
 ```
 
-The `data/` directory is created automatically on first startup if it doesn't exist. It is `.gitignore`d except for the `workflows/` subdirectory which ships with a default workflow.
+The `data/` directory is created automatically on first startup if it doesn't exist. It is `.gitignore`d.
+
+> **ComfyUI workflows:** The `data/comfyui_workflows/` directory is gitignored by default (like other data dirs). Default ComfyUI workflow templates will be shipped with the package in a future release (not under `data/`, but as part of the package itself). The `.gitignore` should be configured to exclude user-customized workflow files while keeping any shipped default templates.
 
 ## 6. Configuration Files
 

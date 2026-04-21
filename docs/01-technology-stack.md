@@ -12,7 +12,7 @@ The connector pattern means that all external generation backends (text, image, 
 
 | Component | Choice | Version |
 |---|---|---|
-| Language | Python | 3.10+ |
+| Language | Python | 3.12+ |
 | Package manager | pip (with `requirements.txt`) | — |
 | Virtual environment | venv (standard library) | — |
 
@@ -44,7 +44,7 @@ The connector pattern means that all external generation backends (text, image, 
 | Character data | JSON files on disk | No DB setup, human-readable, easy to debug |
 | Conversation data | JSON files on disk | Same rationale; one file per conversation |
 | Configuration | YAML file (`config.yaml`) | Human-readable, supports comments |
-| Generated images | Files on disk (`data/images/`) | Simple, served directly by the backend |
+| Generated images | Files on disk (`data/images/`) | Simple, served through a FastAPI endpoint requiring session token |
 | Connector configs | JSON files on disk (`data/connectors/`) | One file per connector instance |
 
 ### Directory Structure for Data
@@ -63,12 +63,14 @@ data/
 ├── connectors/          # Connector instance configs
 │   ├── {uuid}.json
 │   └── ...
-├── workflows/           # ComfyUI workflow templates (post-MVP)
+├── comfyui_workflows/   # ComfyUI workflow templates (post-MVP)
 │   └── default_t2i.json
 └── avatars/             # Character avatar images
     ├── {uuid}.png
     └── ...
 ```
+
+> **Post-MVP:** Add a scheduled action (or admin-triggered action) to automatically clean generated media files older than X days. X is configurable in the admin, with a default value of 30 days.
 
 ## 3. Frontend
 
@@ -122,6 +124,8 @@ frontend/
 - **Protocol:** OpenAI-compatible Images API (`/v1/images/generations`).
 - **Supported backends:** OpenRouter (→ Gemini, DALL-E, Flux), OpenAI directly, any compatible endpoint.
 - **No GPU required locally** — images can be generated via remote APIs.
+- **Media serving:** Generated images (and other media) are served through a **Python FastAPI endpoint** (`GET /api/images/{id}`), not as static files. This endpoint requires the user's session token to prevent other users from accessing media they didn't generate.
+- **Access control:** The image generation endpoint (`POST /api/generate/image`) **cannot be called directly by users** — it is for internal backend use only, protected by the internal token (Tier 2). Users request image generation indirectly via the chat endpoint (`POST /api/chat/{id}/message`), and the backend triggers generation automatically when the LLM indicates it is appropriate.
 
 ### ComfyUI (Post-MVP, via ComfyUI Image Connector)
 
@@ -140,11 +144,23 @@ frontend/
 | `ruff` | Python linting and formatting |
 | `mypy` | Optional static type checking |
 
+### Makefile
+
+A `Makefile` is provided at the project root with the following targets:
+
+| Target | Command | Description |
+|---|---|---|
+| `make lint` | `ruff check` | Run linter |
+| `make lint-fix` | `ruff check --fix` | Run linter and auto-fix issues |
+| `make test` | `pytest` | Run test suite |
+| `make run` | `uvicorn aubergellm.main:app --host 0.0.0.0 --port 8000` | Start the server |
+
 ### Testing Strategy
 
 - **Unit tests** for services (character parsing, connector logic, prompt building).
 - **Integration tests** for API endpoints (using FastAPI test client).
 - **No frontend tests in MVP** (manual testing only).
+- Any pull request **must** include tests for the new or modified functionality.
 
 ## 6. Deployment
 
@@ -166,14 +182,14 @@ pip install -r requirements.txt
 cp config.example.yaml config.yaml
 
 # 5. Start the server
-python -m uvicorn aubergellm.main:app --host 0.0.0.0 --port 8000
+make run
 ```
 
 The server serves both the API and the static frontend files.
 
 ### No Containerization in MVP
 
-Docker/docker-compose may be added post-MVP but is not a requirement.
+Docker and docker-compose **will** be added in a post-MVP release.
 
 ## 7. Dependency Policy
 

@@ -141,7 +141,7 @@ Each configured connector is an instance with the following structure:
 | `base_url` | string | Yes | `http://localhost:8188` | ComfyUI URL |
 | `timeout` | integer | No | `120` | Request timeout |
 | `ws_timeout` | integer | No | `300` | WebSocket monitoring timeout |
-| `workflow_dir` | string | No | `data/workflows` | Path to workflow templates |
+| `workflow_dir` | string | No | `data/comfyui_workflows` | Path to workflow templates |
 
 ## 6. Connector Interface
 
@@ -354,7 +354,7 @@ active_connectors:
 
 When implemented, the ComfyUI connector will be an `ImageConnector` backend that:
 
-1. Loads workflow templates from `data/workflows/`.
+1. Loads workflow templates from `data/comfyui_workflows/`.
 2. Injects prompt and parameters into the workflow JSON.
 3. Submits to ComfyUI via HTTP.
 4. Monitors execution via WebSocket.

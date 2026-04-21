@@ -6,7 +6,6 @@ AubergeLLM is a self-hosted, single-user roleplay frontend that combines:
 
 - A **text connector** for LLM-based roleplay chat (via any OpenAI-compatible API).
 - A **character library** with SillyTavern-compatible character cards.
-- An **image connector** for image generation triggered from conversations (via API or ComfyUI).
 - A lightweight **web UI** (chat + admin) served as static HTML/JS.
 - A **connector-based architecture** where text, image, video, and audio backends are all pluggable modules.
 
@@ -64,7 +63,7 @@ AubergeLLM is a self-hosted, single-user roleplay frontend that combines:
 
 ### 3.3 Backend — AubergeLLM API
 
-- **Python 3.10+** with **FastAPI**.
+- **Python 3.12+** with **FastAPI**.
 - Serves the static frontend files.
 - Exposes a REST + SSE API for all operations.
 - Organized as internal services (not microservices—just logical modules within one process).
@@ -91,6 +90,8 @@ All connectors are configured by the user via the admin interface. See [06 — C
 | Backend → Text connector | HTTP (OpenAI-compatible) | Chat completions (streaming) |
 | Backend → Image connector | HTTP (OpenAI-compatible) | Image generation |
 | Backend → ComfyUI (post-MVP) | HTTP POST + WebSocket | Submit workflow, monitor execution, retrieve output |
+
+> ⚠️ **Important:** The Chat UI calls **only one endpoint** directly: `POST /api/chat/{id}/message`. All generation backends (image, video, audio connectors) are called **internally by the engine** using the secret internal token (Tier 2) — the frontend never calls them directly. Image generation is triggered automatically by the backend as part of chat processing, never by a dedicated frontend endpoint.
 
 ## 5. Data Flow — Chat Message Lifecycle
 
@@ -144,6 +145,11 @@ All connectors are configured by the user via the admin interface. See [06 — C
 - Enforced NSFW protection.
 - GUI customization via admin (custom CSS stylesheet, header/footer HTML injection, static asset management).
 - Admin interface protection (password and/or IP-based access control).
+- OOC protection (if user tries to trick the LLM out of character).
+- Hallucination protection (if LLM output is irrelevant, retry with new parameters: different salt, temperature, etc.).
+- Multi-character conversations.
+- Summary function triggered when max input tokens is reached (threshold configurable in admin GUI).
+- Allow use of multiple models per function (chat, summary, classification, etc.).
 
 ## 8. Cross-Cutting Concerns
 
@@ -157,10 +163,13 @@ All connectors are configured by the user via the admin interface. See [06 — C
 
 - Python `logging` module, structured output.
 - Log level configurable via environment variable.
+- **Post-MVP:** Sentry support (user must provide the Sentry DSN URL).
 
 ### CORS
 
 - Enabled for local development. Since the backend serves the frontend, CORS is minimal in production.
+- **Post-MVP:** When hosted online, automatically detect the `Host` header and adjust CORS origins accordingly.
+- **Offline-first:** Avoid loading external libraries (JS/CSS) — prefer vendored files to enable fully offline usage.
 
 ### Security (MVP)
 
@@ -170,3 +179,11 @@ All connectors are configured by the user via the admin interface. See [06 — C
 - No user authentication beyond the two-tier tokens (single-user, local only).
 - No secrets stored in code — configuration in a local file, API keys in connector configs.
 - Input sanitization on character card imports (prevent XSS in HTML rendering).
+- **Post-MVP:** Any quota/rate-limit system may be based on the session token.
+
+### Configuration and Secrets
+
+- All secrets (connector API keys, etc.) are editable through the admin interface — users may not know how to handle environment variables, so the admin UI is the primary configuration method.
+- Power users can also use environment variables (prefixed with `AUBERGELLM_`).
+- **Config loading priority order:** environment variables first, then admin-saved config (`config.yaml`).
+- Admin parameters are written to a non-versioned `config.yaml` file (`.gitignore`d).
