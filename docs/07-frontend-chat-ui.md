@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-The Chat UI is the primary user-facing interface of AubergeLLM. It provides:
+The Chat UI is the primary user-facing interface of aubergeRP. It provides:
 
 - Character selection from the library.
 - Conversation management (create, switch, delete).
@@ -30,7 +30,7 @@ The Chat UI supports multiple concurrent users from different browsers — there
 ```
 ┌──────────────────────────────────────────────────────┐
 │  Header Bar                                    [⚙]  │
-│  AubergeLLM                              [Admin]     │
+│  aubergeRP                              [Admin]     │
 ├──────────┬───────────────────────────────────────────┤
 │          │                                           │
 │ Sidebar  │            Chat Area                      │

@@ -14,13 +14,13 @@
 
 ### Problem
 
-AubergeLLM exposes REST endpoints for resource-intensive operations (LLM chat, image generation). Even in a single-user deployment, the API should not allow arbitrary external callers to trigger generation — an attacker or bot scanning the local network could abuse these endpoints, consuming API credits or GPU resources.
+aubergeRP exposes REST endpoints for resource-intensive operations (LLM chat, image generation). Even in a single-user deployment, the API should not allow arbitrary external callers to trigger generation — an attacker or bot scanning the local network could abuse these endpoints, consuming API credits or GPU resources.
 
 Additionally, even the legitimate frontend user should not be able to call generation endpoints directly (e.g., image generation), since these consume expensive API credits. Generation must be mediated by the backend through controlled flows (chat, admin connector tests).
 
 ### Solution: Two-Tier Token Architecture
 
-AubergeLLM uses **two separate auto-generated tokens** at startup, with distinct scopes:
+aubergeRP uses **two separate auto-generated tokens** at startup, with distinct scopes:
 
 #### Tier 1 — Session Token (frontend-facing, per-user)
 
@@ -28,7 +28,7 @@ AubergeLLM uses **two separate auto-generated tokens** at startup, with distinct
 2. **Sessions are stored on disk** as `data/sessions/{uuid}.json`, where the UUID is the session token. On startup, if no session exists for a connecting client (identified by a cookie or browser fingerprint), a new session file is created.
 3. **The frontend HTML** pages served by FastAPI include this token as a `<meta>` tag:
    ```html
-   <meta name="aubergellm-session-token" content="a1b2c3...random-hex...">
+   <meta name="aubergeRP-session-token" content="a1b2c3...random-hex...">
    ```
 4. **The frontend JS** reads this token and includes it in all API requests as a header:
    ```
@@ -197,7 +197,7 @@ Get full character details.
   "tags": ["fantasy", "elf"],
   "avatar_url": "/api/characters/uuid-string/avatar",
   "extensions": {
-    "aubergellm": {
+    "aubergeRP": {
       "image_prompt_prefix": "elf woman, fantasy setting",
       "negative_prompt": "blurry, low quality"
     }
@@ -224,7 +224,7 @@ Create a new character manually.
   "creator_notes": "",
   "tags": ["fantasy"],
   "extensions": {
-    "aubergellm": {
+    "aubergeRP": {
       "image_prompt_prefix": "",
       "negative_prompt": ""
     }

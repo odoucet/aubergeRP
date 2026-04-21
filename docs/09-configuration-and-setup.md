@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-This document specifies how AubergeLLM is configured, installed, and started. The guiding principle is **time-to-first-roleplay < 1 hour**, so the setup process must be as streamlined as possible.
+This document specifies how aubergeRP is configured, installed, and started. The guiding principle is **time-to-first-roleplay < 1 hour**, so the setup process must be as streamlined as possible.
 
 ## 2. Prerequisites
 
@@ -22,8 +22,8 @@ This document specifies how AubergeLLM is configured, installed, and started. Th
 
 ```bash
 # Clone the repository
-git clone https://github.com/odoucet/aubergellm.git
-cd aubergellm
+git clone https://github.com/odoucet/aubergeRP.git
+cd aubergeRP
 
 # Create a Python virtual environment
 python -m venv venv
@@ -51,7 +51,7 @@ cp config.example.yaml config.yaml
 ### 3.3 Start the Server
 
 ```bash
-# Start AubergeLLM
+# Start aubergeRP
 make run
 ```
 
@@ -72,12 +72,12 @@ The application is now accessible at `http://localhost:8000`.
 ### `config.example.yaml`
 
 ```yaml
-# AubergeLLM Configuration
+# aubergeRP Configuration
 # Copy this file to config.yaml and edit as needed.
 # All settings can also be changed via the Admin UI.
 
 app:
-  # Host and port for the AubergeLLM server
+  # Host and port for the aubergeRP server
   host: "0.0.0.0"
   port: 8000
   # Log level: DEBUG, INFO, WARNING, ERROR
@@ -167,13 +167,13 @@ A simple script at the project root for easy startup:
 
 ```python
 #!/usr/bin/env python
-"""AubergeLLM launcher."""
+"""aubergeRP launcher."""
 import uvicorn
-from aubergellm.config import load_config
+from aubergeRP.config import load_config
 
 config = load_config()
 uvicorn.run(
-    "aubergellm.main:app",
+    "aubergeRP.main:app",
     host=config.app.host,
     port=config.app.port,
     log_level=config.app.log_level.lower(),
@@ -234,7 +234,7 @@ pyyaml>=6.0,<7.0
 
 ```toml
 [project]
-name = "aubergellm"
+name = "aubergeRP"
 version = "0.1.0"
 description = "A lightweight roleplay frontend with LLM and ComfyUI integration"
 requires-python = ">=3.12"
@@ -282,8 +282,8 @@ This section can be used as the basis for a quick start section in the README:
 - (Optional) An image API key (e.g., [OpenRouter](https://openrouter.ai)) for image generation
 
 ### Installation
-git clone https://github.com/odoucet/aubergellm.git
-cd aubergellm
+git clone https://github.com/odoucet/aubergeRP.git
+cd aubergeRP
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt

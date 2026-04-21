@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-The Admin interface is a separate page within the AubergeLLM web application that provides:
+The Admin interface is a separate page within the aubergeRP web application that provides:
 
 - **Connector management** — add, configure, test, and switch between connectors for text, image, video, and audio.
 - Character library management (import, edit, duplicate, export, delete).
@@ -20,7 +20,7 @@ The Admin interface is a separate page within the AubergeLLM web application tha
 ```
 ┌──────────────────────────────────────────────────────┐
 │  Header Bar                                          │
-│  AubergeLLM Admin                       [← Chat]    │
+│  aubergeRP Admin                       [← Chat]    │
 ├──────────┬───────────────────────────────────────────┤
 │          │                                           │
 │ Nav Menu │            Content Area                   │
@@ -176,7 +176,7 @@ Triggered by "Edit" or "New" button.
 │               [_____________________________]        │
 │  Tags:        [fantasy, elf, tavern________]        │
 │                                                      │
-│  ── AubergeLLM Extensions ──                         │
+│  ── aubergeRP Extensions ──                         │
 │                                                      │
 │  Image Prompt Prefix: [elf woman, fantasy___]        │
 │  Negative Prompt:     [blurry, low quality__]        │
@@ -211,7 +211,7 @@ Displays system health and diagnostic information.
 │  System Health                          [Refresh]    │
 ├──────────────────────────────────────────────────────┤
 │                                                      │
-│  AubergeLLM Version: 0.1.0                          │
+│  aubergeRP Version: 0.1.0                          │
 │                                                      │
 │  Active Connectors:                                 │
 │                                                      │
@@ -253,7 +253,7 @@ Data is fetched from `GET /api/health` plus `GET /api/characters` and `GET /api/
 12. User navigates to Characters section.
 13. User clicks "Import" and uploads a SillyTavern character card.
 14. Character appears in the list.
-15. User optionally edits AubergeLLM-specific fields (image prompt prefix, etc.).
+15. User optionally edits aubergeRP-specific fields (image prompt prefix, etc.).
 16. User clicks "← Chat" to go to the chat interface and start roleplaying.
 
 ## 6. API Integration
@@ -309,7 +309,7 @@ frontend/js/admin/
 
 | Scenario | Display |
 |---|---|
-| API unreachable | Red banner: "Cannot connect to AubergeLLM API" |
+| API unreachable | Red banner: "Cannot connect to aubergeRP API" |
 | Save failed | Red inline error near the save button with details |
 | Import failed | Error message in the import dialog with details |
 | Delete confirmation | Modal: "Are you sure you want to delete {name}? This cannot be undone." |

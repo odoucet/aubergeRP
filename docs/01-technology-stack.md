@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-AubergeLLM follows a deliberate strategy of minimal dependencies, zero-build-step frontend, and a **connector-based architecture** to maximize simplicity, reduce onboarding friction, and ensure a time-to-first-roleplay under one hour.
+aubergeRP follows a deliberate strategy of minimal dependencies, zero-build-step frontend, and a **connector-based architecture** to maximize simplicity, reduce onboarding friction, and ensure a time-to-first-roleplay under one hour.
 
 The connector pattern means that all external generation backends (text, image, video, audio) are accessed through a unified abstraction layer, and the MVP ships with the simplest possible connectors (OpenAI-compatible APIs).
 
@@ -146,8 +146,8 @@ A `Makefile` is provided at the project root with the following targets:
 | `make lint` | `ruff check` | Run linter |
 | `make lint-fix` | `ruff check --fix` | Run linter and auto-fix issues |
 | `make test` | `pytest` | Run test suite |
-| `make run` | `uvicorn aubergellm.main:app --host 0.0.0.0 --port 8000` | Start the server |
-| `make docs` | `python -m pydoc ...` | Generate configuration reference from pydoc comments in `aubergellm/config.py` |
+| `make run` | `uvicorn aubergeRP.main:app --host 0.0.0.0 --port 8000` | Start the server |
+| `make docs` | `python -m pydoc ...` | Generate configuration reference from pydoc comments in `aubergeRP/config.py` |
 
 ### Testing Strategy
 
@@ -162,8 +162,8 @@ A `Makefile` is provided at the project root with the following targets:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/odoucet/aubergellm.git
-cd aubergellm
+git clone https://github.com/odoucet/aubergeRP.git
+cd aubergeRP
 
 # 2. Create virtual environment
 python -m venv venv

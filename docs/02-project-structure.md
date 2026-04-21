@@ -5,10 +5,10 @@
 ## 1. Top-Level Layout
 
 ```
-aubergellm/
+aubergeRP/
 ├── docs/                        # Specification documents (this folder)
 ├── frontend/                    # Static HTML/JS/CSS frontend
-├── aubergellm/                  # Backend
+├── aubergeRP/                  # Backend
 ├── tests/                       # Backend tests
 ├── data/                        # Runtime data (characters, conversations, images)
 ├── config.example.yaml          # Example configuration file
@@ -19,10 +19,10 @@ aubergellm/
 └── LICENSE                      # Apache 2.0 license
 ```
 
-## 2. Backend Package: `aubergellm/`
+## 2. Backend Package: `aubergeRP/`
 
 ```
-aubergellm/
+aubergeRP/
 ├── __init__.py
 ├── main.py                      # FastAPI app initialization, route mounting, startup
 ├── config.py                    # Configuration loading and validation
@@ -131,7 +131,7 @@ data/
 
 The `data/` directory is created automatically on first startup if it doesn't exist. It is `.gitignore`d.
 
-> **ComfyUI workflows (future):** User-customized workflow files are stored in `data/comfyui_workflows/` (gitignored). Default/shipped ComfyUI workflow templates will be stored at `aubergellm/resources/comfyui_workflows/` — as part of the Python package so they are installed with pip and can be copied to `data/comfyui_workflows/` on first use. See [POST-MVP roadmap](POST-MVP.md).
+> **ComfyUI workflows (future):** User-customized workflow files are stored in `data/comfyui_workflows/` (gitignored). Default/shipped ComfyUI workflow templates will be stored at `aubergeRP/resources/comfyui_workflows/` — as part of the Python package so they are installed with pip and can be copied to `data/comfyui_workflows/` on first use. See [POST-MVP roadmap](POST-MVP.md).
 
 ## 6. Configuration Files
 

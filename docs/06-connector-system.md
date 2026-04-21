@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-AubergeLLM uses a **connector-based architecture** to abstract all external generation services. A connector is a pluggable module that handles communication with a specific type of backend for a specific modality (text, image, video, audio).
+aubergeRP uses a **connector-based architecture** to abstract all external generation services. A connector is a pluggable module that handles communication with a specific type of backend for a specific modality (text, image, video, audio).
 
 This design means:
 
@@ -43,7 +43,7 @@ The OpenAI-compatible API format is the de facto standard. For **image generatio
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   AubergeLLM Backend                        │
+│                   aubergeRP Backend                        │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐    │
 │  │              Connector Manager                      │    │

@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-The character system is the core content management layer of AubergeLLM. It handles:
+The character system is the core content management layer of aubergeRP. It handles:
 
 - Storing and retrieving character definitions.
 - Importing characters from SillyTavern-compatible formats (JSON and PNG).
@@ -11,14 +11,14 @@ The character system is the core content management layer of AubergeLLM. It hand
 
 ## 2. Internal Character Format
 
-AubergeLLM uses its own internal JSON format which is a **superset** of the SillyTavern Tavern Character Card V2 format. The internal format includes all standard V2 fields plus AubergeLLM-specific extensions.
+aubergeRP uses its own internal JSON format which is a **superset** of the SillyTavern Tavern Character Card V2 format. The internal format includes all standard V2 fields plus aubergeRP-specific extensions.
 
 ### Internal Character Schema
 
 ```json
 {
   "id": "uuid-v4-string",
-  "spec": "aubergellm-v1",
+  "spec": "aubergeRP-v1",
   "spec_version": "1.0",
   "data": {
     "name": "Character Name",
@@ -34,7 +34,7 @@ AubergeLLM uses its own internal JSON format which is a **superset** of the Sill
     "character_version": "1.0",
     "tags": ["fantasy", "elf", "tavern"],
     "extensions": {
-      "aubergellm": {
+      "aubergeRP": {
         "image_prompt_prefix": "elf woman, fantasy setting, medieval tavern",
         "negative_prompt": "blurry, low quality, deformed"
       }
@@ -51,7 +51,7 @@ AubergeLLM uses its own internal JSON format which is a **superset** of the Sill
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `id` | string (UUID) | Auto-generated | Unique identifier |
-| `spec` | string | Auto | Always `"aubergellm-v1"` |
+| `spec` | string | Auto | Always `"aubergeRP-v1"` |
 | `spec_version` | string | Auto | Format version |
 | `data.name` | string | Yes | Character display name |
 | `data.description` | string | Yes | Full character description, used in the prompt |
@@ -66,12 +66,12 @@ AubergeLLM uses its own internal JSON format which is a **superset** of the Sill
 | `data.character_version` | string | No | Version of the character definition |
 | `data.tags` | string[] | No | Tags for categorization |
 | `data.extensions` | object | No | Extensions object (SillyTavern-compatible) |
-| `data.extensions.aubergellm` | object | No | AubergeLLM-specific fields |
+| `data.extensions.aubergeRP` | object | No | aubergeRP-specific fields |
 | `avatar_path` | string | No | Relative path to avatar image in `data/avatars/` |
 | `created_at` | string (ISO 8601) | Auto | Creation timestamp |
 | `updated_at` | string (ISO 8601) | Auto | Last update timestamp |
 
-### AubergeLLM Extensions
+### aubergeRP Extensions
 
 | Field | Type | Description |
 |---|---|---|
@@ -146,9 +146,9 @@ For both V1 and V2 imports:
 1. Map all recognized fields to the internal format.
 2. Generate a new UUID.
 3. If the PNG has an image, save it as the avatar.
-4. Set `spec` to `"aubergellm-v1"`.
-5. Preserve any existing `extensions` (including non-AubergeLLM ones).
-6. Add default `extensions.aubergellm` fields if not present.
+4. Set `spec` to `"aubergeRP-v1"`.
+5. Preserve any existing `extensions` (including non-aubergeRP ones).
+6. Add default `extensions.aubergeRP` fields if not present.
 7. Save to `data/characters/{uuid}.json`.
 
 ### 3.3 Export Logic
@@ -156,9 +156,9 @@ For both V1 and V2 imports:
 #### JSON Export
 
 1. Convert internal format to SillyTavern V2 format.
-2. Remove AubergeLLM-specific metadata (`id`, `avatar_path`, `created_at`, `updated_at`).
+2. Remove aubergeRP-specific metadata (`id`, `avatar_path`, `created_at`, `updated_at`).
 3. Set `spec` to `"chara_card_v2"` and `spec_version` to `"2.0"`.
-4. Preserve `extensions` including `aubergellm` (SillyTavern ignores unknown extensions).
+4. Preserve `extensions` including `aubergeRP` (SillyTavern ignores unknown extensions).
 5. Return as downloadable JSON file.
 
 #### PNG Export

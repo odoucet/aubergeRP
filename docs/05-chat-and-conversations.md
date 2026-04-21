@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-The chat system is the central user-facing feature of AubergeLLM. It manages:
+The chat system is the central user-facing feature of aubergeRP. It manages:
 
 - Conversation lifecycle (create, list, delete).
 - Message exchange between the user and a character (via LLM).

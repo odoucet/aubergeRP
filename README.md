@@ -1,8 +1,8 @@
-# AubergeLLM
+# aubergeRP
 
-AubergeLLM is a lightweight, self-hostable roleplay engine that combines large language models (LLMs) with multimodal generation (image, video, audio) through a **pluggable connector system**.
+aubergeRP is a lightweight, self-hostable roleplay engine that combines large language models (LLMs) with multimodal generation (image, video, audio) through a **pluggable connector system**.
 
-The goal of AubergeLLM is to provide a clean, minimal, and extensible alternative to tools like SillyTavern, while enabling advanced workflows such as:
+The goal of aubergeRP is to provide a clean, minimal, and extensible alternative to tools like SillyTavern, while enabling advanced workflows such as:
 
 * Roleplay chat with SillyTavern-compatible character cards
 * Image generation during roleplay via API connectors (OpenRouter, OpenAI, etc.)
@@ -11,7 +11,7 @@ The goal of AubergeLLM is to provide a clean, minimal, and extensible alternativ
 
 ## Architecture — Connector System
 
-AubergeLLM uses a **connector-based architecture** where all external generation backends are pluggable modules. Each connector handles a specific modality:
+aubergeRP uses a **connector-based architecture** where all external generation backends are pluggable modules. Each connector handles a specific modality:
 
 | Connector Type | Description | MVP Backend |
 |---|---|---|
@@ -28,7 +28,7 @@ This means:
 ```
 [ Frontend UI ]
         ↓
-[ AubergeLLM API (FastAPI) ]
+[ aubergeRP API (FastAPI) ]
         ↓
 [ Connector Manager ]
    ↓              ↓
@@ -71,8 +71,8 @@ This means:
 ### Installation
 
 ```bash
-git clone https://github.com/odoucet/aubergellm.git
-cd aubergellm
+git clone https://github.com/odoucet/aubergeRP.git
+cd aubergeRP
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -127,7 +127,7 @@ Full specifications are in the [`docs/`](docs/) directory:
 
 ## Disclaimer
 
-AubergeLLM is an experimental project that was mainly vibe-coded. I have 25+ experience in programming, so I hope there is no rookie mistake in it. All contributions are welcome but I am a busy man, so be patient ^^
+aubergeRP is an experimental project that was mainly vibe-coded. I have 25+ experience in programming, so I hope there is no rookie mistake in it. All contributions are welcome but I am a busy man, so be patient ^^
 
 ## License
 

@@ -2,14 +2,14 @@
 
 ## 1. Purpose
 
-AubergeLLM is a self-hosted, single-user roleplay frontend that combines:
+aubergeRP is a self-hosted, single-user roleplay frontend that combines:
 
 - A **text connector** for LLM-based roleplay chat (via any OpenAI-compatible API).
 - A **character library** with SillyTavern-compatible character cards.
 - A lightweight **web UI** (chat + admin) served as static HTML/JS.
 - A **connector-based architecture** where text, image, video, and audio backends are all pluggable modules.
 
-**Product positioning:** AubergeLLM is a simplified alternative to SillyTavern, focused on text + image roleplay with a pluggable connector system for all generation backends.
+**Product positioning:** aubergeRP is a simplified alternative to SillyTavern, focused on text + image roleplay with a pluggable connector system for all generation backends.
 
 **MVP success criterion:** Time-to-first-roleplay < 1 hour.
 
@@ -27,7 +27,7 @@ AubergeLLM is a self-hosted, single-user roleplay frontend that combines:
             │                           │
             ▼                           ▼
 ┌─────────────────────────────────────────────────────────┐
-│              AubergeLLM Backend (Python / FastAPI)       │
+│              aubergeRP Backend (Python / FastAPI)       │
 │                                                         │
 │  ┌──────────┐ ┌──────────┐ ┌───────────┐ ┌───────────┐ │
 │  │ Chat     │ │ Character│ │ Connector │ │ Config    │ │
@@ -61,7 +61,7 @@ AubergeLLM is a self-hosted, single-user roleplay frontend that combines:
 - Character management: import (JSON/PNG), edit, duplicate, export.
 - Communicates with the backend via **REST** only.
 
-### 3.3 Backend — AubergeLLM API
+### 3.3 Backend — aubergeRP API
 
 - **Python 3.12+** with **FastAPI**.
 - Serves the static frontend files.
@@ -71,7 +71,7 @@ AubergeLLM is a self-hosted, single-user roleplay frontend that combines:
 
 ### 3.4 External: Generation Backends (via Connectors)
 
-AubergeLLM communicates with external services through **connectors**. Each connector is a pluggable module for a specific modality:
+aubergeRP communicates with external services through **connectors**. Each connector is a pluggable module for a specific modality:
 
 - **Text connectors** — Any OpenAI-compatible API (Ollama, vLLM, LM Studio, OpenRouter, OpenAI, etc.) using the chat completions format.
 - **Image connectors** — Any OpenAI-compatible image API (OpenRouter → Gemini/DALL-E/Flux, OpenAI directly, etc.) using the `/v1/images/generations` format.
@@ -158,7 +158,7 @@ See [POST-MVP roadmap](POST-MVP.md) for the full list of planned future features
 
 ### Security (MVP)
 
-- **Two-tier internal token system**: AubergeLLM uses two auto-generated tokens at startup, with distinct scopes:
+- **Two-tier internal token system**: aubergeRP uses two auto-generated tokens at startup, with distinct scopes:
   - **Session token** (Tier 1): Injected into served HTML pages as a `<meta>` tag. The frontend JS sends it as `X-Session-Token` header on all write endpoints. Protects against external/network-level abuse (bots, port scanners, other LAN devices). Visible to the frontend user via dev tools — this is intentional.
   - **Internal token** (Tier 2): **Never exposed to the frontend**. Used only for backend-internal calls to expensive generation endpoints (`POST /api/generate/image`). Even if a user extracts the session token from the HTML source, they cannot directly trigger image generation — generation is always mediated by the backend through controlled chat-level endpoints. See [03 — Backend API](03-backend-api.md) § 2 for the full route protection table and flow diagram.
 - No user authentication beyond the two-tier tokens (single-user, local only).
@@ -170,6 +170,6 @@ See [POST-MVP roadmap](POST-MVP.md) for the full list of planned future features
 
 - All secrets (connector API keys, etc.) are editable through the admin interface — users may not know how to handle environment variables, so the admin UI is the primary configuration method.
 - Power users can also use environment variables to override any configuration value (no prefix — variable names match the config file keys directly).
-- All configuration variables are defined and documented in a single file (`aubergellm/config.py`) with pydoc comments. Run `make docs` to regenerate the configuration reference from these comments. See [09 — Configuration and Setup](09-configuration-and-setup.md) for details.
+- All configuration variables are defined and documented in a single file (`aubergeRP/config.py`) with pydoc comments. Run `make docs` to regenerate the configuration reference from these comments. See [09 — Configuration and Setup](09-configuration-and-setup.md) for details.
 - **Config loading priority order:** environment variables first, then admin-saved config (`config.yaml`).
 - Admin parameters are written to a non-versioned `config.yaml` file (`.gitignore`d).
