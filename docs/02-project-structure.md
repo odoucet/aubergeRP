@@ -8,7 +8,7 @@
 aubergellm/
 ├── docs/                        # Specification documents (this folder)
 ├── frontend/                    # Static HTML/JS/CSS frontend
-├── aubergellm/                  # Python backend package
+├── aubergellm/                  # Backend
 ├── tests/                       # Backend tests
 ├── data/                        # Runtime data (characters, conversations, images)
 ├── config.example.yaml          # Example configuration file
@@ -53,10 +53,13 @@ aubergellm/
 │   ├── generate.py              # POST /api/generate/image, GET /api/images/...
 │   ├── config.py                # GET/PUT /api/config
 │   └── health.py                # GET /api/health
-└── utils/                       # Shared utilities
-    ├── __init__.py
-    ├── png_metadata.py          # Read/write PNG tEXt chunks (character card metadata)
-    └── file_storage.py          # JSON file read/write helpers
+├── utils/                       # Shared utilities
+│   ├── __init__.py
+│   ├── png_metadata.py          # Read/write PNG tEXt chunks (character card metadata)
+│   └── file_storage.py          # JSON file read/write helpers
+└── resources/                   # Bundled static resources
+    └── comfyui_workflows/       # Default ComfyUI workflow templates (future)
+        └── default_t2i.json
 ```
 
 ## 3. Frontend: `frontend/`
@@ -117,7 +120,9 @@ See [`01-technology-stack.md`](01-technology-stack.md) § 2 "Directory Structure
 data/
 ├── characters/                  # Character JSON files ({uuid}.json)
 ├── conversations/               # Conversation JSON files ({uuid}.json)
-├── images/                      # Generated images ({uuid}.png)
+├── images/                      # Generated images ({session-token}/{uuid}.png)
+│   └── {session-token}/
+│       └── {uuid}.png
 ├── connectors/                  # Connector instance configs ({uuid}.json)
 ├── comfyui_workflows/           # ComfyUI workflow templates (post-MVP)
 │   └── default_t2i.json        # Default text-to-image workflow
@@ -126,7 +131,7 @@ data/
 
 The `data/` directory is created automatically on first startup if it doesn't exist. It is `.gitignore`d.
 
-> **ComfyUI workflows:** The `data/comfyui_workflows/` directory is gitignored by default (like other data dirs). Default ComfyUI workflow templates will be shipped with the package in a future release (not under `data/`, but as part of the package itself). The `.gitignore` should be configured to exclude user-customized workflow files while keeping any shipped default templates.
+> **ComfyUI workflows (future):** User-customized workflow files are stored in `data/comfyui_workflows/` (gitignored). Default/shipped ComfyUI workflow templates will be stored at `aubergellm/resources/comfyui_workflows/` — as part of the Python package so they are installed with pip and can be copied to `data/comfyui_workflows/` on first use. See [POST-MVP roadmap](POST-MVP.md).
 
 ## 6. Configuration Files
 

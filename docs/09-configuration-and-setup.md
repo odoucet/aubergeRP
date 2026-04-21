@@ -12,7 +12,7 @@ This document specifies how AubergeLLM is configured, installed, and started. Th
 | pip | Latest | Comes with Python |
 | LLM backend | Any OpenAI-compatible API | Ollama recommended for local use |
 | Image API | Any OpenAI-compatible image API | OpenRouter recommended for easy setup |
-| ComfyUI | Any recent version | Optional, post-MVP (advanced image generation) |
+| ComfyUI | Any recent version | Optional, future release — see [POST-MVP roadmap](../docs/POST-MVP.md) |
 | GPU | NVIDIA recommended | For local LLM; not needed if using remote APIs |
 | OS | Linux, macOS, Windows | All supported |
 
@@ -90,8 +90,8 @@ app:
 active_connectors:
   text: ""    # UUID of the active text connector
   image: ""   # UUID of the active image connector
-  # video: ""  # Post-MVP
-  # audio: ""  # Post-MVP
+  # video: ""  # Future release
+  # audio: ""  # Future release
 
 user:
   # Display name for the user in chat (used for {{user}} macro)
@@ -124,7 +124,7 @@ class Config(BaseModel):
 
 ### Priority Order (highest to lowest)
 
-1. **Environment variables** — override all other config values (prefixed with `AUBERGELLM_`).
+1. **Environment variables** — override all other config values (no prefix; variable names match config file keys directly).
 2. **`config.yaml`** — primary configuration file, written by the Admin UI.
 3. **Default values** — built into the Pydantic models.
 
@@ -134,16 +134,16 @@ class Config(BaseModel):
 
 | Environment Variable | Config Path | Example |
 |---|---|---|
-| `AUBERGELLM_APP_PORT` | `app.port` | `9000` |
-| `AUBERGELLM_APP_LOG_LEVEL` | `app.log_level` | `DEBUG` |
-| `AUBERGELLM_USER_NAME` | `user.name` | `Alice` |
+| `APP_PORT` | `app.port` | `9000` |
+| `APP_LOG_LEVEL` | `app.log_level` | `DEBUG` |
+| `USER_NAME` | `user.name` | `Alice` |
 
 ### Config Loading Logic
 
 ```
 1. Load default Config() with all defaults.
 2. If config.yaml exists, read it and overlay values.
-3. Check for AUBERGELLM_* environment variables and overlay (env vars take highest priority).
+3. Check for environment variables matching config keys and overlay (env vars take highest priority, no prefix required).
 4. Validate the final config with Pydantic.
 5. Store as a module-level singleton.
 ```
@@ -159,7 +159,7 @@ def initialize_data_dir(data_dir: str):
         Path(data_dir, subdir).mkdir(parents=True, exist_ok=True)
 ```
 
-If the `data/comfyui_workflows/` directory is empty, default ComfyUI workflow templates will be available as part of the package in a future release.
+ComfyUI workflow templates are a post-MVP feature. See [POST-MVP roadmap](POST-MVP.md).
 
 ## 7. `run.py` Convenience Script
 

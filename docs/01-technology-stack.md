@@ -31,11 +31,7 @@ The connector pattern means that all external generation backends (text, image, 
 | `python-multipart` | File upload handling (FastAPI dependency) | ≥ 0.0.9 |
 | `pyyaml` | YAML configuration file parsing | ≥ 6.0 |
 
-**Post-MVP additions (for ComfyUI connector):**
-
-| Library | Purpose | Version (pinned) |
-|---|---|---|
-| `websockets` | WebSocket client for ComfyUI monitoring | ≥ 12.0 |
+> Post-MVP: `websockets` (≥ 12.0) will be added for ComfyUI WebSocket monitoring. See [POST-MVP roadmap](POST-MVP.md).
 
 ### Storage
 
@@ -44,7 +40,7 @@ The connector pattern means that all external generation backends (text, image, 
 | Character data | JSON files on disk | No DB setup, human-readable, easy to debug |
 | Conversation data | JSON files on disk | Same rationale; one file per conversation |
 | Configuration | YAML file (`config.yaml`) | Human-readable, supports comments |
-| Generated images | Files on disk (`data/images/`) | Simple, served through a FastAPI endpoint requiring session token |
+| Generated images | Files on disk (`data/images/{session-token}/`) | Organized per session; served through a FastAPI endpoint requiring session token |
 | Connector configs | JSON files on disk (`data/connectors/`) | One file per connector instance |
 
 ### Directory Structure for Data
@@ -57,20 +53,22 @@ data/
 ├── conversations/       # One JSON file per conversation
 │   ├── {uuid}.json
 │   └── ...
-├── images/              # Generated images
-│   ├── {uuid}.png
+├── images/              # Generated images, organized per session
+│   ├── {session-token}/
+│   │   ├── {uuid}.png
+│   │   └── ...
 │   └── ...
 ├── connectors/          # Connector instance configs
 │   ├── {uuid}.json
 │   └── ...
-├── comfyui_workflows/   # ComfyUI workflow templates (post-MVP)
-│   └── default_t2i.json
+├── comfyui_workflows/   # User-customized ComfyUI workflow templates (post-MVP)
+│   └── ...
 └── avatars/             # Character avatar images
     ├── {uuid}.png
     └── ...
 ```
 
-> **Post-MVP:** Add a scheduled action (or admin-triggered action) to automatically clean generated media files older than X days. X is configurable in the admin, with a default value of 30 days.
+> Post-MVP: automatic media cleanup, configurable per admin. See [POST-MVP roadmap](POST-MVP.md).
 
 ## 3. Frontend
 
@@ -127,14 +125,9 @@ frontend/
 - **Media serving:** Generated images (and other media) are served through a **Python FastAPI endpoint** (`GET /api/images/{id}`), not as static files. This endpoint requires the user's session token to prevent other users from accessing media they didn't generate.
 - **Access control:** The image generation endpoint (`POST /api/generate/image`) **cannot be called directly by users** — it is for internal backend use only, protected by the internal token (Tier 2). Users request image generation indirectly via the chat endpoint (`POST /api/chat/{id}/message`), and the backend triggers generation automatically when the LLM indicates it is appropriate.
 
-### ComfyUI (Post-MVP, via ComfyUI Image Connector)
+### ComfyUI (future, via ComfyUI Image Connector)
 
-- **Protocol:** ComfyUI native HTTP + WebSocket API.
-  - `POST /prompt` — submit a workflow for execution.
-  - `GET /history/{prompt_id}` — retrieve execution results.
-  - `GET /view?filename=...` — retrieve generated images.
-  - `ws://host:port/ws?clientId=...` — monitor execution progress.
-- **Version:** Any recent ComfyUI version with the standard API.
+See [POST-MVP roadmap](POST-MVP.md) for the ComfyUI connector specification.
 
 ## 5. Development Tools
 
@@ -154,6 +147,7 @@ A `Makefile` is provided at the project root with the following targets:
 | `make lint-fix` | `ruff check --fix` | Run linter and auto-fix issues |
 | `make test` | `pytest` | Run test suite |
 | `make run` | `uvicorn aubergellm.main:app --host 0.0.0.0 --port 8000` | Start the server |
+| `make docs` | `python -m pydoc ...` | Generate configuration reference from pydoc comments in `aubergellm/config.py` |
 
 ### Testing Strategy
 
@@ -189,7 +183,7 @@ The server serves both the API and the static frontend files.
 
 ### No Containerization in MVP
 
-Docker and docker-compose **will** be added in a post-MVP release.
+Docker and docker-compose will be added in a future release. See [POST-MVP roadmap](POST-MVP.md).
 
 ## 7. Dependency Policy
 

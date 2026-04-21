@@ -74,9 +74,11 @@ AubergeLLM is a self-hosted, single-user roleplay frontend that combines:
 AubergeLLM communicates with external services through **connectors**. Each connector is a pluggable module for a specific modality:
 
 - **Text connectors** — Any OpenAI-compatible API (Ollama, vLLM, LM Studio, OpenRouter, OpenAI, etc.) using the chat completions format.
-- **Image connectors** — Any OpenAI-compatible image API (OpenRouter → Gemini/DALL-E/Flux, OpenAI directly, etc.) using the `/v1/images/generations` format. Post-MVP: ComfyUI as an advanced image connector.
-- **Video connectors** — Post-MVP.
-- **Audio connectors** — Post-MVP.
+- **Image connectors** — Any OpenAI-compatible image API (OpenRouter → Gemini/DALL-E/Flux, OpenAI directly, etc.) using the `/v1/images/generations` format.
+- **Video connectors** — planned for a future release.
+- **Audio connectors** — planned for a future release.
+
+See [POST-MVP roadmap](POST-MVP.md) for all planned connector backends and future features.
 
 All connectors are configured by the user via the admin interface. See [06 — Connector System](06-connector-system.md) for details.
 
@@ -89,7 +91,7 @@ All connectors are configured by the user via the admin interface. See [06 — C
 | Browser → Backend (images) | REST GET | Retrieve generated images |
 | Backend → Text connector | HTTP (OpenAI-compatible) | Chat completions (streaming) |
 | Backend → Image connector | HTTP (OpenAI-compatible) | Image generation |
-| Backend → ComfyUI (post-MVP) | HTTP POST + WebSocket | Submit workflow, monitor execution, retrieve output |
+| Backend → ComfyUI (future) | HTTP POST + WebSocket | Submit workflow, monitor execution, retrieve output |
 
 > ⚠️ **Important:** The Chat UI calls **only one endpoint** directly: `POST /api/chat/{id}/message`. All generation backends (image, video, audio connectors) are called **internally by the engine** using the secret internal token (Tier 2) — the frontend never calls them directly. Image generation is triggered automatically by the backend as part of chat processing, never by a dedicated frontend endpoint.
 
@@ -132,24 +134,7 @@ All connectors are configured by the user via the admin interface. See [06 — C
 
 ### Out of Scope (Post-MVP)
 
-- Multi-user / authentication.
-- Cloud deployment / sync.
-- Advanced orchestration (automatic image triggers, style inference).
-- ComfyUI connector backend (image/video).
-- Video generation connectors (i2v).
-- Audio/TTS connectors.
-- Plugin system.
-- Character marketplace.
-- Database storage.
-- Quota management per conversation.
-- Enforced NSFW protection.
-- GUI customization via admin (custom CSS stylesheet, header/footer HTML injection, static asset management).
-- Admin interface protection (password and/or IP-based access control).
-- OOC protection (if user tries to trick the LLM out of character).
-- Hallucination protection (if LLM output is irrelevant, retry with new parameters: different salt, temperature, etc.).
-- Multi-character conversations.
-- Summary function triggered when max input tokens is reached (threshold configurable in admin GUI).
-- Allow use of multiple models per function (chat, summary, classification, etc.).
+See [POST-MVP roadmap](POST-MVP.md) for the full list of planned future features.
 
 ## 8. Cross-Cutting Concerns
 
@@ -163,12 +148,12 @@ All connectors are configured by the user via the admin interface. See [06 — C
 
 - Python `logging` module, structured output.
 - Log level configurable via environment variable.
-- **Post-MVP:** Sentry support (user must provide the Sentry DSN URL).
+- Post-MVP: Sentry error tracking support. See [POST-MVP roadmap](POST-MVP.md).
 
 ### CORS
 
 - Enabled for local development. Since the backend serves the frontend, CORS is minimal in production.
-- **Post-MVP:** When hosted online, automatically detect the `Host` header and adjust CORS origins accordingly.
+- Post-MVP: automatic CORS origin detection. See [POST-MVP roadmap](POST-MVP.md).
 - **Offline-first:** Avoid loading external libraries (JS/CSS) — prefer vendored files to enable fully offline usage.
 
 ### Security (MVP)
@@ -179,11 +164,12 @@ All connectors are configured by the user via the admin interface. See [06 — C
 - No user authentication beyond the two-tier tokens (single-user, local only).
 - No secrets stored in code — configuration in a local file, API keys in connector configs.
 - Input sanitization on character card imports (prevent XSS in HTML rendering).
-- **Post-MVP:** Any quota/rate-limit system may be based on the session token.
+- Post-MVP: any quota/rate-limit system may be based on the session token. See [POST-MVP roadmap](POST-MVP.md).
 
 ### Configuration and Secrets
 
 - All secrets (connector API keys, etc.) are editable through the admin interface — users may not know how to handle environment variables, so the admin UI is the primary configuration method.
-- Power users can also use environment variables (prefixed with `AUBERGELLM_`).
+- Power users can also use environment variables to override any configuration value (no prefix — variable names match the config file keys directly).
+- All configuration variables are defined and documented in a single file (`aubergellm/config.py`) with pydoc comments. Run `make docs` to regenerate the configuration reference from these comments. See [09 — Configuration and Setup](09-configuration-and-setup.md) for details.
 - **Config loading priority order:** environment variables first, then admin-saved config (`config.yaml`).
 - Admin parameters are written to a non-versioned `config.yaml` file (`.gitignore`d).
