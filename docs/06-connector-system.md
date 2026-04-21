@@ -2,95 +2,66 @@
 
 ## 1. Overview
 
-aubergeRP uses a **connector-based architecture** to abstract all external generation services. A connector is a pluggable module that handles communication with a specific type of backend for a specific modality (text, image, video, audio).
+A **connector** is a pluggable module that talks to a specific external generation backend for a specific modality (text, image, video, audio).
 
-This design means:
+Consequences:
 
-- The frontend and chat system never interact with specific backends directly.
-- Whether an image is generated via an API call to OpenRouter/Gemini or via a ComfyUI workflow is transparent to the rest of the application.
-- Adding support for a new backend (e.g., a new image API, a TTS service) only requires implementing a new connector — no changes to the core application.
-- The simplest connectors (OpenAI-compatible APIs) ship first, making the MVP much easier to set up.
+- The frontend and chat service never talk to specific backends directly.
+- Whether an image comes from an API call or a local ComfyUI workflow is transparent to the rest of the app.
+- A new backend = a new connector class. No core changes.
 
 ## 2. Connector Types
 
-Each connector has a **type** that defines what modality it handles:
-
-| Type | Description | MVP | Post-MVP |
-|---|---|---|---|
-| `text` | Text generation (chat completions) | ✅ | — |
-| `image` | Image generation from prompts | ✅ | — |
-| `video` | Video generation | — | ✅ |
-| `audio` | Audio/TTS generation | — | ✅ |
+| Type | MVP |
+|---|---|
+| `text` (chat completions) | ✅ |
+| `image` (image generation) | ✅ |
+| `video` | — (see [POST-MVP.md](POST-MVP.md)) |
+| `audio` | — (see [POST-MVP.md](POST-MVP.md)) |
 
 ## 3. Connector Backends
 
-A **backend** is the specific service implementation for a connector type:
+A **backend** is the specific service implementation for a connector type.
 
 | Backend ID | Supported Types | Description | MVP |
 |---|---|---|---|
-| `openai_api` | `text`, `image` | Any OpenAI-compatible API (Ollama, OpenRouter, OpenAI, vLLM, LM Studio, etc.) | ✅ |
-| `comfyui` | `image`, `video` | ComfyUI instance with workflow abstraction | Post-MVP |
+| `openai_api` | `text`, `image` | Any OpenAI-compatible API (Ollama, OpenRouter, OpenAI, vLLM, LM Studio, …) | ✅ |
 
-### Why OpenAI API first?
+The OpenAI-compatible API format is the de facto standard. For images, services like OpenRouter (which routes to Gemini/DALL-E/Flux), OpenAI directly, or any compatible server all use the same `/v1/images/generations` endpoint. Zero extra setup; no GPU required locally.
 
-The OpenAI-compatible API format is the de facto standard. For **image generation**, services like OpenRouter (which routes to Gemini, DALL-E, Flux, etc.), OpenAI directly, or any compatible server all use the same `/v1/images/generations` endpoint. This means:
-
-- **Zero extra setup** — if you already have an OpenRouter or OpenAI API key, image generation works immediately.
-- **No GPU required locally** — images are generated remotely.
-- **ComfyUI becomes a power-user option** — added as a second connector backend for users who want local Stable Diffusion control.
+Additional backends (e.g., ComfyUI) are listed in [POST-MVP.md](POST-MVP.md).
 
 ## 4. Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                   aubergeRP Backend                        │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │              Connector Manager                      │    │
-│  │                                                     │    │
-│  │  ┌─────────────────┐  ┌─────────────────┐          │    │
-│  │  │ Text Connector   │  │ Image Connector  │  ...    │    │
-│  │  │ (active: 1)      │  │ (active: 1)      │         │    │
-│  │  └────────┬─────────┘  └────────┬─────────┘         │    │
-│  │           │                     │                    │    │
-│  └───────────┼─────────────────────┼────────────────────┘    │
-│              │                     │                         │
-│              ▼                     ▼                         │
-│  ┌───────────────────┐  ┌───────────────────┐               │
-│  │ OpenAI API Client │  │ OpenAI API Client │               │
-│  │ (text backend)    │  │ (image backend)   │               │
-│  └─────────┬─────────┘  └─────────┬─────────┘               │
-│            │                      │                          │
-└────────────┼──────────────────────┼──────────────────────────┘
-             │                      │
+┌───────────────────────────────────────────────────────┐
+│                 aubergeRP Backend                     │
+│                                                       │
+│  ┌────────────────────────────────────────────────┐   │
+│  │             ConnectorManager                   │   │
+│  │  ┌──────────────────┐  ┌──────────────────┐    │   │
+│  │  │ Text Connector   │  │ Image Connector  │    │   │
+│  │  │ (active: 1)      │  │ (active: 1)      │    │   │
+│  │  └────────┬─────────┘  └────────┬─────────┘    │   │
+│  └───────────┼─────────────────────┼──────────────┘   │
+│              ▼                     ▼                  │
+│  ┌───────────────────┐  ┌───────────────────┐         │
+│  │ OpenAI API Client │  │ OpenAI API Client │         │
+│  └─────────┬─────────┘  └─────────┬─────────┘         │
+└────────────┼──────────────────────┼───────────────────┘
              ▼                      ▼
     ┌─────────────────┐   ┌──────────────────┐
     │ LLM Backend     │   │ Image API        │
-    │ (Ollama,        │   │ (OpenRouter,     │
-    │  OpenAI, etc.)  │   │  OpenAI, etc.)   │
     └─────────────────┘   └──────────────────┘
 ```
 
-Post-MVP addition:
-
-```
-             ┌───────────────────┐
-             │ ComfyUI Client    │   (additional image backend)
-             │ (HTTP + WS)       │
-             └─────────┬─────────┘
-                       │
-                       ▼
-              ┌──────────────┐
-              │   ComfyUI    │
-              │   Instance   │
-              └──────────────┘
-```
+The chat service calls the active image connector as a **plain in-process Python call**. There is no HTTP endpoint for triggering generation.
 
 ## 5. Connector Model
 
 ### 5.1 Connector Instance
 
-Each configured connector is an instance with the following structure:
+Each configured connector is persisted as `data/connectors/{uuid}.json`:
 
 ```json
 {
@@ -98,7 +69,6 @@ Each configured connector is an instance with the following structure:
   "name": "My OpenRouter Image Gen",
   "type": "image",
   "backend": "openai_api",
-  "enabled": true,
   "config": {
     "base_url": "https://openrouter.ai/api/v1",
     "api_key": "sk-or-...",
@@ -110,66 +80,54 @@ Each configured connector is an instance with the following structure:
 }
 ```
 
-### 5.2 Backend-Specific Configuration
+Notes:
 
-#### `openai_api` backend (text)
+- `api_key` is stored on disk (single-user local deployment).
+- There is **no** `is_active` or `enabled` field stored here. Active connector selection lives in `config.yaml` (see § 8).
+- `api_key` is **never** returned by the API (redacted to `api_key_set: bool`; see [03 § 8](03-backend-api.md)).
 
-| Field | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `base_url` | string | Yes | `http://localhost:11434/v1` | Base URL of the API |
-| `api_key` | string | No | `""` | API key |
-| `model` | string | Yes | `llama3` | Model name |
-| `max_tokens` | integer | No | `1024` | Max response tokens |
-| `temperature` | float | No | `0.8` | Generation temperature |
-| `timeout` | integer | No | `120` | Request timeout (seconds) |
+### 5.2 Backend-Specific Config
 
-#### `openai_api` backend (image)
+#### `openai_api` (text)
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `base_url` | string | Yes | `https://openrouter.ai/api/v1` | Base URL of the API |
-| `api_key` | string | Yes | — | API key (typically required for image APIs) |
-| `model` | string | Yes | `google/gemini-2.0-flash-exp:free` | Model name |
-| `size` | string | No | `1024x1024` | Default image size |
-| `quality` | string | No | `standard` | Image quality (`standard` or `hd`) |
-| `timeout` | integer | No | `120` | Request timeout (seconds) |
+| `base_url` | string | yes | `http://localhost:11434/v1` | Base URL of the API |
+| `api_key` | string | no | `""` | API key |
+| `model` | string | yes | `llama3` | Model name |
+| `max_tokens` | integer | no | `1024` | Max response tokens |
+| `temperature` | float | no | `0.8` | Generation temperature |
+| `timeout` | integer | no | `120` | Request timeout (seconds) |
 
-#### `comfyui` backend (image) — Post-MVP
+#### `openai_api` (image)
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `base_url` | string | Yes | `http://localhost:8188` | ComfyUI URL |
-| `timeout` | integer | No | `120` | Request timeout |
-| `ws_timeout` | integer | No | `300` | WebSocket monitoring timeout |
-| `workflow_dir` | string | No | `data/comfyui_workflows` | Path to workflow templates |
+| `base_url` | string | yes | `https://openrouter.ai/api/v1` | Base URL |
+| `api_key` | string | yes | — | API key (typically required) |
+| `model` | string | yes | `google/gemini-2.0-flash-exp:free` | Model name |
+| `size` | string | no | `1024x1024` | Default image size |
+| `timeout` | integer | no | `120` | Request timeout (seconds) |
 
 ## 6. Connector Interface
 
-All connectors implement a common interface per type. This is the Python abstract base class:
+All connectors implement a type-specific abstract base class.
 
-### 6.1 Base Connector
+### 6.1 Base
 
 ```python
 from abc import ABC, abstractmethod
 
 class BaseConnector(ABC):
-    """Base class for all connectors."""
-
     connector_type: str  # "text", "image", "video", "audio"
-    backend_id: str      # "openai_api", "comfyui", etc.
+    backend_id: str      # "openai_api", ...
 
     @abstractmethod
     async def test_connection(self) -> dict:
-        """Test if the backend is reachable. Returns status dict."""
-        ...
-
-    @abstractmethod
-    async def get_capabilities(self) -> dict:
-        """Return available models/options for this connector."""
-        ...
+        """Return {'connected': bool, 'details': {...}}."""
 ```
 
-### 6.2 Text Connector Interface
+### 6.2 Text Connector
 
 ```python
 class TextConnector(BaseConnector):
@@ -183,11 +141,10 @@ class TextConnector(BaseConnector):
         temperature: float | None = None,
         max_tokens: int | None = None,
     ) -> AsyncIterator[str]:
-        """Stream text tokens from a chat completion request."""
-        ...
+        """Yield text tokens from a streaming chat completion."""
 ```
 
-### 6.3 Image Connector Interface
+### 6.3 Image Connector
 
 ```python
 class ImageConnector(BaseConnector):
@@ -201,59 +158,22 @@ class ImageConnector(BaseConnector):
         model: str | None = None,
         size: str | None = None,
     ) -> bytes:
-        """Generate an image from a prompt. Returns image bytes."""
-        ...
+        """Generate an image. Return raw image bytes (PNG)."""
 ```
 
-### 6.4 Video Connector Interface (Post-MVP)
+Video/audio connector interfaces are specified in [POST-MVP.md](POST-MVP.md).
 
-```python
-class VideoConnector(BaseConnector):
-    connector_type = "video"
-
-    @abstractmethod
-    async def generate_video(
-        self,
-        prompt: str,
-        source_image: bytes | None = None,
-        model: str | None = None,
-    ) -> bytes:
-        """Generate a video. Returns video bytes."""
-        ...
-```
-
-### 6.5 Audio Connector Interface (Post-MVP)
-
-```python
-class AudioConnector(BaseConnector):
-    connector_type = "audio"
-
-    @abstractmethod
-    async def generate_audio(
-        self,
-        text: str,
-        voice: str | None = None,
-        model: str | None = None,
-    ) -> bytes:
-        """Generate audio/speech from text. Returns audio bytes."""
-        ...
-```
-
-## 7. MVP Connector Implementations
+## 7. MVP Implementations
 
 ### 7.1 `OpenAITextConnector`
 
-Implements `TextConnector` using the OpenAI Chat Completions API.
-
-```python
-# POST {base_url}/chat/completions
-# Headers: Authorization: Bearer {api_key}
-# Body: {"model": "...", "messages": [...], "stream": true, ...}
+```
+POST {base_url}/chat/completions
+Authorization: Bearer {api_key}
+Body: {"model": "...", "messages": [...], "stream": true, "max_tokens": ..., "temperature": ...}
 ```
 
-This is the same protocol used by Ollama, vLLM, LM Studio, OpenRouter, and OpenAI.
-
-**Streaming response parsing:**
+Streaming SSE response format (from upstream):
 
 ```
 data: {"choices": [{"delta": {"content": "token"}}]}
@@ -261,88 +181,56 @@ data: {"choices": [{"delta": {}}], "finish_reason": "stop"}
 data: [DONE]
 ```
 
+The connector parses these and yields each `content` delta as a string.
+
 ### 7.2 `OpenAIImageConnector`
 
-Implements `ImageConnector` using the OpenAI Images API.
-
-```python
-# POST {base_url}/images/generations
-# Headers: Authorization: Bearer {api_key}
-# Body: {"model": "...", "prompt": "...", "size": "1024x1024", "n": 1}
+```
+POST {base_url}/images/generations
+Authorization: Bearer {api_key}
+Body: {"model": "...", "prompt": "...", "size": "1024x1024", "n": 1}
 ```
 
-**Response:**
+Upstream response:
 
 ```json
 {
   "data": [
-    {
-      "url": "https://...",
-      "b64_json": "..."
-    }
+    {"url": "https://...", "b64_json": "..."}
   ]
 }
 ```
 
 The connector:
-1. Sends the generation request.
-2. Receives either a URL or base64-encoded image.
-3. Downloads the image if a URL is provided.
-4. Returns the raw image bytes.
 
-This works with OpenRouter (→ Gemini, Flux, DALL-E), OpenAI directly, and any compatible endpoint.
+1. Sends the request.
+2. Reads `data[0]`. If `b64_json` is present, decode it. Otherwise fetch the `url`.
+3. Returns the raw image bytes.
+
+`negative_prompt` is not part of the OpenAI spec. If provided, the connector appends `". Avoid: <negative_prompt>"` to the prompt (MVP fallback). Backends that support a dedicated negative prompt (e.g., ComfyUI, post-MVP) will use it natively.
 
 ## 8. Connector Manager
 
-The `ConnectorManager` is the central service that manages all connector instances:
-
 ```python
 class ConnectorManager:
-    """Manages all configured connectors."""
+    def get_active_text_connector(self) -> TextConnector | None: ...
+    def get_active_image_connector(self) -> ImageConnector | None: ...
 
-    def get_active_text_connector(self) -> TextConnector | None:
-        """Get the currently active text connector."""
+    def list_connectors(self, type: str | None = None) -> list[ConnectorInstance]: ...
+    def get_connector(self, connector_id: str) -> ConnectorInstance: ...
 
-    def get_active_image_connector(self) -> ImageConnector | None:
-        """Get the currently active image connector."""
+    def create_connector(self, data) -> ConnectorInstance: ...
+    def update_connector(self, connector_id: str, data) -> ConnectorInstance: ...
+    def delete_connector(self, connector_id: str) -> None: ...
 
-    def list_connectors(self, type: str | None = None) -> list[ConnectorInstance]:
-        """List all configured connectors, optionally filtered by type."""
-
-    def get_connector(self, connector_id: str) -> ConnectorInstance:
-        """Get a specific connector by ID."""
-
-    def create_connector(self, data: ConnectorCreate) -> ConnectorInstance:
-        """Create a new connector instance."""
-
-    def update_connector(self, connector_id: str, data: ConnectorUpdate) -> ConnectorInstance:
-        """Update connector configuration."""
-
-    def delete_connector(self, connector_id: str) -> None:
-        """Delete a connector."""
-
-    def test_connector(self, connector_id: str) -> dict:
-        """Test a connector's connection."""
-
+    def test_connector(self, connector_id: str) -> dict: ...
     def set_active(self, connector_id: str) -> None:
-        """Set a connector as the active one for its type."""
+        """Write config.yaml:active_connectors.{type} = connector_id."""
 ```
 
-### Active Connector Selection
+### Active Connector — Single Source of Truth
 
-For the MVP, there is **one active connector per type**. The chat service uses the active text connector, and the image generation uses the active image connector. The admin can switch which connector is active.
-
-### Connector Storage
-
-Connectors are stored as individual JSON files in `data/connectors/`:
-
-```
-data/connectors/
-├── {uuid}.json    # One file per connector instance
-└── ...
-```
-
-The active connector IDs are stored in `config.yaml`:
+**`config.yaml` is authoritative.** The active connector IDs per type are stored there:
 
 ```yaml
 active_connectors:
@@ -350,62 +238,36 @@ active_connectors:
   image: "uuid-of-active-image-connector"
 ```
 
-## 9. ComfyUI Connector (Post-MVP)
+- `is_active` in API responses is **derived** by comparing a connector's `id` to the value in `config.yaml`.
+- Connector JSON files never store an `is_active` flag.
+- If a connector is deleted and it was the active one for its type, the corresponding entry in `config.yaml` is cleared.
 
-When implemented, the ComfyUI connector will be an `ImageConnector` backend that:
+### Storage
 
-1. Loads workflow templates from `data/comfyui_workflows/`.
-2. Injects prompt and parameters into the workflow JSON.
-3. Submits to ComfyUI via HTTP.
-4. Monitors execution via WebSocket.
-5. Retrieves the generated image.
+- Connectors: `data/connectors/{uuid}.json` (one file per instance, atomic writes).
+- Active selection: `config.yaml` top-level `active_connectors` map.
 
-This follows the same `ImageConnector` interface, so the rest of the application doesn't need to change.
+## 9. Image Storage
 
-### Workflow Abstraction (ComfyUI-specific)
+- Generated images are saved to `data/images/{SESSION_TOKEN}/{uuid}.png` where `SESSION_TOKEN` is the constant `00000000-0000-0000-0000-000000000000` in the MVP (see [00 § 9](00-architecture-overview.md)).
+- Images are served through `GET /api/images/{session_token}/{image_id}` (see [03 § 7](03-backend-api.md)).
+- No automatic cleanup in MVP; users manage disk space manually.
 
-Each ComfyUI workflow is defined by:
-- A template JSON file (exported from ComfyUI API format).
-- A YAML definition mapping named inputs to ComfyUI node IDs.
-
-```yaml
-id: default_t2i
-name: "Default Text-to-Image"
-inputs:
-  - name: prompt
-    inject: { node_id: "6", field: "inputs.text" }
-  - name: negative_prompt
-    inject: { node_id: "7", field: "inputs.text" }
-  - name: seed
-    inject: { node_id: "3", field: "inputs.seed" }
-outputs:
-  - name: image
-    extract: { node_id: "9" }
-```
-
-## 10. Image Storage
-
-- Generated images are saved to `data/images/{generation_uuid}.png`.
-- Images are served via `GET /api/images/{image_id}`.
-- No automatic cleanup in MVP. Users manage disk space manually.
-
-## 11. Error Handling
+## 10. Error Handling
 
 | Scenario | Behavior |
 |---|---|
-| No active connector for type | Return 400 error: "No {type} connector configured" |
-| Connector backend unreachable | Return 502 error; chat continues without that modality |
-| API key invalid/missing | Return 502 error with descriptive message |
-| Generation fails | Return error detail from the backend |
-| Timeout | Return 504 error |
-| Unknown backend type | Return 400 error on connector creation |
+| No active connector for the requested type | HTTP 400 with `"No {type} connector configured"` (text) or `image_failed` SSE (image inside chat) |
+| Backend unreachable | HTTP 502 / `image_failed` SSE |
+| API key invalid/missing | HTTP 502 with descriptive detail |
+| Generation fails upstream | Propagate upstream detail |
+| Timeout | HTTP 504 / `image_failed` SSE |
+| Unknown backend ID on create | HTTP 400 |
 
-## 12. Adding a New Connector Backend
+## 11. Adding a New Connector Backend
 
-To add support for a new backend (e.g., a Stability AI image connector):
-
-1. Create a new file in `connectors/` (e.g., `stability_image.py`).
-2. Implement the appropriate interface (`ImageConnector`).
-3. Register the backend ID in the connector factory.
-4. Add backend-specific config fields.
-5. No changes needed to routers, frontend, or other services.
+1. Add a file in `connectors/` (e.g., `stability_image.py`).
+2. Implement the appropriate base class.
+3. Register the backend ID in the connector factory / `manager.py`.
+4. Declare its config schema for the admin UI (via `GET /api/connectors/backends`).
+5. No changes needed in routers, frontend, or services.

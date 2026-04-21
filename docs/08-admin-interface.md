@@ -2,79 +2,69 @@
 
 ## 1. Overview
 
-The Admin interface is a separate page within the aubergeRP web application that provides:
+A separate page within aubergeRP that provides:
 
-- **Connector management** — add, configure, test, and switch between connectors for text, image, video, and audio.
-- Character library management (import, edit, duplicate, export, delete).
-- System health overview.
+- **Connector management** — add, configure, test, and activate connectors for text, image, (post-MVP: video, audio).
+- **Character library management** — import, edit, duplicate, export, delete.
+- **System health overview.**
 
 ## 2. Technology
 
-- **Pure HTML + vanilla JavaScript** — same approach as the Chat UI.
-- **CSS** — plain CSS, shares some base styles with the Chat UI.
-- **No authentication** — single-user, local deployment (MVP).
-- **REST API only** — no SSE needed for admin operations.
+- Pure HTML + vanilla JavaScript (same approach as the Chat UI).
+- Plain CSS, sharing base styles with the Chat UI.
+- No authentication in the MVP (single-user, local).
+- REST only (no SSE).
 
 ## 3. Layout
 
 ```
 ┌──────────────────────────────────────────────────────┐
 │  Header Bar                                          │
-│  aubergeRP Admin                       [← Chat]    │
+│  aubergeRP Admin                       [← Chat]      │
 ├──────────┬───────────────────────────────────────────┤
-│          │                                           │
 │ Nav Menu │            Content Area                   │
-│          │                                           │
-│ ┌──────┐ │  (Changes based on selected section)      │
+│ ┌──────┐ │  (changes based on selected section)      │
 │ │Connec│ │                                           │
 │ │Chars │ │                                           │
 │ │Health│ │                                           │
 │ └──────┘ │                                           │
-│          │                                           │
 ├──────────┴───────────────────────────────────────────┤
 │  Status bar                                          │
 └──────────────────────────────────────────────────────┘
 ```
 
+The nav menu highlights the active section. Sections switch via the URL hash (e.g., `/admin/#characters`) with no page reloads.
+
 ## 4. Sections
 
-### 4.1 Connectors Section
+### 4.1 Connectors
 
-This is the landing page of the admin interface. It shows all configured connectors organized by type, and allows adding, editing, testing, and activating connectors.
-
-#### Layout
+Landing page. Lists all configured connectors grouped by type.
 
 ```
 ┌──────────────────────────────────────────────────────┐
 │  Connectors                             [+ Add New]  │
 ├──────────────────────────────────────────────────────┤
-│                                                      │
 │  ── Text Connectors ──                               │
-│                                                      │
-│  ⭐ My Ollama (openai_api)              [Test] [⋮]  │
-│     URL: http://localhost:11434/v1                    │
+│  ⭐ My Ollama (openai_api)              [Test] [⋮]   │
+│     URL: http://localhost:11434/v1                   │
 │     Model: llama3                                    │
 │     Status: ✅ Connected                             │
 │                                                      │
 │  ── Image Connectors ──                              │
-│                                                      │
-│  ⭐ OpenRouter Images (openai_api)      [Test] [⋮]  │
-│     URL: https://openrouter.ai/api/v1               │
+│  ⭐ OpenRouter Images (openai_api)      [Test] [⋮]   │
+│     URL: https://openrouter.ai/api/v1                │
 │     Model: google/gemini-2.0-flash-exp:free          │
 │     Status: ✅ Connected                             │
 │                                                      │
-│  ── Video Connectors ──                              │
-│     (No connectors configured)                       │
-│                                                      │
-│  ── Audio Connectors ──                              │
-│     (No connectors configured)                       │
-│                                                      │
+│  ── Video Connectors ──   (no backends available)    │
+│  ── Audio Connectors ──   (no backends available)    │
 └──────────────────────────────────────────────────────┘
 ```
 
-- ⭐ indicates the active connector for that type.
-- The `[⋮]` overflow menu contains: Edit, Activate, Deactivate, Delete.
-- "Test" button → calls `POST /api/connectors/{id}/test`.
+- ⭐ marks the active connector (derived from `config.yaml:active_connectors` — see [06 § 8](06-connector-system.md)).
+- `[⋮]` menu: Edit, Activate, Delete.
+- `[Test]` calls `POST /api/connectors/{id}/test`.
 
 #### Add/Edit Connector Dialog
 
@@ -82,16 +72,15 @@ This is the landing page of the admin interface. It shows all configured connect
 ┌──────────────────────────────────────────────────────┐
 │  Add New Connector                                   │
 ├──────────────────────────────────────────────────────┤
-│                                                      │
 │  Name:     [My Ollama______________________]         │
 │  Type:     [text ▼]                                  │
 │  Backend:  [openai_api ▼]                            │
 │                                                      │
 │  ── Backend Configuration ──                         │
-│  (fields change based on selected backend)           │
+│  (fields change based on the selected backend)       │
 │                                                      │
-│  Base URL:    [http://localhost:11434/v1___]          │
-│  API Key:     [________________________________]     │
+│  Base URL:    [http://localhost:11434/v1___]         │
+│  API Key:     [•••••••••••••] (placeholder if set)   │
 │  Model:       [llama3_________________________]      │
 │  Max Tokens:  [1024]                                 │
 │  Temperature: [0.8]                                  │
@@ -101,216 +90,128 @@ This is the landing page of the admin interface. It shows all configured connect
 └──────────────────────────────────────────────────────┘
 ```
 
-**Field behavior:**
-- When "Type" changes, the "Backend" dropdown updates to show only compatible backends.
-- When "Backend" changes, the configuration fields update to match the backend's schema.
-- "Test" validates the connection before saving.
-- For image connectors with `openai_api` backend, fields are: Base URL, API Key, Model, Size, Quality, Timeout.
+Behavior:
 
-**Feedback:**
-- On successful test: green banner "Connected. Available models: ..."
-- On failure: red banner "Cannot connect: {detail}"
+- Changing Type updates the Backend dropdown to compatible backends.
+- Changing Backend updates the config fields according to that backend's schema (fetched from `GET /api/connectors/backends`).
+- On edit: the API key field shows a placeholder if one is set on the server. Leaving it empty preserves the existing key (see [03 § 8](03-backend-api.md)). A dedicated "Clear API key" checkbox sends an empty string explicitly.
+- `Test` validates the connection before saving.
 
-### 4.2 Characters Section
+Feedback:
+- On success: green banner (e.g., "Connected. Available models: …").
+- On failure: red banner with the detail string.
 
-Displays a table/grid of all characters in the library with management actions.
+### 4.2 Characters
 
-#### Character List View
+Displays all characters in the library with management actions.
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│  Characters                           [Import] [New] │
+│  Characters                          [Import] [New]  │
 ├──────────────────────────────────────────────────────┤
-│  ┌────┐                                             │
-│  │ 🧝 │  Elara the Elf            [Edit] [⋮]       │
-│  │    │  Fantasy tavern keeper                      │
-│  └────┘  Tags: fantasy, elf                         │
-│  ───────────────────────────────────────────────────│
-│  ┌────┐                                             │
-│  │ 🧙 │  Grimwald the Wizard      [Edit] [⋮]       │
-│  │    │  Ancient wizard of the tower                │
-│  └────┘  Tags: fantasy, wizard                      │
-│  ───────────────────────────────────────────────────│
-│  (empty state: "No characters yet. Import or        │
-│   create your first character!")                     │
+│  ┌────┐                                              │
+│  │ 🧝 │  Elara the Elf              [Edit] [⋮]       │
+│  │    │  Fantasy tavern keeper                       │
+│  └────┘  Tags: fantasy, elf                          │
+│  ────────────────────────────────────────────────────│
+│  ┌────┐                                              │
+│  │ 🧙 │  Grimwald the Wizard        [Edit] [⋮]       │
+│  └────┘  Tags: fantasy, wizard                       │
 └──────────────────────────────────────────────────────┘
 ```
 
-The `[⋮]` overflow menu contains:
-- Duplicate
-- Export as JSON
-- Export as PNG
-- Delete (with confirmation)
+`[⋮]` menu: Duplicate, Export as JSON, Export as PNG, Delete (with confirmation).
 
 #### Import Dialog
 
-Triggered by the "Import" button.
-
-- File picker accepting `.json` and `.png` files.
+- File picker for `.json` and `.png`.
 - Drag-and-drop zone.
-- On successful import: character appears in the list, success toast.
-- On failure: error message with details (e.g., "Invalid character card: missing 'name' field").
+- On success: character appears in the list with a success toast.
+- On failure: error detail (e.g., "Invalid character card: missing 'name' field").
 
 #### Character Edit Form
-
-Triggered by "Edit" or "New" button.
 
 ```
 ┌──────────────────────────────────────────────────────┐
 │  Edit Character: Elara the Elf                       │
 ├──────────────────────────────────────────────────────┤
-│                                                      │
 │  Avatar: [🧝] [Upload New]                           │
 │                                                      │
 │  Name:        [Elara the Elf________________]        │
 │  Description: [Full character description____]       │
-│               [_____________________________]        │
 │  Personality: [Warm, welcoming, wise________]        │
 │  First Msg:   [Welcome to the Golden Hearth_]        │
-│               [_____________________________]        │
 │  Examples:    [<START>______________________]        │
-│               [_____________________________]        │
 │  Scenario:    [A medieval fantasy tavern____]        │
-│               [_____________________________]        │
-│  Sys Prompt:  [Optional override___________]        │
-│               [_____________________________]        │
-│  Tags:        [fantasy, elf, tavern________]        │
+│  Sys Prompt:  [Optional override___________]         │
+│  Tags:        [fantasy, elf, tavern________]         │
 │                                                      │
-│  ── aubergeRP Extensions ──                         │
-│                                                      │
+│  ── aubergeRP Extensions ──                          │
 │  Image Prompt Prefix: [elf woman, fantasy___]        │
 │  Negative Prompt:     [blurry, low quality__]        │
 │                                                      │
-│  Creator:     [Creator name________________]        │
-│  Notes:       [Creator notes_______________]        │
+│  Creator:     [Creator name________________]         │
+│  Notes:       [Creator notes_______________]         │
 │                                                      │
 │                              [Cancel] [Save]         │
 └──────────────────────────────────────────────────────┘
 ```
 
-**Fields:**
+Form rules:
+
 - All text fields are multi-line textareas except Name, Tags, Creator.
-- Tags are comma-separated in the input, stored as an array.
-- Avatar upload opens a file picker (images only, ≤ 10 MB).
+- Tags are comma-separated in the input; stored as an array.
+- Avatar upload: images only, ≤ 10 MB.
+- Name and Description are required; inline validation.
+- Save calls `POST /api/characters` (new) or `PUT /api/characters/{id}` (edit).
 
-**Validation:**
-- Name is required.
-- Description is required.
-- Show inline validation errors.
-
-**Actions:**
-- "Save" → `POST /api/characters` (new) or `PUT /api/characters/{id}` (edit).
-- "Cancel" → return to list view without saving.
-
-### 4.3 Health Section
-
-Displays system health and diagnostic information.
+### 4.3 Health
 
 ```
 ┌──────────────────────────────────────────────────────┐
 │  System Health                          [Refresh]    │
 ├──────────────────────────────────────────────────────┤
+│  aubergeRP Version: 0.1.0                            │
 │                                                      │
-│  aubergeRP Version: 0.1.0                          │
-│                                                      │
-│  Active Connectors:                                 │
-│                                                      │
-│  Text:  ✅ My Ollama                                │
+│  Active Connectors:                                  │
+│  Text:  ✅ My Ollama                                 │
 │         http://localhost:11434/v1                    │
-│         Model: llama3                               │
+│         Model: llama3                                │
+│  Image: ✅ OpenRouter Images                         │
+│         https://openrouter.ai/api/v1                 │
+│  Video: — Not available                              │
+│  Audio: — Not available                              │
 │                                                      │
-│  Image: ✅ OpenRouter Images                        │
-│         https://openrouter.ai/api/v1                │
-│         Model: google/gemini-2.0-flash-exp:free     │
-│                                                      │
-│  Video: — Not configured                            │
-│  Audio: — Not configured                            │
-│                                                      │
-│  Storage:                                           │
-│    Characters: 5                                    │
-│    Conversations: 12                                │
-│    Images: 34                                       │
-│    Connectors: 2                                    │
-│                                                      │
+│  Storage:                                            │
+│    Characters: 5                                     │
+│    Conversations: 12                                 │
+│    Images: 34                                        │
+│    Connectors: 2                                     │
 └──────────────────────────────────────────────────────┘
 ```
 
-Data is fetched from `GET /api/health` plus `GET /api/characters` and `GET /api/conversations` counts.
+Data is fetched from `GET /api/health`, plus character/conversation counts from their respective list endpoints.
 
-## 5. User Flow — First-Time Setup
+## 5. First-Time Setup Flow
 
-1. User opens `http://localhost:8000/admin/`.
-2. Connectors section is displayed (empty).
-3. User clicks "+ Add New" to create a text connector.
-4. User selects type "text", backend "openai_api".
-5. User enters the LLM backend URL (e.g., `http://localhost:11434/v1` for Ollama).
-6. User clicks "Test" to verify the connection.
-7. On success, user clicks "Save". The connector is automatically activated.
-8. User clicks "+ Add New" again to create an image connector.
-9. User selects type "image", backend "openai_api".
-10. User enters the image API URL (e.g., `https://openrouter.ai/api/v1`) and API key.
-11. User tests and saves.
-12. User navigates to Characters section.
-13. User clicks "Import" and uploads a SillyTavern character card.
-14. Character appears in the list.
-15. User optionally edits aubergeRP-specific fields (image prompt prefix, etc.).
-16. User clicks "← Chat" to go to the chat interface and start roleplaying.
+1. Open `http://localhost:8000/admin/`.
+2. Connectors section is empty.
+3. Click `+ Add New` → select type `text`, backend `openai_api`.
+4. Enter the LLM backend URL (e.g., `http://localhost:11434/v1` for Ollama). Click Test, then Save. The connector is automatically activated (first of its type).
+5. Click `+ Add New` again → select type `image`, backend `openai_api`, enter an image API URL + key. Test + Save.
+6. Go to Characters, import or create a character card.
+7. Click `← Chat` to start roleplaying.
 
-## 6. API Integration
+## 6. API Endpoints
 
-| Action | Endpoint | Method |
-|---|---|---|
-| List connectors | `GET /api/connectors` | fetch |
-| Get connector | `GET /api/connectors/{id}` | fetch |
-| Create connector | `POST /api/connectors` | fetch |
-| Update connector | `PUT /api/connectors/{id}` | fetch |
-| Delete connector | `DELETE /api/connectors/{id}` | fetch |
-| Test connector | `POST /api/connectors/{id}/test` | fetch |
-| Activate connector | `POST /api/connectors/{id}/activate` | fetch |
-| List backends | `GET /api/connectors/backends` | fetch |
-| Get config | `GET /api/config` | fetch |
-| Save config | `PUT /api/config` | fetch |
-| List characters | `GET /api/characters` | fetch |
-| Get character | `GET /api/characters/{id}` | fetch |
-| Create character | `POST /api/characters` | fetch |
-| Update character | `PUT /api/characters/{id}` | fetch |
-| Delete character | `DELETE /api/characters/{id}` | fetch |
-| Duplicate character | `POST /api/characters/{id}/duplicate` | fetch |
-| Import character | `POST /api/characters/import` | fetch (multipart) |
-| Export JSON | `GET /api/characters/{id}/export/json` | fetch (download) |
-| Export PNG | `GET /api/characters/{id}/export/png` | fetch (download) |
-| Upload avatar | `POST /api/characters/{id}/avatar` | fetch (multipart) |
-| Health check | `GET /api/health` | fetch |
+The Admin UI uses the endpoints defined in [03 — Backend API](03-backend-api.md). No endpoints specific to the admin UI are defined outside that document.
 
-## 7. File Structure
-
-```
-frontend/admin/
-└── index.html          # Admin page (single page with JS sections)
-
-frontend/css/
-└── admin.css           # Admin-specific styles
-
-frontend/js/admin/
-├── config.js           # Configuration section logic
-├── characters.js       # Character management logic
-└── connectors.js       # Connector management logic
-```
-
-## 8. Navigation
-
-- The Admin UI is a single HTML page (`/admin/index.html`).
-- Sections are shown/hidden via JavaScript (no page reloads).
-- The nav menu highlights the active section.
-- URL hash is used for direct linking (e.g., `/admin/#characters`).
-- "← Chat" link navigates to `/index.html`.
-
-## 9. Error Handling
+## 7. Error Handling
 
 | Scenario | Display |
 |---|---|
 | API unreachable | Red banner: "Cannot connect to aubergeRP API" |
-| Save failed | Red inline error near the save button with details |
-| Import failed | Error message in the import dialog with details |
+| Save failed | Red inline error near the Save button with the detail |
+| Import failed | Error message in the import dialog |
 | Delete confirmation | Modal: "Are you sure you want to delete {name}? This cannot be undone." |
 | Validation error | Red inline error next to the invalid field |

@@ -4,142 +4,23 @@
 
 - **Base URL:** `http://localhost:8000`
 - **API prefix:** `/api`
-- **Content-Type:** `application/json` for all JSON endpoints.
+- **Content-Type:** `application/json` for JSON endpoints.
 - **File uploads:** `multipart/form-data`.
-- **Streaming responses:** `text/event-stream` (SSE).
-- **IDs:** UUID v4 strings (e.g., `"a1b2c3d4-e5f6-7890-abcd-ef1234567890"`).
-- **Error responses:** All errors return a JSON body with `{ "detail": "Human-readable error message" }` and an appropriate HTTP status code.
+- **Streaming responses:** SSE (`text/event-stream`). Note: the Chat UI reads SSE over a **POST** body via `fetch` + `ReadableStream`, because the native `EventSource` API does not support POST or custom headers.
+- **IDs:** UUID v4 strings.
+- **Error responses:** JSON body `{"detail": "Human-readable error message"}` + appropriate HTTP status code.
 
-## 2. Internal API Security
+## 2. Authentication
 
-### Problem
+**MVP has no authentication.** aubergeRP is a single-user local deployment. All endpoints are open.
 
-aubergeRP exposes REST endpoints for resource-intensive operations (LLM chat, image generation). Even in a single-user deployment, the API should not allow arbitrary external callers to trigger generation — an attacker or bot scanning the local network could abuse these endpoints, consuming API credits or GPU resources.
+Multi-user session handling is specified in [POST-MVP.md](POST-MVP.md).
 
-Additionally, even the legitimate frontend user should not be able to call generation endpoints directly (e.g., image generation), since these consume expensive API credits. Generation must be mediated by the backend through controlled flows (chat, admin connector tests).
-
-### Solution: Two-Tier Token Architecture
-
-aubergeRP uses **two separate auto-generated tokens** at startup, with distinct scopes:
-
-#### Tier 1 — Session Token (frontend-facing, per-user)
-
-1. **On startup**, the backend generates a session token mechanism. Each connecting client gets a **unique session token** — the session token IS the session ID.
-2. **Sessions are stored on disk** as `data/sessions/{uuid}.json`, where the UUID is the session token. On startup, if no session exists for a connecting client (identified by a cookie or browser fingerprint), a new session file is created.
-3. **The frontend HTML** pages served by FastAPI include this token as a `<meta>` tag:
-   ```html
-   <meta name="aubergeRP-session-token" content="a1b2c3...random-hex...">
-   ```
-4. **The frontend JS** reads this token and includes it in all API requests as a header:
-   ```
-   X-Session-Token: a1b2c3...random-hex...
-   ```
-5. **The backend validates** this token on all write endpoints. Requests without a valid token receive `403 Forbidden`.
-
-This token protects against **external/network-level abuse**: bots, port scanners, or other devices on the local network cannot call write endpoints.
-
-⚠️ **This token is visible to the frontend user** (via browser dev tools). It intentionally does **not** protect against the user themselves — only against external callers.
-
-#### Tier 2 — Internal Token (backend-only, never exposed)
-
-1. **On startup**, the backend generates a **second** random 256-bit token, also stored in memory only.
-2. **This token is never injected into HTML pages** and is never sent to the frontend.
-3. It is used exclusively for **backend-internal calls** to expensive generation endpoints (`POST /api/generate/image`, etc.).
-4. When the backend needs to trigger image generation (e.g., from the chat flow or admin connector test), it calls the generation endpoint internally, passing this token as `X-Internal-Token`.
-5. Direct calls to generation endpoints without this token receive `403 Forbidden` — even if the caller has the session token.
-
-This ensures that **even a frontend user who inspects the HTML source cannot trigger image generation directly**. Generation is always mediated by the backend through controlled endpoints.
-
-### Why Two Tiers?
-
-| Approach | Problem |
-|---|---|
-| No auth at all | Anyone on the network can burn API credits |
-| Single token in HTML | Protects against external attackers, but frontend user can extract it and call generation endpoints directly |
-| User-configured API key | Adds setup friction, breaks the "time-to-first-roleplay < 1 hour" goal |
-| **Two-tier tokens (chosen)** | **Zero config, blocks both external attackers AND direct user abuse of generation routes** |
-
-### Route Protection Table
-
-| Route | Protection | Reason |
-|---|---|---|
-| `GET /api/health` | 🔓 Public | Health checks should be accessible |
-| `GET /api/characters/*` | 🔓 Public | Read-only, no cost |
-| `GET /api/conversations/*` | 🔓 Public | Read-only, no cost |
-| `GET /api/images/*` | 🔓 Public | Read-only, serves stored files |
-| `GET /api/connectors/*` | 🔓 Public | Read-only config display |
-| `GET /api/config` | 🔓 Public | Read-only (sensitive fields redacted) |
-| `POST /api/chat/*/message` | 🔒 Session token | Triggers LLM generation (costs credits/GPU) |
-| `POST /api/chat/*/generate-image` | 🔒 Session token | Requests image generation via chat flow (backend mediates) |
-| `POST /api/characters` | 🔒 Session token | Write operation |
-| `PUT /api/characters/*` | 🔒 Session token | Write operation |
-| `DELETE /api/characters/*` | 🔒 Session token | Write operation |
-| `POST /api/characters/import` | 🔒 Session token | Write operation |
-| `POST /api/conversations` | 🔒 Session token | Write operation |
-| `DELETE /api/conversations/*` | 🔒 Session token | Write operation |
-| `POST /api/connectors` | 🔒 Session token | Admin write operation |
-| `PUT /api/connectors/*` | 🔒 Session token | Admin write operation |
-| `DELETE /api/connectors/*` | 🔒 Session token | Admin write operation |
-| `POST /api/connectors/*/test` | 🔒 Session token | Admin test operation |
-| `POST /api/connectors/*/activate` | 🔒 Session token | Admin write operation |
-| `PUT /api/config` | 🔒 Session token | Admin write operation |
-| `POST /api/generate/image` | 🔐 Internal token | Direct generation — backend-only, never called by frontend |
-| `GET /api/generate/image/*/status` | 🔒 Session token | Polls generation progress |
-
-### How Image Generation Works with Two Tiers
-
-```
-User sends a message like "please send me a picture"
-        │
-        ▼
-POST /api/chat/{id}/message   ← requires X-Session-Token (in HTML)
-        │
-        ▼
-   Backend validates session token
-   LLM processes the message and signals that image generation is needed
-   Backend builds image prompt from conversation context
-        │
-        ▼
-   Backend internally calls image connector   ← uses X-Internal-Token (never in HTML)
-   (or calls POST /api/generate/image with internal token)
-        │
-        ▼
-   Image connector calls external API (OpenRouter, OpenAI, etc.)
-        │
-        ▼
-   Image saved to data/images/{uuid}.png
-   Image URL returned to frontend via SSE or response
-```
-
-### Error Responses
-
-```json
-// 403 Forbidden — missing or invalid session token
-{
-  "detail": "Invalid or missing session token"
-}
-
-// 403 Forbidden — missing or invalid internal token (direct generation call)
-{
-  "detail": "This endpoint is restricted to internal backend calls"
-}
-```
-
-### Implementation Notes
-
-- Both tokens are generated using Python's `secrets.token_hex(32)` (256 bits each).
-- The **session token** is injected into HTML at serve time via a simple string replacement or template variable — no build step.
-- The **internal token** is stored in a module-level variable, accessible only within the backend process. It is never serialized, logged, or exposed in any response.
-- Both tokens change on every server restart, which is acceptable for a single-user local app.
-- This is **not** a substitute for full authentication (which is post-MVP). It prevents unauthorized API access from the local network and prevents frontend users from directly triggering expensive generation operations.
-
----
+The constant `SESSION_TOKEN = "00000000-0000-0000-0000-000000000000"` is used internally wherever a per-user identifier will later plug in (e.g., image folder path). See [00 § 9](00-architecture-overview.md). This constant is **never exposed in the API**.
 
 ## 3. Health
 
 ### `GET /api/health`
-
-Returns the server status and connectivity information.
 
 **Response: 200 OK**
 ```json
@@ -155,13 +36,15 @@ Returns the server status and connectivity information.
 }
 ```
 
+`connected` reflects the last successful test; it is refreshed on `POST /api/connectors/{id}/test`.
+
 ---
 
 ## 4. Characters
 
 ### `GET /api/characters`
 
-List all characters in the library.
+List all characters (summary view).
 
 **Response: 200 OK**
 ```json
@@ -171,6 +54,7 @@ List all characters in the library.
     "name": "Character Name",
     "description": "Short description",
     "avatar_url": "/api/characters/uuid-string/avatar",
+    "has_avatar": true,
     "tags": ["fantasy", "elf"],
     "created_at": "2025-01-15T10:30:00Z",
     "updated_at": "2025-01-15T10:30:00Z"
@@ -180,74 +64,21 @@ List all characters in the library.
 
 ### `GET /api/characters/{character_id}`
 
-Get full character details.
-
-**Response: 200 OK**
-```json
-{
-  "id": "uuid-string",
-  "name": "Character Name",
-  "description": "Full character description...",
-  "personality": "Character personality traits...",
-  "first_mes": "The character's first message...",
-  "mes_example": "Example dialogue...",
-  "scenario": "The scenario or setting...",
-  "system_prompt": "Optional system prompt override...",
-  "creator_notes": "Notes from the creator...",
-  "tags": ["fantasy", "elf"],
-  "avatar_url": "/api/characters/uuid-string/avatar",
-  "extensions": {
-    "aubergeRP": {
-      "image_prompt_prefix": "elf woman, fantasy setting",
-      "negative_prompt": "blurry, low quality"
-    }
-  },
-  "created_at": "2025-01-15T10:30:00Z",
-  "updated_at": "2025-01-15T10:30:00Z"
-}
-```
+Full character details. Response shape is the internal character format (see [04 § 2](04-character-system.md)).
 
 ### `POST /api/characters`
 
-Create a new character manually.
+Create a character manually.
 
-**Request body:**
-```json
-{
-  "name": "Character Name",
-  "description": "Full character description...",
-  "personality": "Traits...",
-  "first_mes": "Hello, traveler...",
-  "mes_example": "<START>\n{{user}}: Hi\n{{char}}: Hello!",
-  "scenario": "A fantasy tavern...",
-  "system_prompt": "",
-  "creator_notes": "",
-  "tags": ["fantasy"],
-  "extensions": {
-    "aubergeRP": {
-      "image_prompt_prefix": "",
-      "negative_prompt": ""
-    }
-  }
-}
-```
+**Request body** — `data` object as defined in [04 § 2](04-character-system.md) (no `id`, no timestamps).
 
-**Response: 201 Created**
-```json
-{
-  "id": "uuid-string",
-  "name": "Character Name",
-  ...
-}
-```
+**Response: 201 Created** — full character object.
 
 ### `PUT /api/characters/{character_id}`
 
-Update an existing character. Full replacement of editable fields.
+Update an existing character. Full replacement of the `data` object.
 
-**Request body:** Same as POST (without `id`).
-
-**Response: 200 OK** — Updated character object.
+**Response: 200 OK** — updated character object.
 
 ### `DELETE /api/characters/{character_id}`
 
@@ -257,49 +88,43 @@ Delete a character and its avatar.
 
 ### `GET /api/characters/{character_id}/avatar`
 
-Get the character's avatar image.
+Return the character's avatar image.
 
-**Response: 200 OK** — Image file (`image/png` or `image/jpeg`).
-**Response: 404 Not Found** — No avatar set.
+- **200 OK** — `image/png` or `image/jpeg`.
+- **404 Not Found** — no avatar set.
 
 ### `POST /api/characters/{character_id}/avatar`
 
-Upload or replace the character's avatar.
-
-**Request:** `multipart/form-data` with field `file` (image file).
+Upload or replace the avatar. `multipart/form-data`, field `file`.
 
 **Response: 200 OK**
 ```json
-{
-  "avatar_url": "/api/characters/uuid-string/avatar"
-}
+{"avatar_url": "/api/characters/uuid-string/avatar"}
 ```
 
 ### `POST /api/characters/import`
 
-Import a character from a SillyTavern-compatible JSON or PNG file.
+Import a character from a SillyTavern-compatible JSON or PNG file. `multipart/form-data`, field `file`.
 
-**Request:** `multipart/form-data` with field `file` (`.json` or `.png`).
-
-**Response: 201 Created** — The created character object (same as GET).
+**Response: 201 Created** — created character.
 
 ### `GET /api/characters/{character_id}/export/json`
 
-Export a character as a SillyTavern-compatible JSON file.
+Export as a SillyTavern-compatible JSON file (the internal format IS a V2 superset; see [04 § 3](04-character-system.md)).
 
-**Response: 200 OK** — JSON file download (`Content-Disposition: attachment`).
+**Response: 200 OK** — file download, `Content-Disposition: attachment`.
 
 ### `GET /api/characters/{character_id}/export/png`
 
-Export a character as a PNG file with embedded metadata (SillyTavern-compatible).
+Export as a PNG file with embedded metadata.
 
-**Response: 200 OK** — PNG file download (`Content-Disposition: attachment`).
+**Response: 200 OK** — file download.
 
 ### `POST /api/characters/{character_id}/duplicate`
 
-Duplicate an existing character (creates a new character with a new ID).
+Clone a character (new ID, avatar duplicated if present).
 
-**Response: 201 Created** — The new character object.
+**Response: 201 Created** — new character.
 
 ---
 
@@ -309,8 +134,7 @@ Duplicate an existing character (creates a new character with a new ID).
 
 List all conversations, optionally filtered by character.
 
-**Query parameters:**
-- `character_id` (optional): Filter by character ID.
+**Query parameters:** `character_id` (optional).
 
 **Response: 200 OK**
 ```json
@@ -319,7 +143,7 @@ List all conversations, optionally filtered by character.
     "id": "uuid-string",
     "character_id": "uuid-string",
     "character_name": "Character Name",
-    "title": "Conversation with Character",
+    "title": "Character Name — 2025-01-15 10:30",
     "message_count": 12,
     "created_at": "2025-01-15T10:30:00Z",
     "updated_at": "2025-01-15T12:00:00Z"
@@ -327,62 +151,28 @@ List all conversations, optionally filtered by character.
 ]
 ```
 
+Titles are `"{character_name} — {YYYY-MM-DD HH:mm}"`, generated at creation time; not user-editable in MVP.
+
 ### `GET /api/conversations/{conversation_id}`
 
-Get full conversation with all messages.
-
-**Response: 200 OK**
-```json
-{
-  "id": "uuid-string",
-  "character_id": "uuid-string",
-  "character_name": "Character Name",
-  "messages": [
-    {
-      "id": "uuid-string",
-      "role": "assistant",
-      "content": "Hello, traveler! Welcome to the tavern.",
-      "images": [],
-      "timestamp": "2025-01-15T10:31:00Z"
-    },
-    {
-      "id": "uuid-string",
-      "role": "user",
-      "content": "Tell me about this place.",
-      "images": [],
-      "timestamp": "2025-01-15T10:31:30Z"
-    },
-    {
-      "id": "uuid-string",
-      "role": "assistant",
-      "content": "This is the Golden Hearth, the finest inn in the realm.",
-      "images": ["/api/images/uuid-string"],
-      "timestamp": "2025-01-15T10:32:00Z"
-    }
-  ],
-  "created_at": "2025-01-15T10:30:00Z",
-  "updated_at": "2025-01-15T10:32:00Z"
-}
-```
+Full conversation with all messages. See [05 § 2](05-chat-and-conversations.md) for the message model.
 
 ### `POST /api/conversations`
 
-Create a new conversation with a character. The character's `first_mes` is automatically added as the first message.
+Create a new conversation. The character's `first_mes` is automatically added as the first `assistant` message.
 
 **Request body:**
 ```json
-{
-  "character_id": "uuid-string"
-}
+{"character_id": "uuid-string"}
 ```
 
-**Response: 201 Created** — The conversation object with the first message.
+**Response: 201 Created** — conversation object with the first message.
 
 ### `DELETE /api/conversations/{conversation_id}`
 
-Delete a conversation and all its messages.
-
 **Response: 204 No Content**
+
+Images referenced by the conversation are **not** deleted (see [06 § 10](06-connector-system.md)).
 
 ---
 
@@ -390,116 +180,43 @@ Delete a conversation and all its messages.
 
 ### `POST /api/chat/{conversation_id}/message`
 
-Send a user message and stream the LLM response via SSE.
+Send a user message and stream the assistant response (and any generated images) as SSE.
 
 **Request body:**
 ```json
-{
-  "content": "Tell me about the enchanted forest."
-}
+{"content": "Tell me about the enchanted forest."}
 ```
 
 **Response: 200 OK** — `text/event-stream`
 
 SSE events:
 
-```
-event: token
-data: {"content": "The"}
+| Event | Data | Meaning |
+|---|---|---|
+| `token` | `{"content": "..."}` | One token of assistant text |
+| `image_start` | `{"generation_id": "...", "prompt": "..."}` | Image generation has begun |
+| `image_complete` | `{"generation_id": "...", "image_url": "/api/images/{session-token}/{uuid}"}` | Image generation finished successfully |
+| `image_failed` | `{"generation_id": "...", "detail": "..."}` | Image generation failed; chat continues |
+| `done` | `{"message_id": "...", "full_content": "...", "images": ["..."]}` | Assistant message complete and saved |
+| `error` | `{"detail": "..."}` | Fatal error during streaming; partial response is **not** saved |
 
-event: token
-data: {"content": " enchanted"}
-
-event: token
-data: {"content": " forest"}
-
-event: done
-data: {"message_id": "uuid-string", "full_content": "The enchanted forest..."}
-
-event: error
-data: {"detail": "LLM backend unreachable"}
-```
-
-The full assistant message is saved to the conversation after streaming completes.
-
-### `POST /api/chat/{conversation_id}/generate-image`
-
-Request image generation within a conversation context. This is the **frontend-facing endpoint** for image generation — it requires only the session token (Tier 1). The backend internally calls the image connector using the internal token (Tier 2).
-
-**Request body:**
-```json
-{
-  "prompt": "A beautiful elf woman standing in an enchanted forest",
-  "negative_prompt": "blurry, low quality"
-}
-```
-
-If `prompt` is omitted or empty, the backend auto-generates one from the last assistant message combined with the character's `image_prompt_prefix`.
-
-**Response: 202 Accepted**
-```json
-{
-  "generation_id": "uuid-string",
-  "status": "queued"
-}
-```
-
-The backend:
-1. Validates the session token.
-2. Builds the image prompt from the provided prompt or the conversation context.
-3. Calls the active image connector internally (with the internal token).
-4. Returns a `generation_id` for polling.
-
-The frontend polls `GET /api/generate/image/{generation_id}/status` to track progress.
+Image events are emitted inline as the backend parses image markers from the LLM output. See [05 § 7](05-chat-and-conversations.md) for the marker format and trigger mechanism.
 
 ---
 
-## 7. Image Generation (Backend-Internal)
+## 7. Images
 
-> ⚠️ **These routes are protected by the internal token (Tier 2)**. They are **not callable from the frontend**. The frontend uses `POST /api/chat/{conversation_id}/generate-image` instead.
-
-### `POST /api/generate/image`
-
-Trigger an image generation using the active image connector. **Requires `X-Internal-Token` header** (backend-only, never exposed to frontend).
-
-**Request body:**
-```json
-{
-  "conversation_id": "uuid-string",
-  "prompt": "A beautiful elf woman standing in an enchanted forest",
-  "negative_prompt": "blurry, low quality"
-}
-```
-
-**Response: 202 Accepted**
-```json
-{
-  "generation_id": "uuid-string",
-  "status": "queued"
-}
-```
-
-### `GET /api/generate/image/{generation_id}/status`
-
-Check the status of an image generation.
-
-**Response: 200 OK**
-```json
-{
-  "generation_id": "uuid-string",
-  "status": "completed",
-  "image_url": "/api/images/uuid-string",
-  "progress": 100
-}
-```
-
-Status values: `queued`, `running`, `completed`, `failed`.
-
-### `GET /api/images/{image_id}`
+### `GET /api/images/{session_token}/{image_id}`
 
 Retrieve a generated image file.
 
-**Response: 200 OK** — Image file (`image/png`).
+**Response:**
+- **200 OK** — `image/png`.
+- **404 Not Found** — image does not exist.
+
+In the MVP, `session_token` is always the constant `00000000-0000-0000-0000-000000000000`.
+
+> Note: there is no public HTTP endpoint for triggering image generation. Image generation is invoked by `chat_service` as an in-process Python call to the active image connector. See [06 § 7](06-connector-system.md).
 
 ---
 
@@ -509,8 +226,7 @@ Retrieve a generated image file.
 
 List all configured connectors.
 
-**Query parameters:**
-- `type` (optional): Filter by type (`text`, `image`, `video`, `audio`).
+**Query parameters:** `type` (optional) — `text`, `image`, `video`, `audio`.
 
 **Response: 200 OK**
 ```json
@@ -520,7 +236,6 @@ List all configured connectors.
     "name": "My Ollama",
     "type": "text",
     "backend": "openai_api",
-    "enabled": true,
     "is_active": true,
     "config": {
       "base_url": "http://localhost:11434/v1",
@@ -533,11 +248,11 @@ List all configured connectors.
 ]
 ```
 
+**Sensitive-field redaction rule:** API responses never include `api_key`. They include `api_key_set: bool` instead. The active connector for a type is derived from `config.yaml` (`active_connectors.{type}`), not stored per-connector.
+
 ### `GET /api/connectors/{connector_id}`
 
-Get full connector details.
-
-**Response: 200 OK** — Full connector object (API key redacted).
+Full connector details (with the same redaction rule).
 
 ### `POST /api/connectors`
 
@@ -557,52 +272,48 @@ Create a new connector.
 }
 ```
 
-**Response: 201 Created** — The created connector object.
+**Response: 201 Created** — the created connector (redacted).
 
 ### `PUT /api/connectors/{connector_id}`
 
-Update connector configuration.
+Update a connector. Same body as POST.
 
-**Request body:** Same as POST (without `id`).
+If `api_key` is **omitted** from the body, the existing key is preserved. If `api_key` is included as an empty string, the key is cleared.
 
-**Response: 200 OK** — Updated connector object.
+**Response: 200 OK** — updated connector.
 
 ### `DELETE /api/connectors/{connector_id}`
 
-Delete a connector.
-
 **Response: 204 No Content**
+
+If the deleted connector was the active one for its type, `active_connectors.{type}` is cleared in `config.yaml`.
 
 ### `POST /api/connectors/{connector_id}/test`
 
-Test a connector's connection to its backend.
+Test the connector's connection to its backend.
 
 **Response: 200 OK**
 ```json
 {
   "connected": true,
-  "details": {
-    "models_available": ["llama3", "mistral"]
-  }
+  "details": {"models_available": ["llama3", "mistral"]}
 }
 ```
 
+Test failures return **200 OK** with `connected: false` and a `detail` string. Network or internal errors return **502 Bad Gateway**.
+
 ### `POST /api/connectors/{connector_id}/activate`
 
-Set a connector as the active one for its type.
+Set a connector as the active one for its type. Writes `active_connectors.{type}` in `config.yaml`.
 
 **Response: 200 OK**
 ```json
-{
-  "id": "uuid-string",
-  "type": "text",
-  "is_active": true
-}
+{"id": "uuid-string", "type": "text", "is_active": true}
 ```
 
 ### `GET /api/connectors/backends`
 
-List available connector backend types and their supported modalities.
+List available connector backend types and their config schemas.
 
 **Response: 200 OK**
 ```json
@@ -626,60 +337,39 @@ List available connector backend types and their supported modalities.
 
 ### `GET /api/config`
 
-Get current configuration (sensitive fields redacted).
+Return the current configuration (sensitive fields redacted).
 
 **Response: 200 OK**
 ```json
 {
-  "connectors": {
-    "text": {"id": "uuid", "name": "My Ollama", "connected": true},
-    "image": {"id": "uuid", "name": "OpenRouter Images", "connected": true}
-  },
-  "app": {
-    "host": "0.0.0.0",
-    "port": 8000
-  }
+  "app": {"host": "0.0.0.0", "port": 8000, "log_level": "INFO"},
+  "user": {"name": "User"},
+  "active_connectors": {"text": "uuid-string", "image": "uuid-string"}
 }
 ```
 
 ### `PUT /api/config`
 
-Update configuration. Only provided fields are updated.
+Partial update. Only provided fields are written.
 
-**Request body:**
-```json
-{
-  "app": {
-    "host": "0.0.0.0",
-    "port": 8000
-  },
-  "user": {
-    "name": "Alice"
-  }
-}
-```
-
-**Response: 200 OK** — Updated config (same as GET).
+**Response: 200 OK** — updated config (same shape as GET).
 
 ---
 
 ## 10. Error Response Format
 
-All error responses follow this structure:
+All error responses:
 
 ```json
-{
-  "detail": "Human-readable error message"
-}
+{"detail": "Human-readable error message"}
 ```
 
-| Status Code | Usage |
+| Status | Usage |
 |---|---|
-| 400 | Bad request (invalid input, missing fields) |
-| 403 | Forbidden (missing or invalid session token, or missing internal token on backend-only routes) |
-| 404 | Resource not found (character, conversation, image) |
+| 400 | Bad request (invalid input, missing fields, no active connector of required type) |
+| 404 | Resource not found |
 | 409 | Conflict (duplicate resource) |
 | 422 | Validation error (Pydantic) |
 | 500 | Internal server error |
-| 502 | Upstream error (LLM or ComfyUI unreachable) |
+| 502 | Upstream error (LLM or image backend unreachable) |
 | 504 | Upstream timeout |

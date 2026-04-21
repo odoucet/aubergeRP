@@ -2,35 +2,44 @@
 
 ## 1. Overview
 
-The character system is the core content management layer of aubergeRP. It handles:
+The character system manages:
 
-- Storing and retrieving character definitions.
-- Importing characters from SillyTavern-compatible formats (JSON and PNG).
-- Exporting characters back to SillyTavern-compatible formats.
-- Providing character data to the chat system for prompt construction.
+- Character definitions (storage, retrieval).
+- Import from SillyTavern-compatible formats (JSON and PNG, V1 and V2).
+- Export back to SillyTavern-compatible formats.
+- Providing character data to the chat service for prompt construction.
 
 ## 2. Internal Character Format
 
-aubergeRP uses its own internal JSON format which is a **superset** of the SillyTavern Tavern Character Card V2 format. The internal format includes all standard V2 fields plus aubergeRP-specific extensions.
+The internal format **is** SillyTavern V2 (`chara_card_v2`), extended with:
 
-### Internal Character Schema
+- A small wrapper for aubergeRP-specific metadata (`id`, `has_avatar`, timestamps).
+- Custom fields in `data.extensions.aubergeRP.*`.
+
+No conversion is performed on export: the character file on disk is already a valid V2 card.
+
+### Schema
 
 ```json
 {
   "id": "uuid-v4-string",
-  "spec": "aubergeRP-v1",
-  "spec_version": "1.0",
+  "has_avatar": true,
+  "created_at": "2025-01-15T10:30:00Z",
+  "updated_at": "2025-01-15T10:30:00Z",
+
+  "spec": "chara_card_v2",
+  "spec_version": "2.0",
   "data": {
     "name": "Character Name",
     "description": "Full character description. Supports {{user}} and {{char}} macros.",
     "personality": "Character personality summary.",
     "first_mes": "The first message the character sends when a conversation starts.",
-    "mes_example": "Example dialogue in SillyTavern format:\n<START>\n{{user}}: Hello\n{{char}}: Greetings, traveler!",
+    "mes_example": "<START>\n{{user}}: Hello\n{{char}}: Greetings, traveler!",
     "scenario": "The setting or scenario for the roleplay.",
-    "system_prompt": "Optional system prompt override. If empty, the default system prompt is used.",
+    "system_prompt": "Optional system prompt override. If empty, the default is used.",
     "post_history_instructions": "Optional instructions appended after conversation history.",
     "creator": "Creator name or handle.",
-    "creator_notes": "Notes from the creator about the character.",
+    "creator_notes": "Notes from the creator.",
     "character_version": "1.0",
     "tags": ["fantasy", "elf", "tavern"],
     "extensions": {
@@ -39,142 +48,99 @@ aubergeRP uses its own internal JSON format which is a **superset** of the Silly
         "negative_prompt": "blurry, low quality, deformed"
       }
     }
-  },
-  "avatar_path": "avatars/uuid-string.png",
-  "created_at": "2025-01-15T10:30:00Z",
-  "updated_at": "2025-01-15T10:30:00Z"
+  }
 }
 ```
 
-### Field Descriptions
+### Top-Level Wrapper Fields
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `id` | string (UUID) | Auto-generated | Unique identifier |
-| `spec` | string | Auto | Always `"aubergeRP-v1"` |
-| `spec_version` | string | Auto | Format version |
-| `data.name` | string | Yes | Character display name |
-| `data.description` | string | Yes | Full character description, used in the prompt |
-| `data.personality` | string | No | Short personality summary |
-| `data.first_mes` | string | No | First message for new conversations |
-| `data.mes_example` | string | No | Example dialogue for few-shot prompting |
-| `data.scenario` | string | No | Roleplay setting/scenario |
-| `data.system_prompt` | string | No | Overrides default system prompt if non-empty |
-| `data.post_history_instructions` | string | No | Appended after history in prompt |
-| `data.creator` | string | No | Author attribution |
-| `data.creator_notes` | string | No | Creator's notes |
-| `data.character_version` | string | No | Version of the character definition |
-| `data.tags` | string[] | No | Tags for categorization |
-| `data.extensions` | object | No | Extensions object (SillyTavern-compatible) |
-| `data.extensions.aubergeRP` | object | No | aubergeRP-specific fields |
-| `avatar_path` | string | No | Relative path to avatar image in `data/avatars/` |
-| `created_at` | string (ISO 8601) | Auto | Creation timestamp |
-| `updated_at` | string (ISO 8601) | Auto | Last update timestamp |
+| `id` | string (UUID) | auto | Unique identifier |
+| `has_avatar` | bool | auto | Whether `data/avatars/{id}.png` exists |
+| `created_at` | ISO 8601 | auto | Creation timestamp |
+| `updated_at` | ISO 8601 | auto | Last update timestamp |
 
-### aubergeRP Extensions
+The avatar file path is **derived** from `id`; it is never stored in the JSON.
+
+### `data` Fields (SillyTavern V2)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes | Character display name |
+| `description` | string | yes | Full character description |
+| `personality` | string | no | Short personality summary |
+| `first_mes` | string | no | First message for new conversations |
+| `mes_example` | string | no | Example dialogue for few-shot prompting |
+| `scenario` | string | no | Roleplay setting/scenario |
+| `system_prompt` | string | no | Overrides default system prompt if non-empty |
+| `post_history_instructions` | string | no | Appended after history in the prompt |
+| `creator` | string | no | Author attribution |
+| `creator_notes` | string | no | Creator's notes |
+| `character_version` | string | no | Version of the character definition |
+| `tags` | string[] | no | Tags for categorization |
+| `extensions` | object | no | V2 extensions dict (preserved untouched) |
+
+### aubergeRP Extensions (`data.extensions.aubergeRP`)
 
 | Field | Type | Description |
 |---|---|---|
 | `image_prompt_prefix` | string | Text prepended to image generation prompts for this character |
 | `negative_prompt` | string | Default negative prompt for image generation |
 
+Other extensions from third-party tools are preserved as-is (SillyTavern ignores unknown extensions).
+
 ## 3. SillyTavern Compatibility
 
-### 3.1 Supported Import Formats
+### 3.1 Import Formats
 
-#### JSON Character Card (V2)
-
-SillyTavern V2 character cards are JSON files with this structure:
-
-```json
-{
-  "spec": "chara_card_v2",
-  "spec_version": "2.0",
-  "data": {
-    "name": "...",
-    "description": "...",
-    "personality": "...",
-    "first_mes": "...",
-    "mes_example": "...",
-    "scenario": "...",
-    "system_prompt": "...",
-    "post_history_instructions": "...",
-    "creator": "...",
-    "creator_notes": "...",
-    "character_version": "...",
-    "tags": [],
-    "extensions": {}
-  }
-}
-```
-
-#### JSON Character Card (V1 / Legacy)
-
-Older cards may have a flat structure:
-
-```json
-{
-  "name": "...",
-  "description": "...",
-  "personality": "...",
-  "first_mes": "...",
-  "mes_example": "...",
-  "scenario": "..."
-}
-```
-
-#### PNG Character Card
-
-PNG files with character data embedded in the `tEXt` chunk with keyword `chara`. The value is a **Base64-encoded JSON string** containing the character card in V1 or V2 format.
+- **JSON V2** — `spec: "chara_card_v2"` at root, content in `data.*`.
+- **JSON V1 (legacy)** — flat root: `name`, `description`, `personality`, `first_mes`, `mes_example`, `scenario`.
+- **PNG V1/V2** — a PNG file with a `tEXt` chunk keyed `chara` whose value is a base64-encoded JSON card (V1 or V2).
 
 ### 3.2 Import Logic
 
 ```
 Input file received
-    │
-    ├── .json extension?
-    │   ├── Has "spec": "chara_card_v2"? → Parse as V2
-    │   └── Has "name" at root level? → Parse as V1 (legacy)
-    │
-    └── .png extension?
-        ├── Read tEXt chunk with key "chara"
-        ├── Base64 decode the value
-        └── Parse the resulting JSON (V1 or V2)
+  │
+  ├── .json extension?
+  │    ├── has "spec": "chara_card_v2"? → parse as V2
+  │    └── has "name" at root level?    → parse as V1 (legacy), upgrade to V2
+  │
+  └── .png extension?
+       ├── read tEXt chunk with key "chara"
+       ├── base64-decode the value
+       └── parse the resulting JSON (V1 or V2), upgrade V1 → V2 in memory
 ```
 
-For both V1 and V2 imports:
-1. Map all recognized fields to the internal format.
-2. Generate a new UUID.
-3. If the PNG has an image, save it as the avatar.
-4. Set `spec` to `"aubergeRP-v1"`.
-5. Preserve any existing `extensions` (including non-aubergeRP ones).
-6. Add default `extensions.aubergeRP` fields if not present.
-7. Save to `data/characters/{uuid}.json`.
+V1 → V2 upgrade: move flat fields into `data.*`, set `spec: "chara_card_v2"`, `spec_version: "2.0"`.
+
+After parsing (and upgrade if needed):
+1. Generate a new UUID (`id`).
+2. If a PNG image is provided, save it as `data/avatars/{id}.png` and set `has_avatar: true`.
+3. Ensure `data.extensions.aubergeRP` exists (create with defaults if missing). Preserve other `extensions`.
+4. Write to `data/characters/{id}.json` atomically.
 
 ### 3.3 Export Logic
 
-#### JSON Export
+Because the stored format IS a V2 card with extra wrapper fields, export strips the wrapper and writes the rest.
 
-1. Convert internal format to SillyTavern V2 format.
-2. Remove aubergeRP-specific metadata (`id`, `avatar_path`, `created_at`, `updated_at`).
-3. Set `spec` to `"chara_card_v2"` and `spec_version` to `"2.0"`.
-4. Preserve `extensions` including `aubergeRP` (SillyTavern ignores unknown extensions).
-5. Return as downloadable JSON file.
+**JSON export:**
+1. Read the character file.
+2. Remove the wrapper fields (`id`, `has_avatar`, `created_at`, `updated_at`).
+3. Return the remaining object (`spec`, `spec_version`, `data`) as a downloadable JSON file.
 
-#### PNG Export
-
-1. Generate the V2 JSON (same as JSON export).
+**PNG export:**
+1. Produce the V2 JSON as above.
 2. Base64-encode the JSON.
-3. Embed it in the avatar PNG's `tEXt` chunk with key `chara`.
-4. If no avatar exists, use a default placeholder image.
-5. Return as downloadable PNG file.
+3. Embed it in the character's avatar PNG's `tEXt` chunk (key `chara`). If the character has no avatar, use `frontend/assets/default-avatar.png` as the carrier.
+4. Return as a downloadable PNG file.
 
 ## 4. Storage
 
-- Characters are stored as individual JSON files in `data/characters/`.
-- File name: `{uuid}.json`.
-- Avatars are stored in `data/avatars/` as `{uuid}.png` (or `.jpg`).
-- The character JSON references its avatar via the `avatar_path` field.
+- Characters live in `data/characters/{uuid}.json`.
+- Avatars live in `data/avatars/{uuid}.png` (or `.jpg`, `.webp`).
+- Writes are atomic (temp file + `os.rename`).
 
 ## 5. Character Service API
 
@@ -183,34 +149,31 @@ The `character_service.py` module exposes these functions:
 | Function | Description |
 |---|---|
 | `list_characters()` | Return all characters (summary view) |
-| `get_character(id)` | Return full character by ID |
-| `create_character(data)` | Create a new character from provided data |
+| `get_character(id)` | Return full character |
+| `create_character(data)` | Create from a V2 `data` object |
 | `update_character(id, data)` | Update an existing character |
-| `delete_character(id)` | Delete a character and its avatar |
-| `duplicate_character(id)` | Clone a character with a new ID |
-| `import_character_json(file)` | Import from JSON file |
-| `import_character_png(file)` | Import from PNG file |
-| `export_character_json(id)` | Export as SillyTavern V2 JSON |
+| `delete_character(id)` | Delete character + avatar |
+| `duplicate_character(id)` | Clone with a new ID |
+| `import_character_json(file)` | Import from JSON (V1 or V2) |
+| `import_character_png(file)` | Import from PNG |
+| `export_character_json(id)` | Export as V2 JSON |
 | `export_character_png(id)` | Export as SillyTavern-compatible PNG |
-| `save_avatar(id, file)` | Save/replace avatar image |
-| `get_avatar_path(id)` | Get filesystem path to avatar |
+| `save_avatar(id, file)` | Save/replace avatar |
+| `get_avatar_path(id)` | Return filesystem path to avatar or None |
 
 ## 6. Macro System
 
-Character fields support the following macros, which are resolved at prompt-building time:
+Character fields and conversation messages support two macros, resolved at prompt-building time (in the chat service, not here):
 
 | Macro | Replaced with |
 |---|---|
-| `{{char}}` | Character's `name` |
-| `{{user}}` | User's display name (from config, default: `"User"`) |
-
-Macro replacement happens in the chat service, not in the character service.
+| `{{char}}` | Character's `data.name` |
+| `{{user}}` | User's display name from `config.yaml` (`user.name`, default `"User"`) |
 
 ## 7. Validation Rules
 
-- `name` is required and must be non-empty (1-200 characters).
-- `description` is required and must be non-empty.
-- `tags` must be an array of strings, each ≤ 50 characters.
-- All text fields have a maximum length of 50,000 characters.
-- Avatar files must be valid images (PNG, JPEG, WEBP) and ≤ 10 MB.
-- On import, malformed JSON or missing required fields result in a 400 error with a clear message.
+- `data.name` required, non-empty, 1–200 characters.
+- `data.description` required, non-empty.
+- `data.tags` is an array of strings, each ≤ 50 characters.
+- Avatar files: PNG, JPEG, or WEBP; ≤ 10 MB.
+- On import, malformed JSON or missing `name`/`description` returns **400** with a clear message.

@@ -2,22 +2,22 @@
 
 ## 1. Overview
 
-The chat system is the central user-facing feature of aubergeRP. It manages:
+The chat system is the central user-facing feature. It handles:
 
 - Conversation lifecycle (create, list, delete).
-- Message exchange between the user and a character (via LLM).
-- Streaming of LLM responses via SSE.
-- Image generation triggers and inline display.
-- Prompt construction from character data and conversation history.
+- Message exchange between the user and a character via the active text connector.
+- Streaming of assistant tokens and image lifecycle events over a single SSE response.
+- **LLM-triggered** image generation via inline markers in the assistant's output.
+- Prompt construction from character data + conversation history.
 
 ## 2. Conversation Model
-
-### Conversation Object
 
 ```json
 {
   "id": "uuid-string",
   "character_id": "uuid-string",
+  "character_name": "Character Name",
+  "title": "Character Name — 2025-01-15 10:30",
   "messages": [
     {
       "id": "uuid-string",
@@ -32,112 +32,85 @@ The chat system is the central user-facing feature of aubergeRP. It manages:
 }
 ```
 
-### Message Object
+### Message
 
 | Field | Type | Description |
 |---|---|---|
 | `id` | string (UUID) | Unique message identifier |
 | `role` | string | `"user"`, `"assistant"`, or `"system"` |
-| `content` | string | Message text content |
-| `images` | string[] | List of image URLs (e.g., `["/api/images/uuid"]`) |
-| `timestamp` | string (ISO 8601) | When the message was created |
+| `content` | string | Message text (markers stripped — see § 7) |
+| `images` | string[] | Image URLs (e.g. `/api/images/{session-token}/{uuid}`) |
+| `timestamp` | ISO 8601 | Creation time |
 
 ## 3. Conversation Lifecycle
 
-### 3.1 Creating a Conversation
+### 3.1 Create
 
 1. User selects a character and starts a new conversation.
 2. Backend creates a new conversation object with a UUID.
-3. If the character has a `first_mes`, it is added as the first `assistant` message (with macros resolved).
-4. The conversation is persisted to `data/conversations/{uuid}.json`.
+3. `title` is set to `"{character_name} — {YYYY-MM-DD HH:mm}"` (not editable in MVP).
+4. If the character has a `first_mes`, it becomes the first `assistant` message (with macros resolved).
+5. The conversation is persisted atomically to `data/conversations/{uuid}.json`.
 
-### 3.2 Sending a Message
+### 3.2 Send a Message
 
-1. User sends a message via `POST /api/chat/{conversation_id}/message`.
-2. Backend appends the user message to the conversation.
-3. Backend builds the full LLM prompt (see Section 5).
-4. Backend calls the **active text connector** with streaming enabled.
-5. Tokens are streamed to the client via SSE (`event: token`).
-6. When streaming completes, the full assistant message is saved to the conversation.
-7. A `event: done` SSE event is sent with the complete message.
+See § 6 for prompt construction and § 7 for image triggering. Summary:
 
-### 3.3 Deleting a Conversation
+1. User posts to `POST /api/chat/{conversation_id}/message`.
+2. Backend appends the user message in memory (not yet persisted).
+3. Backend builds the LLM prompt and calls the **active text connector** with streaming.
+4. As tokens stream, the backend forwards `token` SSE events to the client and scans the text for image markers (§ 7).
+5. When a complete marker is detected, the backend calls the **active image connector** in-process, emitting `image_start` → `image_complete`/`image_failed` events on the same SSE stream.
+6. When the LLM finishes, the backend persists the user message and the assistant message (with `images` populated) atomically, and emits `done`.
+7. On fatal error, `error` is emitted; **no partial content is saved**.
 
-1. User requests deletion via `DELETE /api/conversations/{conversation_id}`.
-2. Backend deletes the JSON file from disk.
-3. Associated images are **not** deleted (they may be referenced elsewhere or kept for history).
+### 3.3 Delete
+
+- `DELETE /api/conversations/{id}` removes the JSON file.
+- Referenced images are **not** deleted.
 
 ## 4. Conversation Storage
 
-- One JSON file per conversation in `data/conversations/`.
-- File name: `{uuid}.json`.
-- The entire conversation (all messages) is stored in a single file.
-- File is overwritten on each new message (simple but sufficient for single-user MVP).
-- No pagination of messages within a conversation for MVP.
-
-### Storage Limits (Informational)
-
-For MVP, there are no enforced limits. A typical conversation of 100 messages is approximately 50-100 KB in JSON, which is manageable.
+- One JSON file per conversation: `data/conversations/{uuid}.json`.
+- Entire conversation stored in a single file (no message pagination in MVP).
+- Writes are **atomic** (write to `{uuid}.json.tmp`, then `os.rename`). No partial files on crash.
 
 ## 5. Prompt Construction
 
-The chat service builds the prompt sent to the LLM. The structure follows a conventional roleplay chat format:
-
-### Prompt Structure
+### Structure
 
 ```
-┌─────────────────────────────────────────────┐
-│ SYSTEM MESSAGE                              │
-│ ┌─────────────────────────────────────────┐ │
-│ │ Character system prompt (or default)    │ │
-│ │ + Character description                 │ │
-│ │ + Character personality                 │ │
-│ │ + Scenario                              │ │
-│ │ + Example messages (if any)             │ │
-│ └─────────────────────────────────────────┘ │
-├─────────────────────────────────────────────┤
-│ CONVERSATION HISTORY                        │
-│ ┌─────────────────────────────────────────┐ │
-│ │ assistant: first_mes                    │ │
-│ │ user: message 1                         │ │
-│ │ assistant: response 1                   │ │
-│ │ user: message 2                         │ │
-│ │ ...                                     │ │
-│ └─────────────────────────────────────────┘ │
-├─────────────────────────────────────────────┤
-│ POST-HISTORY INSTRUCTIONS (if any)          │
-│ ┌─────────────────────────────────────────┐ │
-│ │ post_history_instructions as system msg │ │
-│ └─────────────────────────────────────────┘ │
-├─────────────────────────────────────────────┤
-│ LATEST USER MESSAGE                         │
-│ ┌─────────────────────────────────────────┐ │
-│ │ user: new message                       │ │
-│ └─────────────────────────────────────────┘ │
-└─────────────────────────────────────────────┘
+[ SYSTEM ]              system prompt + description + personality + scenario + example
+[ HISTORY ]             assistant/user turns in order, starting with first_mes
+[ POST-HISTORY ]        system message with post_history_instructions (if any)
+[ NEW USER MESSAGE ]
 ```
 
 ### Default System Prompt
 
-When a character does not specify a `system_prompt`, use this default:
+When the character's `data.system_prompt` is empty:
 
 ```
-You are {{char}}, a character in a roleplay conversation. Stay in character at all times. Write in a descriptive, immersive style. Respond naturally to what {{user}} says. Do not break character or mention that you are an AI.
+You are {{char}}, a character in a roleplay conversation. Stay in character at all
+times. Write in a descriptive, immersive style. Respond naturally to what {{user}}
+says. Do not break character or mention that you are an AI. When a visual moment
+would enrich the scene and the user requests it, emit an inline image marker (see
+formatting rules provided).
 ```
+
+The image-marker instruction (§ 7) is **always** appended to the effective system prompt, whether or not the character overrides it. The appended instruction is short and deterministic so the LLM produces parseable output.
 
 ### System Message Assembly
 
-The system message is assembled as follows (parts separated by `\n\n`):
+Parts are joined with `\n\n` in this order, skipping empty parts:
 
-1. **System prompt** (character's `system_prompt` or the default).
-2. **Description** — prefixed with `{{char}}'s description: ` if non-empty.
-3. **Personality** — prefixed with `{{char}}'s personality: ` if non-empty.
-4. **Scenario** — prefixed with `Scenario: ` if non-empty.
-5. **Example messages** — prefixed with `Example dialogue:\n` if non-empty.
+1. Effective system prompt (character's override if non-empty, else default) + image-marker instruction.
+2. `{{char}}'s description: <description>`
+3. `{{char}}'s personality: <personality>`
+4. `Scenario: <scenario>`
+5. `Example dialogue:\n<mes_example>`
 
-### Message Array Format (OpenAI API)
-
-The final messages array sent to the LLM:
+### Final Messages Array
 
 ```json
 [
@@ -153,123 +126,105 @@ The final messages array sent to the LLM:
 
 ### Macro Resolution
 
-Before building the prompt, all `{{char}}` and `{{user}}` macros in character fields and messages are replaced with actual names.
+Before building the prompt, all `{{char}}` and `{{user}}` macros in character fields and prior messages are replaced with actual names.
 
 ## 6. LLM Client (via Text Connector)
 
-The chat service uses the **active text connector** from the connector manager to communicate with the LLM backend. See [06 — Connector System](06-connector-system.md) for details on the connector interface.
-
-### Configuration
-
-Text connector configuration is stored in the connector instance (not in global config). Typical settings:
-
-| Setting | Description | Default |
-|---|---|---|
-| `llm.base_url` | Base URL of the LLM API | `http://localhost:11434/v1` |
-| `llm.model` | Model name to use | `llama3` |
-| `llm.api_key` | API key (optional, for OpenAI or authenticated backends) | `""` |
-| `llm.max_tokens` | Maximum tokens in the response | `1024` |
-| `llm.temperature` | Temperature for generation | `0.8` |
-| `llm.timeout` | Request timeout in seconds | `120` |
-
-### Request Format
-
-The text connector sends requests in the OpenAI-compatible format:
-
-```http
-POST {base_url}/chat/completions
-Authorization: Bearer {api_key}
-Content-Type: application/json
-
-{
-  "model": "{model}",
-  "messages": [...],
-  "stream": true,
-  "max_tokens": 1024,
-  "temperature": 0.8
-}
-```
+The chat service uses the active text connector; see [06 — Connector System](06-connector-system.md) for the interface and request/response format. MVP requires streaming (`stream: true`).
 
 ### Streaming Response Parsing
 
-The LLM API returns SSE with JSON chunks:
+The text connector yields tokens one at a time. The chat service:
+
+1. Maintains a rolling **scan buffer** for image-marker detection (§ 7).
+2. Forwards safe (non-marker) text to the client as `token` SSE events.
+3. Accumulates the full assistant content (markers stripped).
+4. On upstream completion, persists the conversation and emits `done`.
+
+## 7. Image Generation Trigger (LLM Marker)
+
+### Marker Format
+
+The assistant emits images by writing a marker inline in its response:
 
 ```
-data: {"choices": [{"delta": {"content": "token"}}]}
-data: {"choices": [{"delta": {}}], "finish_reason": "stop"}
-data: [DONE]
+[IMG: <image prompt>]
 ```
 
-The text connector:
-1. Reads each SSE line from the LLM.
-2. Extracts the `content` delta.
-3. Yields each token.
+- Single-line.
+- Brackets are literal `[` and `]`.
+- Square brackets may not appear inside the prompt.
+- One marker = one image.
+- Maximum of 3 markers per assistant message (MVP hard cap — further markers are ignored).
 
-The chat service:
-1. Receives tokens from the connector.
-2. Forwards each token to the client as an SSE event.
-3. Accumulates the full response.
-4. On completion, saves the full message and sends the `done` event.
+The appended system instruction for the LLM (verbatim):
 
-## 7. Image Generation Trigger
+> When the user explicitly requests a visual (e.g. "show me", "send a picture"), emit an inline marker `[IMG: <short English description>]`. Do NOT emit markers unless the user asked for one. Keep the description concrete and under 200 characters. Continue your narration normally after the marker.
 
-### MVP Approach
+### Detection
 
-For the MVP, image generation is **explicitly triggered by the user**, not automatically by the LLM. The user clicks a "Generate Image" button in the chat interface, which:
+The chat service runs a state machine over streamed tokens:
 
-1. Sends a `POST /api/chat/{conversation_id}/generate-image` request (protected by the session token — Tier 1).
-2. The backend validates the session token and builds the image prompt.
-3. The backend **internally** calls the active image connector using the internal token (Tier 2). The frontend never calls the image generation endpoint directly.
-4. The prompt is either:
-   - Manually entered by the user.
-   - Auto-generated from the last assistant message (using the character's `image_prompt_prefix` + a summary of the scene).
-5. The generated image URL is attached to the conversation and displayed inline.
+- Accumulates into a scan buffer.
+- Recognises the prefix `[IMG:` across token boundaries.
+- On match, buffers until `]` is seen, extracts the prompt, and emits nothing to the client for that span.
+- On `]`, triggers image generation (see below) and resumes forwarding.
 
-> **Why this flow?** The direct generation endpoint (`POST /api/generate/image`) is protected by the internal-only token (never in HTML). This prevents a frontend user from extracting the session token via browser dev tools and directly triggering image generation to burn API credits. Generation is always mediated by the backend through the chat-level endpoint. See [03 — Backend API](03-backend-api.md) § 2 for the two-tier token architecture.
+The literal marker text **never** reaches the frontend or the stored message.
 
-### Image in Conversation
+### Image Generation Call
 
-When an image is generated for a conversation, it is:
-1. Saved to `data/images/{uuid}.png`.
-2. A new `assistant` message is added (or the existing message is updated) with the image URL in the `images` array.
-3. The client receives an SSE event or polls the generation status to display the image.
+For each detected marker, the chat service:
 
-## 8. SSE Event Types
+1. Builds the full image prompt:
+   `{character.extensions.aubergeRP.image_prompt_prefix} + ", " + <marker prompt>`
+   (prefix is omitted if empty).
+2. Calls `connector_manager.get_active_image_connector().generate_image(prompt, negative_prompt=character.extensions.aubergeRP.negative_prompt)` — a plain Python function call, no HTTP self-call.
+3. On success: saves the bytes to `data/images/{SESSION_TOKEN}/{uuid}.png`, appends the URL to the assistant message's `images`, and emits `image_complete`.
+4. On failure: emits `image_failed` with the error detail. Chat continues.
 
-| Event | Data | Description |
-|---|---|---|
-| `token` | `{"content": "..."}` | A single token from the LLM response |
-| `done` | `{"message_id": "...", "full_content": "..."}` | Streaming complete, full message |
-| `error` | `{"detail": "..."}` | An error occurred during streaming |
-| `image_status` | `{"generation_id": "...", "status": "...", "progress": N}` | Image generation progress update |
-| `image_complete` | `{"generation_id": "...", "image_url": "..."}` | Image generation finished |
+Markers trigger generation **sequentially** within a single message (MVP). The text stream is not paused while waiting — image events interleave naturally on the SSE channel.
 
-## 9. Conversation Service API
-
-| Function | Description |
-|---|---|
-| `list_conversations(character_id=None)` | List conversations, optionally filtered |
-| `get_conversation(id)` | Get full conversation with messages |
-| `create_conversation(character_id)` | Create new conversation, add first_mes |
-| `delete_conversation(id)` | Delete conversation file |
-| `add_message(conversation_id, role, content, images=[])` | Append a message |
-| `get_messages_for_prompt(conversation_id)` | Get messages formatted for LLM prompt |
-
-## 10. Chat Service API
-
-| Function | Description |
-|---|---|
-| `build_prompt(character, conversation, user_message)` | Assemble the full prompt |
-| `stream_response(conversation_id, user_message)` | Send message, stream LLM response via SSE |
-| `resolve_macros(text, char_name, user_name)` | Replace {{char}} and {{user}} macros |
-
-## 11. Error Handling
+### Error Handling
 
 | Scenario | Behavior |
 |---|---|
-| LLM backend unreachable | Return SSE `error` event; conversation is preserved up to the last saved message |
-| LLM returns empty response | Return SSE `error` event with descriptive message |
-| LLM timeout | Return SSE `error` event; partial response is NOT saved |
-| No active text connector | Return 400 error: "No text connector configured" |
-| Invalid conversation ID | Return 404 |
-| Character deleted mid-conversation | Conversation remains accessible; character name shown from stored data |
+| No active image connector | Emit `image_failed` with `"No image connector configured"`. Strip the marker from the saved message. |
+| Image connector backend unreachable | Emit `image_failed`. Continue chat. |
+| Generation timeout | Emit `image_failed`. Continue chat. |
+
+## 8. SSE Event Types
+
+See [03 § 6](03-backend-api.md) for the canonical list of events emitted by `POST /api/chat/{id}/message`. Events are: `token`, `image_start`, `image_complete`, `image_failed`, `done`, `error`.
+
+## 9. Service APIs
+
+### Conversation Service
+
+| Function | Description |
+|---|---|
+| `list_conversations(character_id=None)` | List conversations |
+| `get_conversation(id)` | Full conversation |
+| `create_conversation(character_id)` | Create and add first_mes |
+| `delete_conversation(id)` | Delete conversation file |
+| `append_message(conversation_id, message)` | Append a message, atomic save |
+
+### Chat Service
+
+| Function | Description |
+|---|---|
+| `build_prompt(character, conversation, user_message)` | Assemble the LLM prompt |
+| `stream_response(conversation_id, user_message)` | Send + stream + image trigger (yields SSE events) |
+| `resolve_macros(text, char_name, user_name)` | Replace `{{char}}` and `{{user}}` |
+| `parse_image_markers(stream)` | State machine splitting tokens from `[IMG:...]` prompts |
+
+## 10. Error Handling (Chat)
+
+| Scenario | Behavior |
+|---|---|
+| LLM backend unreachable | SSE `error`; conversation preserved up to the previous message |
+| LLM returns empty response | SSE `error` with descriptive message; nothing saved |
+| LLM timeout | SSE `error`; nothing saved |
+| No active text connector | HTTP 400: `"No text connector configured"` (before opening SSE) |
+| Invalid conversation ID | HTTP 404 |
+| Character deleted mid-conversation | Conversation still accessible; character name shown from stored `character_name` |
