@@ -1,0 +1,50 @@
+Sprint 2 — Modèles Pydantic
+Implémenter tous les modèles dans models/ : character.py, conversation.py, chat.py, connector.py, config.py
+Pas de logique métier, juste la validation et la sérialisation
+Tests : instanciation, validation des champs requis, sérialisation JSON round-trip
+
+Sprint 3 — Système de connecteurs (core)
+Implémenter connectors/base.py (classes abstraites BaseConnector, TextConnector, ImageConnector)
+Implémenter connectors/openai_text.py (OpenAITextConnector — HTTP mocked)
+Implémenter connectors/openai_image.py (OpenAIImageConnector — HTTP mocked)
+Implémenter connectors/manager.py (ConnectorManager — CRUD + activation + lecture config.yaml)
+Tests : test_connector_manager.py, test_openai_text.py, test_openai_image.py (tout mocké httpx)
+
+Sprint 4 — Service personnages
+Implémenter services/character_service.py (CRUD fichiers JSON + import/export SillyTavern V1/V2 JSON + PNG)
+Implémenter le router routers/characters.py + montage dans main.py minimal
+Tests : test_character_service.py avec fixtures V1/V2, test_api_characters.py (TestClient FastAPI)
+
+Sprint 5 — Service conversations
+Implémenter services/conversation_service.py (CRUD + append_message atomique + résolution macros)
+Implémenter routers/conversations.py
+Tests : test_conversation_service.py — création, first_mes, suppression, persistence
+
+Sprint 6 — Service chat + SSE + trigger image
+Implémenter services/chat_service.py : build_prompt, resolve_macros, parse_image_markers (machine à états [IMG:...]), stream_response (SSE + déclenchement image)
+Implémenter routers/chat.py
+Tests : test_chat_service.py (prompt building, parsing markers edge cases), test_api_chat.py (SSE streaming mocké — tokens + image_start/complete/failed + done)
+
+Sprint 7 — Routers restants + application complète
+Implémenter routers/connectors.py, routers/config.py, routers/images.py, routers/health.py
+Finaliser main.py : montage tous les routers, servir frontend/ en static, startup (création dossiers data/)
+Tests : test_api_connectors.py, test_api_config.py
+
+Sprint 8 — Frontend Chat UI
+Créer frontend/index.html + frontend/js/api.js, chat.js, characters.js + frontend/css/main.css
+Vendor marked.min.js
+Tests : smoke test manuel (démarrer le serveur, charger la page) — pas de test automatisé JS
+
+Sprint 9 — Frontend Admin UI
+Créer frontend/admin/index.html + frontend/js/admin/connectors.js, admin/characters.js + frontend/css/admin.css
+Tests : idem smoke test manuel
+
+Règles à donner à chaque agent
+Implémente uniquement le sprint selon les specs dans docs/. 
+N'ajoute rien hors périmètre. À la fin, make test doit passer sans erreur. 
+Tous les tests doivent être dans tests/. Mocke les appels HTTP externes avec httpx ou pytest-asyncio. 
+N'utilise pas de base de données.
+
+
+
+L'ordre est strict jusqu'au sprint 3 (les sprints 4-7 peuvent se paralléliser partiellement si deux agents travaillent sur des fichiers disjoints, mais le sprint 3 est le prérequis dur de tout ce qui touche aux connecteurs).
