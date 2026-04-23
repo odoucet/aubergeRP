@@ -33,9 +33,9 @@ def _build_chunk(chunk_type: bytes, chunk_data: bytes) -> bytes:
     return length + chunk_type + chunk_data + crc
 
 
-def read_png_metadata(path: str | Path) -> dict[str, Any] | None:
-    """Read the 'chara' tEXt chunk from a PNG and return the decoded JSON, or None."""
-    data = Path(path).read_bytes()
+def read_png_metadata(path: str | Path | bytes) -> dict[str, Any] | None:
+    """Read the 'chara' tEXt chunk from a PNG (path or raw bytes) and return the decoded JSON, or None."""
+    data = path if isinstance(path, bytes) else Path(path).read_bytes()
     for chunk_type, chunk_data in _read_chunks(data):
         if chunk_type == b"tEXt":
             if b"\x00" in chunk_data:
