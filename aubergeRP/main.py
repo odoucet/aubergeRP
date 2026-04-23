@@ -9,6 +9,7 @@ from .config import get_config
 from .constants import SESSION_TOKEN
 from .routers import characters as characters_router
 from .routers import conversations as conversations_router
+from .routers import chat as chat_router
 
 
 def _init_data_dirs(data_dir: str) -> None:
@@ -32,6 +33,7 @@ def create_app() -> FastAPI:
 
     app.include_router(characters_router.router, prefix="/api")
     app.include_router(conversations_router.router, prefix="/api")
+    app.include_router(chat_router.router, prefix="/api")
 
     frontend = Path("frontend")
     if frontend.exists():

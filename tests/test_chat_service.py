@@ -1,0 +1,455 @@
+"""Tests for chat_service — ImageMarkerParser, build_prompt, stream_chat."""
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, AsyncIterator
+from unittest.mock import MagicMock
+
+import pytest
+
+from aubergeRP.models.character import CharacterCard, CharacterData
+from aubergeRP.models.conversation import Conversation
+from aubergeRP.services.character_service import CharacterService
+from aubergeRP.services.chat_service import (
+    ChatService,
+    ImageMarkerParser,
+    build_prompt,
+)
+from aubergeRP.services.conversation_service import ConversationService
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _now():
+    return datetime.now(timezone.utc)
+
+
+def _char(**overrides) -> CharacterCard:
+    base = dict(name="Elara", description="An elven ranger.")
+    base.update(overrides)
+    data = CharacterData(**base)
+    return CharacterCard(id="c1", has_avatar=False, created_at=_now(), updated_at=_now(), data=data)
+
+
+def _conv(char: CharacterCard, messages=None) -> Conversation:
+    return Conversation(
+        id="conv-1",
+        character_id=char.id,
+        character_name=char.data.name,
+        title=char.data.name,
+        messages=messages or [],
+        created_at=_now(),
+        updated_at=_now(),
+    )
+
+
+def make_services(tmp_path: Path):
+    char_svc = CharacterService(data_dir=tmp_path)
+    conv_svc = ConversationService(data_dir=tmp_path, character_service=char_svc)
+    return char_svc, conv_svc
+
+
+class _FakeText:
+    """Async generator connector that yields preset tokens."""
+    connector_type = "text"
+
+    def __init__(self, tokens: list[str]) -> None:
+        self._tokens = tokens
+
+    async def stream_chat_completion(self, messages, **kw) -> AsyncIterator[str]:
+        for t in self._tokens:
+            yield t
+
+    async def test_connection(self) -> dict:
+        return {"connected": True}
+
+
+class _FailText:
+    """Text connector that raises on stream."""
+    connector_type = "text"
+
+    async def stream_chat_completion(self, messages, **kw) -> AsyncIterator[str]:
+        raise RuntimeError("connection refused")
+        yield  # make it a generator
+
+    async def test_connection(self) -> dict:
+        return {}
+
+
+class _FakeImage:
+    """Image connector that returns fake bytes."""
+    connector_type = "image"
+
+    def __init__(self, img: bytes = b"PNG") -> None:
+        self._img = img
+
+    async def generate_image(self, prompt, **kw) -> bytes:
+        return self._img
+
+    async def test_connection(self) -> dict:
+        return {}
+
+
+class _FailImage:
+    connector_type = "image"
+
+    async def generate_image(self, prompt, **kw) -> bytes:
+        raise RuntimeError("image gen failed")
+
+    async def test_connection(self) -> dict:
+        return {}
+
+
+def _manager(text_conn=None, image_conn=None) -> MagicMock:
+    m = MagicMock()
+    m.get_active_text_connector.return_value = text_conn
+    m.get_active_image_connector.return_value = image_conn
+    return m
+
+
+def make_chat_service(tmp_path: Path, text_conn=None, image_conn=None) -> tuple:
+    char_svc, conv_svc = make_services(tmp_path)
+    svc = ChatService(
+        conversation_service=conv_svc,
+        character_service=char_svc,
+        connector_manager=_manager(text_conn, image_conn),
+        images_dir=tmp_path / "images",
+    )
+    return char_svc, conv_svc, svc
+
+
+async def collect(gen) -> list[dict[str, Any]]:
+    return [e async for e in gen]
+
+
+# ---------------------------------------------------------------------------
+# ImageMarkerParser — plain text
+# ---------------------------------------------------------------------------
+
+def test_parser_plain_text():
+    p = ImageMarkerParser()
+    events = p.feed("Hello world")
+    assert events == [{"type": "token", "text": "Hello world"}]
+
+
+def test_parser_empty_string():
+    p = ImageMarkerParser()
+    assert p.feed("") == []
+
+
+def test_parser_flush_clean():
+    p = ImageMarkerParser()
+    p.feed("some text")
+    assert p.flush() == []
+
+
+# ---------------------------------------------------------------------------
+# ImageMarkerParser — single marker
+# ---------------------------------------------------------------------------
+
+def test_parser_single_image():
+    p = ImageMarkerParser()
+    events = p.feed("[IMG:a dragon]")
+    assert events == [{"type": "image_trigger", "prompt": "a dragon"}]
+
+
+def test_parser_empty_prompt():
+    p = ImageMarkerParser()
+    events = p.feed("[IMG:]")
+    assert events == [{"type": "image_trigger", "prompt": ""}]
+
+
+def test_parser_text_before_image():
+    p = ImageMarkerParser()
+    events = p.feed("Look: [IMG:cat]")
+    assert events[0] == {"type": "token", "text": "Look: "}
+    assert events[1] == {"type": "image_trigger", "prompt": "cat"}
+
+
+def test_parser_text_after_image():
+    p = ImageMarkerParser()
+    events = p.feed("[IMG:cat] Done")
+    assert events[0] == {"type": "image_trigger", "prompt": "cat"}
+    assert events[1] == {"type": "token", "text": " Done"}
+
+
+def test_parser_multiple_images():
+    p = ImageMarkerParser()
+    events = p.feed("[IMG:cat][IMG:dog]")
+    assert len(events) == 2
+    assert events[0]["prompt"] == "cat"
+    assert events[1]["prompt"] == "dog"
+
+
+# ---------------------------------------------------------------------------
+# ImageMarkerParser — false starts / edge cases
+# ---------------------------------------------------------------------------
+
+def test_parser_false_bracket():
+    p = ImageMarkerParser()
+    events = p.feed("[not an image]")
+    text = "".join(e["text"] for e in events if e["type"] == "token")
+    assert text == "[not an image]"
+
+
+def test_parser_false_img_prefix():
+    p = ImageMarkerParser()
+    events = p.feed("[IMGUR:url]")
+    text = "".join(e["text"] for e in events if e["type"] == "token")
+    assert "[IMGU" in text or text == "[IMGUR:url]"
+    assert all(e["type"] == "token" for e in events)
+
+
+def test_parser_split_marker_across_chunks():
+    p = ImageMarkerParser()
+    e1 = p.feed("[IMG:")
+    assert e1 == []  # prefix matched but marker not closed
+    e2 = p.feed("a dragon]")
+    assert e2 == [{"type": "image_trigger", "prompt": "a dragon"}]
+
+
+def test_parser_split_prefix_across_chunks():
+    p = ImageMarkerParser()
+    e1 = p.feed("[IM")
+    assert e1 == []
+    e2 = p.feed("G:prompt]")
+    assert e2 == [{"type": "image_trigger", "prompt": "prompt"}]
+
+
+def test_parser_flush_unclosed_marker():
+    p = ImageMarkerParser()
+    p.feed("[IMG:unclosed")
+    events = p.flush()
+    text = "".join(e["text"] for e in events if e["type"] == "token")
+    assert "[IMG:unclosed" in text
+
+
+def test_parser_flush_partial_prefix():
+    p = ImageMarkerParser()
+    p.feed("[IM")
+    events = p.flush()
+    text = "".join(e["text"] for e in events if e["type"] == "token")
+    assert "[IM" in text
+
+
+def test_parser_text_then_image_then_text():
+    p = ImageMarkerParser()
+    events = p.feed("Before [IMG:x] After")
+    types = [e["type"] for e in events]
+    assert types == ["token", "image_trigger", "token"]
+    assert events[1]["prompt"] == "x"
+
+
+# ---------------------------------------------------------------------------
+# build_prompt
+# ---------------------------------------------------------------------------
+
+def test_build_prompt_has_system_with_description():
+    char = _char()
+    conv = _conv(char)
+    msgs = build_prompt(conv, char)
+    system = next(m for m in msgs if m["role"] == "system")
+    assert "An elven ranger." in system["content"]
+
+
+def test_build_prompt_includes_system_prompt():
+    char = _char(system_prompt="You are {{char}}.")
+    conv = _conv(char)
+    msgs = build_prompt(conv, char)
+    system = msgs[0]
+    assert "You are Elara." in system["content"]
+
+
+def test_build_prompt_includes_personality():
+    char = _char(personality="Brave and witty.")
+    conv = _conv(char)
+    msgs = build_prompt(conv, char)
+    system = next(m for m in msgs if m["role"] == "system")
+    assert "Brave and witty." in system["content"]
+
+
+def test_build_prompt_includes_scenario():
+    char = _char(scenario="In a dark tavern.")
+    conv = _conv(char)
+    msgs = build_prompt(conv, char)
+    system = next(m for m in msgs if m["role"] == "system")
+    assert "In a dark tavern." in system["content"]
+
+
+def test_build_prompt_no_system_when_empty():
+    char = _char(description="Desc")
+    # description is always set; check we still get system
+    conv = _conv(char)
+    msgs = build_prompt(conv, char)
+    assert any(m["role"] == "system" for m in msgs)
+
+
+def test_build_prompt_includes_history():
+    from aubergeRP.models.conversation import Message
+    char = _char()
+    msg = Message(id="m1", role="user", content="Hello!", images=[], timestamp=_now())
+    conv = _conv(char, messages=[msg])
+    msgs = build_prompt(conv, char)
+    user_msgs = [m for m in msgs if m["role"] == "user"]
+    assert any(m["content"] == "Hello!" for m in user_msgs)
+
+
+def test_build_prompt_mes_example_parsed():
+    char = _char(mes_example="<START>\n{{user}}: Hi!\n{{char}}: Hello, traveller!")
+    conv = _conv(char)
+    msgs = build_prompt(conv, char)
+    roles = [m["role"] for m in msgs]
+    assert "user" in roles
+    assert "assistant" in roles
+
+
+def test_build_prompt_post_history_instructions():
+    char = _char(post_history_instructions="Always reply as {{char}}.")
+    conv = _conv(char)
+    msgs = build_prompt(conv, char)
+    last = msgs[-1]
+    assert last["role"] == "system"
+    assert "Always reply as Elara." in last["content"]
+
+
+def test_build_prompt_resolves_user_macro():
+    char = _char(system_prompt="Speak to {{user}}.")
+    conv = _conv(char)
+    msgs = build_prompt(conv, char, user_name="Bob")
+    system = msgs[0]
+    assert "Bob" in system["content"]
+
+
+# ---------------------------------------------------------------------------
+# stream_chat — no connector
+# ---------------------------------------------------------------------------
+
+async def test_stream_no_text_connector(tmp_path):
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, text_conn=None)
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.stream_chat(conv.id, "Hi"))
+    assert events[0]["type"] == "error"
+
+
+async def test_stream_invalid_conversation(tmp_path):
+    _, _, svc = make_chat_service(tmp_path, text_conn=_FakeText(["Hi"]))
+    events = await collect(svc.stream_chat("nonexistent", "Hi"))
+    assert events[0]["type"] == "error"
+
+
+# ---------------------------------------------------------------------------
+# stream_chat — token streaming
+# ---------------------------------------------------------------------------
+
+async def test_stream_yields_tokens(tmp_path):
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, text_conn=_FakeText(["Hello", " world"]))
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.stream_chat(conv.id, "Hi"))
+    tokens = [e for e in events if e["type"] == "token"]
+    assert len(tokens) == 2
+    assert tokens[0]["content"] == "Hello"
+    assert tokens[1]["content"] == " world"
+
+
+async def test_stream_ends_with_done(tmp_path):
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, text_conn=_FakeText(["Hi"]))
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.stream_chat(conv.id, "Hello"))
+    assert events[-1]["type"] == "done"
+    assert events[-1]["full_content"] == "Hi"
+
+
+async def test_stream_saves_assistant_message(tmp_path):
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, text_conn=_FakeText(["Hello"]))
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    await collect(svc.stream_chat(conv.id, "Hi"))
+    reloaded = conv_svc.get_conversation(conv.id)
+    roles = [m.role for m in reloaded.messages]
+    assert "user" in roles
+    assert "assistant" in roles
+
+
+async def test_stream_connector_error(tmp_path):
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, text_conn=_FailText())
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.stream_chat(conv.id, "Hi"))
+    assert any(e["type"] == "error" for e in events)
+
+
+# ---------------------------------------------------------------------------
+# stream_chat — image trigger
+# ---------------------------------------------------------------------------
+
+async def test_stream_image_trigger_emits_start(tmp_path):
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=_FakeText(["[IMG:a cat]"]),
+        image_conn=_FakeImage(),
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.stream_chat(conv.id, "Hi"))
+    assert any(e["type"] == "image_start" for e in events)
+    assert any(e["type"] == "image_complete" for e in events)
+
+
+async def test_stream_image_trigger_url_in_done(tmp_path):
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=_FakeText(["[IMG:a cat]"]),
+        image_conn=_FakeImage(),
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.stream_chat(conv.id, "Hi"))
+    done = next(e for e in events if e["type"] == "done")
+    assert len(done["images"]) == 1
+    assert done["images"][0].startswith("/api/images/")
+
+
+async def test_stream_image_no_connector(tmp_path):
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=_FakeText(["[IMG:cat]"]),
+        image_conn=None,
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.stream_chat(conv.id, "Hi"))
+    assert any(e["type"] == "image_failed" for e in events)
+    assert events[-1]["type"] == "done"
+
+
+async def test_stream_image_connector_failure(tmp_path):
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=_FakeText(["[IMG:cat]"]),
+        image_conn=_FailImage(),
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.stream_chat(conv.id, "Hi"))
+    failed = next(e for e in events if e["type"] == "image_failed")
+    assert "image gen failed" in failed["detail"]
+
+
+async def test_stream_image_saves_to_disk(tmp_path):
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=_FakeText(["[IMG:x]"]),
+        image_conn=_FakeImage(b"PNGDATA"),
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.stream_chat(conv.id, "Hi"))
+    complete = next(e for e in events if e["type"] == "image_complete")
+    filename = complete["image_url"].split("/")[-1]
+    assert (tmp_path / "images" / filename).read_bytes() == b"PNGDATA"
