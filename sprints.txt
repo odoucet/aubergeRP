@@ -1,0 +1,128 @@
+AubergeRP — Post-MVP Sprint Backlog
+=====================================
+Generated after project audit. All core MVP features are implemented and tests pass.
+Items below are organized by priority. Each sprint is estimated at ~1 week.
+
+--------------------------------------------------------------------------------
+SPRINT 10 — Admin UI: Configuration Panel
+Priority: HIGH (completes the admin interface described in docs/08-admin-interface.md)
+--------------------------------------------------------------------------------
+[ ] Admin UI: Add a "Configuration" tab/section (GET/PUT /api/config)
+    - Display current config in a form (API base URL, API key field masked, model names)
+    - Save button calls PUT /api/config
+    - Show success/error toast
+[ ] Admin UI: Show connector "connected" status badge using health endpoint
+    - Poll GET /api/health and display connected/disconnected icon per connector
+    - Auto-refresh every 30s
+
+--------------------------------------------------------------------------------
+SPRINT 11 — UX: Chat Polish
+Priority: HIGH (front-end UX gaps identified in docs/07-frontend-chat-ui.md)
+--------------------------------------------------------------------------------
+[ ] Retry button after LLM/image error events
+    - Show "Retry" button when an error event is received during streaming
+    - Resends the last user message
+[ ] Lightbox / image expand on click
+    - Clicking an image in the chat should show it full-screen (lightbox overlay)
+    - Close with Escape or click outside
+[ ] Mobile sidebar: close sidebar when selecting a conversation (< 768px)
+    - The hamburger toggle exists; add close-on-select to conversation click handler
+[ ] Image copy-to-clipboard button on hover
+    - Small copy icon appears on hover over generated images
+
+--------------------------------------------------------------------------------
+SPRINT 12 — Backend: Robustness & API Spec Compliance
+Priority: MEDIUM
+--------------------------------------------------------------------------------
+[ ] Config PUT partial update semantics
+    - doc §9 implies per-field PATCH semantics for sub-objects (connectors, paths)
+    - Currently PUT replaces entire config; add PATCH /api/config with partial merge
+[ ] Health endpoint: "connected" field should default to null before first test
+    - Currently may return False before any test_connection call is made
+    - Should be null/undefined/omitted until a test is performed
+[ ] _last_test_results reset on restart
+    - Connector health results are lost on server restart
+    - Persist last-known status to disk (lightweight JSON sidecar in data/)
+[ ] POST /api/connectors/{id}/activate: auto-activate first connector of type
+    - doc §9 "First-Time Setup" step 4 implies this behaviour
+    - If no active connector of a type exists, activating any connector of that type
+      should automatically make it the active one
+
+--------------------------------------------------------------------------------
+SPRINT 13 — Multi-User Foundation
+Priority: MEDIUM (from POST-MVP.md §1)
+--------------------------------------------------------------------------------
+[ ] Per-user session tokens (cookie or localStorage UUID)
+    - Replace hardcoded SESSION_TOKEN constant with per-client token
+    - Images stored under data/images/{session-token}/ (no layout change)
+[ ] Per-user conversation ownership
+    - Add owner field to Conversation model
+    - Filter GET /api/conversations by caller's session token
+
+--------------------------------------------------------------------------------
+SPRINT 14 — ComfyUI Connector
+Priority: MEDIUM (from POST-MVP.md §2)
+--------------------------------------------------------------------------------
+[ ] ComfyUI image connector implementation
+    - POST /prompt, GET /history/{prompt_id}, GET /view?filename=... support
+    - WebSocket progress monitoring
+    - Workflow templates in data/comfyui_workflows/ (default + user-customizable)
+    - Add websockets (>=12.0) to requirements
+[ ] ComfyUI connector admin UI
+    - Workflow selector dropdown in admin connector config
+    - Progress bar in chat during image generation
+
+--------------------------------------------------------------------------------
+SPRINT 15 — Infrastructure
+Priority: LOW-MEDIUM (from POST-MVP.md §3)
+--------------------------------------------------------------------------------
+[ ] Docker + docker-compose packaging
+    - Dockerfile (Python slim, non-root user)
+    - docker-compose.yml with volume mounts for data/ and config.yaml
+[ ] Environment-variable overrides for config
+    - AUBERGE_DATA_DIR, AUBERGE_API_KEY, etc. override config.yaml values
+[ ] Automatic media cleanup
+    - Admin UI button: "Clean up images older than N days"
+    - Background scheduler option (configurable, default disabled)
+[ ] Database storage
+    - Replace JSON flat-file storage with SQLite via SQLModel or similar
+    - Migration path from JSON files
+
+--------------------------------------------------------------------------------
+SPRINT 16 — AI Quality
+Priority: LOW (from POST-MVP.md §4 & §5)
+--------------------------------------------------------------------------------
+[ ] Automatic conversation summarization
+    - Compress history when approaching token limit
+    - Configurable threshold (default: 75% of model context window)
+[ ] OOC (out-of-character) protection
+    - Detect attempts to break character and add system-level guardrails
+[ ] Manual "Generate Image" button
+    - UI button to explicitly trigger image generation without LLM marker
+[ ] Tool-calling / structured output for image triggers
+    - Replace [IMG: …] marker with native structured outputs on supporting backends
+
+--------------------------------------------------------------------------------
+SPRINT 17 — Admin & Customization
+Priority: LOW (from POST-MVP.md §6)
+--------------------------------------------------------------------------------
+[ ] Character card marketplace browser
+    - Search/import community character cards from a hosted index
+[ ] GUI customization
+    - Custom CSS injection via admin UI
+    - Custom header/footer HTML
+[ ] Plugin system skeleton
+    - Define plugin interface for third-party connectors and hooks
+
+--------------------------------------------------------------------------------
+SPRINT 18 — Documentation & Deployment
+Priority: LOW (from POST-MVP.md §7)
+--------------------------------------------------------------------------------
+[ ] End-user installation guide
+    - Step-by-step guide for Linux, macOS, Windows (including Docker path)
+[ ] Auto-generated API reference
+    - Export OpenAPI spec as browsable HTML (redoc or swagger-ui static build)
+[ ] CORS auto-detection
+    - Detect Host header and adjust allowed origins automatically
+[ ] Sentry error tracking integration
+    - Optional DSN config field; errors reported to Sentry when configured
