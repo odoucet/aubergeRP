@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>aubergeRP</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+
+<!-- Header -->
+<header id="header" role="banner">
+  <button class="hamburger" id="hamburger-btn" aria-label="Toggle sidebar" aria-expanded="false">☰</button>
+  <div class="logo">aubergeRP</div>
+  <a href="/admin/" class="admin-link" aria-label="Admin panel">Admin</a>
+</header>
+
+<!-- Main layout -->
+<div id="main">
+
+  <!-- Sidebar -->
+  <nav id="sidebar" aria-label="Characters and conversations">
+
+    <!-- Characters section -->
+    <section class="sidebar-section" aria-labelledby="chars-heading">
+      <h2 id="chars-heading">Characters</h2>
+      <ul class="sidebar-list" id="char-list" role="listbox" aria-label="Character list"></ul>
+    </section>
+
+    <!-- Conversations section -->
+    <section class="sidebar-section" aria-labelledby="convs-heading">
+      <h2 id="convs-heading">Conversations</h2>
+      <ul class="sidebar-list" id="conv-list" role="listbox" aria-label="Conversation list"></ul>
+      <button class="new-conv-btn" id="new-conv-btn" aria-label="New conversation">
+        ＋ New Conversation
+      </button>
+    </section>
+
+  </nav>
+
+  <!-- Sidebar overlay (mobile) -->
+  <div id="sidebar-overlay" aria-hidden="true"></div>
+
+  <!-- Chat area -->
+  <main id="chat-area" aria-label="Chat">
+
+    <!-- Empty state (shown when no character is selected) -->
+    <div id="empty-state" role="status">
+      <p>No character selected.</p>
+      <p>Select a character from the sidebar, or
+        <a href="/admin/">import characters in the Admin panel</a>.
+      </p>
+    </div>
+
+    <!-- Character header (hidden until character selected) -->
+    <div id="char-header" style="display:none" role="region" aria-label="Active character">
+      <img class="char-avatar" src="" alt="">
+      <span class="char-name"></span>
+    </div>
+
+    <!-- Message list (hidden until character selected) -->
+    <section id="message-list" style="display:none" aria-label="Messages" aria-live="polite"></section>
+
+    <!-- Input area (hidden until character selected) -->
+    <div id="input-area" style="display:none" role="form" aria-label="Send message">
+      <textarea
+        id="msg-input"
+        rows="1"
+        placeholder="Type a message… (Enter to send, Shift+Enter for new line)"
+        aria-label="Message input"
+      ></textarea>
+      <button id="send-btn" aria-label="Send message">Send</button>
+    </div>
+
+  </main>
+</div>
+
+<!-- Status bar -->
+<footer id="statusbar" role="contentinfo" aria-label="Connector status">
+  <div class="status-item" id="status-text">
+    <div class="status-dot na" aria-hidden="true"></div>
+    <span class="status-label">Text —</span>
+  </div>
+  <div class="status-item" id="status-image">
+    <div class="status-dot na" aria-hidden="true"></div>
+    <span class="status-label">Image —</span>
+  </div>
+  <div class="status-item" id="status-video">
+    <div class="status-dot na" aria-hidden="true"></div>
+    <span class="status-label">Video —</span>
+  </div>
+  <div class="status-item" id="status-audio">
+    <div class="status-dot na" aria-hidden="true"></div>
+    <span class="status-label">Audio —</span>
+  </div>
+</footer>
+
+<!-- Toast -->
+<div id="toast" role="alert" aria-live="assertive"></div>
+
+<!-- Vendored libraries -->
+<script src="/vendor/marked.min.js"></script>
+
+<!-- App modules -->
+<script type="module">
+  import { initCharacters, loadCharacters, setSelectedCharacter } from '/js/characters.js';
+  import { initChat, onCharacterSelected, showToast } from '/js/chat.js';
+
+  // Hamburger toggle (responsive sidebar)
+  const hamburgerBtn = document.getElementById('hamburger-btn');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+
+  function toggleSidebar(force) {
+    const open = force !== undefined ? force : !sidebar.classList.contains('open');
+    sidebar.classList.toggle('open', open);
+    hamburgerBtn.setAttribute('aria-expanded', String(open));
+  }
+
+  hamburgerBtn.addEventListener('click', () => toggleSidebar());
+  overlay.addEventListener('click', () => toggleSidebar(false));
+
+  // Close sidebar on mobile when a character is clicked
+  function onCharSelected(character) {
+    if (window.innerWidth < 1024) toggleSidebar(false);
+    setSelectedCharacter(character.id);
+    onCharacterSelected(character).catch(err => showToast(err.message));
+  }
+
+  // Init
+  initCharacters(onCharSelected);
+  initChat();
+
+  loadCharacters().catch(err => showToast('Failed to load characters: ' + err.message));
+</script>
+
+</body>
+</html>
