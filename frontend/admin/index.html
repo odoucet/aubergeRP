@@ -410,6 +410,7 @@
       // Silently ignore polling errors; badges keep their last-known state
     }
   }
+  pollHealth();
   setInterval(pollHealth, 30000);
 
   // ── Initial section ───────────────────────────────────────────────────

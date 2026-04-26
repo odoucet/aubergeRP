@@ -434,7 +434,8 @@ async function handleSave() {
  * @param {Object} healthData - response from GET /api/health/
  */
 export function applyHealthBadges(healthData) {
-  const connectors = healthData?.connectors || {};
+  const connectors = healthData?.connectors;
+  if (!connectors || typeof connectors !== 'object' || Array.isArray(connectors)) return;
   Object.values(connectors).forEach(c => {
     if (!c || !c.id) return;
     const el = document.getElementById(`conn-status-${c.id}`);
