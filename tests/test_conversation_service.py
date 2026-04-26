@@ -101,7 +101,7 @@ def test_create_title_is_character_name(tmp_path):
     char_svc, conv_svc = make_services(tmp_path)
     char = make_character(char_svc)
     conv = conv_svc.create_conversation(char.id)
-    assert conv.title == "Elara"
+    assert conv.title.startswith("Elara — ")
 
 
 # ---------------------------------------------------------------------------

@@ -59,7 +59,7 @@ export function deleteConversation(id) {
 // ── Chat (returns a raw Response for SSE streaming) ──────────────────────────
 
 export async function sendMessage(conversationId, content) {
-  const res = await fetch(`/api/chat/${conversationId}`, {
+  const res = await fetch(`/api/chat/${conversationId}/message`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content }),

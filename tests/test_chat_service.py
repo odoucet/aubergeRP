@@ -301,9 +301,11 @@ def test_build_prompt_mes_example_parsed():
     char = _char(mes_example="<START>\n{{user}}: Hi!\n{{char}}: Hello, traveller!")
     conv = _conv(char)
     msgs = build_prompt(conv, char)
-    roles = [m["role"] for m in msgs]
-    assert "user" in roles
-    assert "assistant" in roles
+    # mes_example is now included in the system message, not as separate roles
+    system = next(m for m in msgs if m["role"] == "system")
+    assert "Example dialogue" in system["content"]
+    assert "Hi!" in system["content"]
+    assert "Hello, traveller!" in system["content"]
 
 
 def test_build_prompt_post_history_instructions():

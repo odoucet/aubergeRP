@@ -70,11 +70,12 @@ class ConversationService:
                 content=content,
                 timestamp=now,
             ))
+        title = f"{char.data.name} — {now.strftime('%Y-%m-%d %H:%M')}"
         conv = Conversation(
             id=str(uuid.uuid4()),
             character_id=character_id,
             character_name=char.data.name,
-            title=char.data.name,
+            title=title,
             messages=messages,
             created_at=now,
             updated_at=now,

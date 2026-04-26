@@ -12,6 +12,7 @@ from ..services.character_service import CharacterService
 from ..services.conversation_service import ConversationService, resolve_macros
 
 _PREFIX = "[IMG:"
+_MAX_IMAGE_MARKERS = 3
 
 
 class ImageMarkerParser:
@@ -21,6 +22,7 @@ class ImageMarkerParser:
         self._state = "text"   # "text" | "prefix" | "marker"
         self._buf = ""         # partial prefix buffer
         self._marker_buf = ""  # content inside [IMG:...]
+        self._marker_count = 0  # hard cap: max 3 per message
 
     def feed(self, chunk: str) -> list[dict[str, Any]]:
         events: list[dict[str, Any]] = []
@@ -52,7 +54,12 @@ class ImageMarkerParser:
 
             elif self._state == "marker":
                 if char == "]":
-                    events.append({"type": "image_trigger", "prompt": self._marker_buf})
+                    if self._marker_count < _MAX_IMAGE_MARKERS:
+                        self._marker_count += 1
+                        events.append({"type": "image_trigger", "prompt": self._marker_buf})
+                    else:
+                        # Cap exceeded: emit the marker text as a plain token
+                        events.append({"type": "token", "text": _PREFIX + self._marker_buf + "]"})
                     self._marker_buf = ""
                     self._state = "text"
                 else:
@@ -75,6 +82,22 @@ class ImageMarkerParser:
         return events
 
 
+_DEFAULT_SYSTEM_PROMPT = (
+    "You are {{char}}, a character in a roleplay conversation. Stay in character at all "
+    "times. Write in a descriptive, immersive style. Respond naturally to what {{user}} "
+    "says. Do not break character or mention that you are an AI. When a visual moment "
+    "would enrich the scene and the user requests it, emit an inline image marker (see "
+    "formatting rules provided)."
+)
+
+_IMAGE_MARKER_INSTRUCTION = (
+    "When the user explicitly requests a visual (e.g. \"show me\", \"send a picture\"), "
+    "emit an inline marker `[IMG: <short English description>]`. Do NOT emit markers "
+    "unless the user asked for one. Keep the description concrete and under 200 characters. "
+    "Continue your narration normally after the marker."
+)
+
+
 def build_prompt(
     conversation: Conversation,
     char: CharacterCard,
@@ -83,37 +106,19 @@ def build_prompt(
     messages: list[dict[str, str]] = []
 
     system_parts: list[str] = []
-    if char.data.system_prompt:
-        system_parts.append(resolve_macros(char.data.system_prompt, char.data.name, user_name))
-    desc_lines: list[str] = []
+    base_prompt = char.data.system_prompt if char.data.system_prompt else _DEFAULT_SYSTEM_PROMPT
+    system_parts.append(resolve_macros(base_prompt, char.data.name, user_name))
+    # Always append the image-marker instruction
+    system_parts.append(_IMAGE_MARKER_INSTRUCTION)
     if char.data.description:
-        desc_lines.append(char.data.description)
+        system_parts.append(f"{char.data.name}'s description: {resolve_macros(char.data.description, char.data.name, user_name)}")
     if char.data.personality:
-        desc_lines.append(f"Personality: {char.data.personality}")
+        system_parts.append(f"{char.data.name}'s personality: {resolve_macros(char.data.personality, char.data.name, user_name)}")
     if char.data.scenario:
-        desc_lines.append(f"Scenario: {char.data.scenario}")
-    if desc_lines:
-        system_parts.append("\n".join(desc_lines))
-    if system_parts:
-        messages.append({"role": "system", "content": "\n\n".join(system_parts)})
-
+        system_parts.append(f"Scenario: {resolve_macros(char.data.scenario, char.data.name, user_name)}")
     if char.data.mes_example:
-        for line in char.data.mes_example.splitlines():
-            line = line.strip()
-            if not line or line == "<START>":
-                continue
-            if line.startswith("{{user}}:"):
-                content = line[len("{{user}}:"):].strip()
-                messages.append({
-                    "role": "user",
-                    "content": resolve_macros(content, char.data.name, user_name),
-                })
-            elif line.startswith("{{char}}:"):
-                content = line[len("{{char}}:"):].strip()
-                messages.append({
-                    "role": "assistant",
-                    "content": resolve_macros(content, char.data.name, user_name),
-                })
+        system_parts.append(f"Example dialogue:\n{resolve_macros(char.data.mes_example, char.data.name, user_name)}")
+    messages.append({"role": "system", "content": "\n\n".join(system_parts)})
 
     for msg in conversation.messages:
         messages.append({"role": msg.role, "content": msg.content})

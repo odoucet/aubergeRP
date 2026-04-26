@@ -32,7 +32,7 @@ def get_chat_service() -> ChatService:
     )
 
 
-@router.post("/{conversation_id}")
+@router.post("/{conversation_id}/message")
 async def chat(
     conversation_id: str,
     body: ChatMessageRequest,

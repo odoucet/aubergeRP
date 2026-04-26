@@ -44,25 +44,25 @@ def _make_client(events: list[dict[str, Any]]) -> TestClient:
 
 def test_chat_returns_200():
     client = _make_client([{"type": "done", "message_id": "m1", "full_content": "", "images": []}])
-    resp = client.post("/api/chat/conv-1", json={"content": "Hello"})
+    resp = client.post("/api/chat/conv-1/message", json={"content": "Hello"})
     assert resp.status_code == 200
 
 
 def test_chat_content_type_is_event_stream():
     client = _make_client([{"type": "done", "message_id": "m1", "full_content": "", "images": []}])
-    resp = client.post("/api/chat/conv-1", json={"content": "Hello"})
+    resp = client.post("/api/chat/conv-1/message", json={"content": "Hello"})
     assert "text/event-stream" in resp.headers["content-type"]
 
 
 def test_chat_missing_content_is_422():
     client = _make_client([])
-    resp = client.post("/api/chat/conv-1", json={})
+    resp = client.post("/api/chat/conv-1/message", json={})
     assert resp.status_code == 422
 
 
 def test_chat_empty_content_is_422():
     client = _make_client([])
-    resp = client.post("/api/chat/conv-1", json={"content": ""})
+    resp = client.post("/api/chat/conv-1/message", json={"content": ""})
     assert resp.status_code == 422
 
 
@@ -76,7 +76,7 @@ def test_chat_token_events():
         {"type": "token", "content": " world"},
         {"type": "done", "message_id": "m1", "full_content": "Hello world", "images": []},
     ])
-    resp = client.post("/api/chat/conv-1", json={"content": "Hi"})
+    resp = client.post("/api/chat/conv-1/message", json={"content": "Hi"})
     events = parse_sse(resp.text)
     tokens = [e for e in events if e["type"] == "token"]
     assert len(tokens) == 2
@@ -88,7 +88,7 @@ def test_chat_done_event_shape():
     client = _make_client([
         {"type": "done", "message_id": "msg-42", "full_content": "Hi", "images": []},
     ])
-    resp = client.post("/api/chat/conv-1", json={"content": "Hello"})
+    resp = client.post("/api/chat/conv-1/message", json={"content": "Hello"})
     events = parse_sse(resp.text)
     done = events[-1]
     assert done["type"] == "done"
@@ -107,7 +107,7 @@ def test_chat_image_start_event():
         {"type": "image_complete", "generation_id": "gen-1", "image_url": "/api/images/0/cat.png"},
         {"type": "done", "message_id": "m1", "full_content": "", "images": ["/api/images/0/cat.png"]},
     ])
-    resp = client.post("/api/chat/conv-1", json={"content": "draw"})
+    resp = client.post("/api/chat/conv-1/message", json={"content": "draw"})
     events = parse_sse(resp.text)
     start = next(e for e in events if e["type"] == "image_start")
     assert start["prompt"] == "a cat"
@@ -120,7 +120,7 @@ def test_chat_image_complete_event():
         {"type": "image_complete", "generation_id": "gen-1", "image_url": "/api/images/0/x.png"},
         {"type": "done", "message_id": "m1", "full_content": "", "images": ["/api/images/0/x.png"]},
     ])
-    resp = client.post("/api/chat/conv-1", json={"content": "draw"})
+    resp = client.post("/api/chat/conv-1/message", json={"content": "draw"})
     events = parse_sse(resp.text)
     complete = next(e for e in events if e["type"] == "image_complete")
     assert complete["image_url"] == "/api/images/0/x.png"
@@ -133,7 +133,7 @@ def test_chat_image_failed_event():
         {"type": "image_failed", "generation_id": "gen-1", "detail": "timeout"},
         {"type": "done", "message_id": "m1", "full_content": "", "images": []},
     ])
-    resp = client.post("/api/chat/conv-1", json={"content": "draw"})
+    resp = client.post("/api/chat/conv-1/message", json={"content": "draw"})
     events = parse_sse(resp.text)
     failed = next(e for e in events if e["type"] == "image_failed")
     assert failed["detail"] == "timeout"
@@ -144,7 +144,7 @@ def test_chat_done_includes_image_urls():
         {"type": "image_complete", "generation_id": "g1", "image_url": "/api/images/0/a.png"},
         {"type": "done", "message_id": "m1", "full_content": "", "images": ["/api/images/0/a.png"]},
     ])
-    resp = client.post("/api/chat/conv-1", json={"content": "Hi"})
+    resp = client.post("/api/chat/conv-1/message", json={"content": "Hi"})
     events = parse_sse(resp.text)
     done = next(e for e in events if e["type"] == "done")
     assert "/api/images/0/a.png" in done["images"]
@@ -158,7 +158,7 @@ def test_chat_error_event():
     client = _make_client([
         {"type": "error", "detail": "No active text connector configured"},
     ])
-    resp = client.post("/api/chat/conv-1", json={"content": "Hi"})
+    resp = client.post("/api/chat/conv-1/message", json={"content": "Hi"})
     assert resp.status_code == 200  # SSE always 200
     events = parse_sse(resp.text)
     error = next(e for e in events if e["type"] == "error")
@@ -174,7 +174,7 @@ def test_each_event_is_data_prefixed():
         {"type": "token", "content": "Hi"},
         {"type": "done", "message_id": "m1", "full_content": "Hi", "images": []},
     ])
-    resp = client.post("/api/chat/conv-1", json={"content": "Hello"})
+    resp = client.post("/api/chat/conv-1/message", json={"content": "Hello"})
     for line in resp.text.splitlines():
         line = line.strip()
         if line:
@@ -186,7 +186,7 @@ def test_events_are_valid_json():
         {"type": "token", "content": "Test"},
         {"type": "done", "message_id": "m1", "full_content": "Test", "images": []},
     ])
-    resp = client.post("/api/chat/conv-1", json={"content": "Hello"})
+    resp = client.post("/api/chat/conv-1/message", json={"content": "Hello"})
     events = parse_sse(resp.text)
     assert len(events) == 2
     for e in events:
