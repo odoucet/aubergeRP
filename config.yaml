@@ -1,0 +1,23 @@
+# aubergeRP Configuration
+# Copy this file to config.yaml. All settings can be changed via the Admin UI.
+
+app:
+  # Host and port for the aubergeRP server
+  host: "0.0.0.0"
+  port: 8000
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  log_level: "INFO"
+  # Data directory (relative to project root or absolute path)
+  data_dir: "data"
+
+# Active connector IDs. The Admin UI writes these.
+# Leave empty on first start.
+active_connectors:
+  text: ""
+  image: ""
+  # video: ""   # post-MVP
+  # audio: ""   # post-MVP
+
+user:
+  # Display name for the user in chat (used for {{user}} macro)
+  name: "User"

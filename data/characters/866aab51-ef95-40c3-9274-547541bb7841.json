@@ -1,0 +1,32 @@
+{
+  "id": "866aab51-ef95-40c3-9274-547541bb7841",
+  "has_avatar": false,
+  "created_at": "2026-04-26T22:39:29.873922Z",
+  "updated_at": "2026-04-26T22:39:29.873922Z",
+  "spec": "chara_card_v2",
+  "spec_version": "2.0",
+  "data": {
+    "name": "TestBot",
+    "description": "A test character created by the autotest robot.",
+    "personality": "",
+    "first_mes": "",
+    "mes_example": "",
+    "scenario": "",
+    "system_prompt": "",
+    "post_history_instructions": "",
+    "creator": "",
+    "creator_notes": "",
+    "character_version": "",
+    "tags": [],
+    "extensions": {
+      "auberge": {
+        "image_prompt_prefix": "",
+        "negative_prompt": ""
+      },
+      "aubergeRP": {
+        "image_prompt_prefix": "",
+        "negative_prompt": ""
+      }
+    }
+  }
+}
