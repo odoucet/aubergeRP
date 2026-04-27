@@ -37,12 +37,11 @@ def read_png_metadata(path: str | Path | bytes) -> dict[str, Any] | None:
     """Read the 'chara' tEXt chunk from a PNG (path or raw bytes) and return the decoded JSON, or None."""
     data = path if isinstance(path, bytes) else Path(path).read_bytes()
     for chunk_type, chunk_data in _read_chunks(data):
-        if chunk_type == b"tEXt":
-            if b"\x00" in chunk_data:
-                key, _, value = chunk_data.partition(b"\x00")
-                if key.decode("latin-1") == _CHARA_KEY:
-                    decoded = base64.b64decode(value).decode("utf-8")
-                    return json.loads(decoded)  # type: ignore[no-any-return]
+        if chunk_type == b"tEXt" and b"\x00" in chunk_data:
+            key, _, value = chunk_data.partition(b"\x00")
+            if key.decode("latin-1") == _CHARA_KEY:
+                decoded = base64.b64decode(value).decode("utf-8")
+                return json.loads(decoded)  # type: ignore[no-any-return]
     return None
 
 

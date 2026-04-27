@@ -158,7 +158,7 @@ def test_init_sentry_does_not_raise_when_sentry_missing():
 # ===========================================================================
 
 def test_config_has_sentry_dsn_field():
-    cfg = load_config.__wrapped__(Path("/nonexistent")) if hasattr(load_config, "__wrapped__") else load_config()
+    load_config.__wrapped__(Path("/nonexistent")) if hasattr(load_config, "__wrapped__") else load_config()
     # Just check the field exists on AppConfig
     from aubergeRP.config import AppConfig
     ac = AppConfig()

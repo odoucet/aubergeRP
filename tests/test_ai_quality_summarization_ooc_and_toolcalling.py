@@ -332,7 +332,7 @@ async def test_chat_service_summarization_triggered(tmp_path):
     char = char_svc.create_character(CharacterData(name="X", description="Y"))
     conv = conv_svc.create_conversation(char.id)
     # Append some history to inflate the token count
-    for i in range(5):
+    for _i in range(5):
         conv_svc.append_message(conv.id, "user", "hello " * 20)
         conv_svc.append_message(conv.id, "assistant", "world " * 20)
 

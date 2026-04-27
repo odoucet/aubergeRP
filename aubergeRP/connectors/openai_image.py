@@ -41,10 +41,7 @@ class OpenAIImageConnector(ImageConnector):
             return base64.b64decode(b64_json)
 
         image_url_data = item.get("image_url")
-        if isinstance(image_url_data, dict):
-            url = image_url_data.get("url")
-        else:
-            url = item.get("url")
+        url = image_url_data.get("url") if isinstance(image_url_data, dict) else item.get("url")
 
         if not isinstance(url, str) or not url:
             raise ValueError("Image response did not include b64_json or url")

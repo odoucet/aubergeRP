@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import logging
 import shutil
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Awaitable, Callable
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request

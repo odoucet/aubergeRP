@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 
-from ..models.conversation import Conversation, ConversationSummary
-from ..models.conversation import ConversationCreate
+from ..models.conversation import Conversation, ConversationCreate, ConversationSummary
 from ..services.character_service import CharacterNotFoundError, CharacterService
 from ..services.conversation_service import ConversationNotFoundError, ConversationService
 

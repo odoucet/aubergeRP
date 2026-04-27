@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from typing import Any
 
 
@@ -27,10 +28,8 @@ class EventBus:
         subs = self._subscribers.get(key)
         if subs is None:
             return
-        try:
+        with contextlib.suppress(ValueError):
             subs.remove(q)
-        except ValueError:
-            pass
         if not subs:
             self._subscribers.pop(key, None)
 
