@@ -14,6 +14,7 @@ services:
       context: ..
       dockerfile: Dockerfile
     container_name: auberge-app
+    user: "${UID}:${GID}"
     volumes:
       - ../data:/data
       - ../aubergeRP:/app/aubergeRP:ro

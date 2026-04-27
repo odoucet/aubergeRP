@@ -1,3 +1,6 @@
+export UID := $(shell id -u)
+export GID := $(shell id -g)
+
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DOCKER_DIR       := docker
 PROFILES_DIR     := $(DOCKER_DIR)/profiles
