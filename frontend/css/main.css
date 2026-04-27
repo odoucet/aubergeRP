@@ -27,6 +27,22 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  align-items: center;
+}
+
+/* ─── App container (max-width constraint) ──────────────────────────────── */
+#app {
+  width: 100%;
+  max-width: 1200px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+:fullscreen #app,
+:-webkit-full-screen #app {
+  max-width: none;
 }
 
 /* ─── Header ───────────────────────────────────────────────────────────── */
@@ -81,6 +97,19 @@ body {
   transition: color 0.2s, border-color 0.2s;
 }
 #header .share-btn:hover { color: var(--color-text); border-color: var(--color-text-muted); }
+
+.fullscreen-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px 8px;
+  transition: color 0.2s, border-color 0.2s;
+  line-height: 1;
+}
+.fullscreen-btn:hover { color: var(--color-text); border-color: var(--color-text-muted); }
 
 /* ─── Layout: main row ─────────────────────────────────────────────────── */
 #main {

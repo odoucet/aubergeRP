@@ -8,11 +8,14 @@
 </head>
 <body>
 
+<div id="app">
+
 <!-- Header -->
 <header id="header" role="banner">
   <button class="hamburger" id="hamburger-btn" aria-label="Toggle sidebar" aria-expanded="false">☰</button>
   <div class="logo">aubergeRP</div>
   <button id="share-session-btn" class="share-btn" aria-label="Share session">Share session</button>
+  <button id="fullscreen-btn" class="fullscreen-btn" aria-label="Toggle fullscreen">⛶</button>
   <a href="/admin/" class="admin-link" aria-label="Admin panel">Admin</a>
 </header>
 
@@ -97,6 +100,8 @@
   </div>
 </footer>
 
+</div><!-- /#app -->
+
 <!-- Toast -->
 <div id="toast" role="alert" aria-live="assertive"></div>
 
@@ -130,6 +135,21 @@
     setSelectedCharacter(character.id);
     onCharacterSelected(character).catch(err => showToast(err.message));
   }
+
+  // Fullscreen toggle
+  const fullscreenBtn = document.getElementById('fullscreen-btn');
+  fullscreenBtn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  });
+  document.addEventListener('fullscreenchange', () => {
+    const isFs = !!document.fullscreenElement;
+    fullscreenBtn.textContent = isFs ? '⊡' : '⛶';
+    fullscreenBtn.setAttribute('aria-label', isFs ? 'Exit fullscreen' : 'Toggle fullscreen');
+  });
 
   // Init
   applyGuiCustomization();
