@@ -560,6 +560,57 @@ body {
 .status-dot.err { background: var(--color-accent); }
 .status-dot.na  { background: var(--color-text-muted); }
 
+.status-help {
+  margin-left: auto;
+  position: relative;
+}
+
+.status-help-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+}
+
+.status-help-btn:hover,
+.status-help-btn:focus-visible {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+  outline: none;
+}
+
+.status-help-tooltip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  width: min(360px, 80vw);
+  background: #0f1228;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-size: 0.74rem;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  z-index: 30;
+}
+
+.status-help:hover .status-help-tooltip,
+.status-help:focus-within .status-help-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* ─── Scrollbars ─────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

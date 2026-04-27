@@ -98,6 +98,17 @@
     <div class="status-dot na" aria-hidden="true"></div>
     <span class="status-label">Audio —</span>
   </div>
+  <div class="status-help" aria-label="About connector statuses">
+    <button
+      type="button"
+      class="status-help-btn"
+      aria-describedby="status-help-tooltip"
+      title="What do these connector types mean?"
+    >?</button>
+    <span id="status-help-tooltip" class="status-help-tooltip" role="tooltip">
+      These are capability categories. A green dot means the active connector for that type is reachable. Red means configured but unavailable. Gray means no connector is set.
+    </span>
+  </div>
 </footer>
 
 </div><!-- /#app -->
