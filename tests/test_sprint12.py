@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from aubergeRP.config import Config
+from aubergeRP.config import Config, reset_config
 from aubergeRP.connectors.manager import ConnectorManager  # noqa: F401
 from aubergeRP.main import create_app
 from aubergeRP.routers.config import get_config_save_path
@@ -59,11 +59,19 @@ IMAGE_PAYLOAD = {
 
 @pytest.fixture
 def config_client(tmp_path):
+    # Ensure tests do not depend on repo-local config.yaml values.
+    reset_config()
+    from aubergeRP import config as config_module
+    seeded = Config()
+    seeded.app.data_dir = str(tmp_path)
+    config_module._config = seeded
+
     app = create_app()
     config_file = tmp_path / "config.yaml"
     app.dependency_overrides[get_config_save_path] = lambda: config_file
     with TestClient(app) as c:
         yield c
+    reset_config()
 
 
 def test_patch_user_name_only(config_client):
