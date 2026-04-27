@@ -22,7 +22,6 @@
   <nav id="admin-nav" aria-label="Admin sections">
     <button class="nav-btn active" data-section="connectors" aria-current="page">Connectors</button>
     <button class="nav-btn" data-section="characters">Characters</button>
-    <button class="nav-btn" data-section="marketplace">Marketplace</button>
     <button class="nav-btn" data-section="health">Health</button>
     <button class="nav-btn" data-section="config">Configuration</button>
     <button class="nav-btn" data-section="customize">Customization</button>
@@ -53,20 +52,6 @@
       </div>
       <div id="character-list" class="character-list" aria-live="polite">
         <div class="loading-row">Loading…</div>
-      </div>
-    </section>
-
-    <!-- ── Marketplace ── -->
-    <section id="section-marketplace" class="admin-section" style="display:none" aria-label="Character marketplace">
-      <div class="section-header">
-        <h1>Marketplace</h1>
-      </div>
-      <div class="field-row" style="margin-bottom:1rem;">
-        <input type="text" id="marketplace-search" placeholder="Search characters…" autocomplete="off" style="flex:1">
-        <button class="btn btn-primary" id="marketplace-search-btn" style="margin-left:0.5rem;">Search</button>
-      </div>
-      <div id="marketplace-results" class="character-list" aria-live="polite">
-        <div class="loading-row">Enter a search term or click Search to browse.</div>
       </div>
     </section>
 
@@ -350,14 +335,13 @@
   import { initConnectors } from '/js/admin/connectors.js';
   import { initCharacters } from '/js/admin/characters.js';
   import { initConfig }     from '/js/admin/config.js';
-  import { initMarketplace } from '/js/admin/marketplace.js';
   import { applyHealthBadges } from '/js/admin/connectors.js';
   import { applyGuiCustomization } from '/js/gui-customization.js';
 
   applyGuiCustomization();
 
   // ── Section routing (hash-based) ────────────────────────────────────────
-  const SECTIONS = ['connectors', 'characters', 'marketplace', 'health', 'config', 'customize'];
+  const SECTIONS = ['connectors', 'characters', 'health', 'config', 'customize'];
   const sectionEls = {};
   const navBtns = {};
 
@@ -376,7 +360,6 @@
     window.location.hash = name;
     if (name === 'connectors') connectorCtrl.refresh();
     else if (name === 'characters') charCtrl.refresh();
-    else if (name === 'marketplace') marketplaceCtrl.refresh();
     else if (name === 'health') loadHealth();
     else if (name === 'config') configCtrl.refresh();
     else if (name === 'customize') loadCustomize();
@@ -505,7 +488,6 @@
   const connectorCtrl  = initConnectors({ showToast, showConfirm });
   const charCtrl       = initCharacters({ showToast, showConfirm });
   const configCtrl     = initConfig({ showToast });
-  const marketplaceCtrl = initMarketplace({ showToast });
 
   // ── Health polling (every 30s) — updates connector status badges ──────────
   async function pollHealth() {

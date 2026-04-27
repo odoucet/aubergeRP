@@ -1,14 +1,10 @@
 """Tests for Sprint 17 — Admin & Customization
 
 Covers:
-  1. Character card marketplace browser
-     - GET /api/marketplace/search returns results from a mocked index
-     - Query filtering works (name, description, tags)
-     - Gracefully handles unreachable index (502)
-  2. GUI customization
+  1. GUI customization
      - GET /api/config/gui returns default empty strings
      - PUT /api/config/gui persists and returns updated values
-  3. Plugin system skeleton
+  2. Plugin system skeleton
      - BasePlugin subclass can be instantiated
      - PluginManager.load_plugin registers the plugin and calls on_load()
      - PluginManager.call_hook dispatches to the plugin
@@ -22,9 +18,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import httpx
 import pytest
-import respx
 from fastapi.testclient import TestClient
 
 from aubergeRP.config import reset_config
@@ -51,108 +45,7 @@ def client(tmp_path, monkeypatch):
 
 
 # ===========================================================================
-# 1. Marketplace
-# ===========================================================================
-
-_SAMPLE_INDEX = [
-    {
-        "id": "card-001",
-        "name": "Elara the Ranger",
-        "description": "An elven ranger from the north.",
-        "tags": ["elf", "ranger", "fantasy"],
-        "creator": "Alice",
-        "download_url": "https://example.com/cards/elara.json",
-        "preview_url": "",
-    },
-    {
-        "id": "card-002",
-        "name": "Captain Vex",
-        "description": "A roguish pirate captain.",
-        "tags": ["pirate", "adventure"],
-        "creator": "Bob",
-        "download_url": "https://example.com/cards/vex.json",
-        "preview_url": "",
-    },
-]
-
-
-@respx.mock
-def test_marketplace_search_all(client):
-    """Without a query, all cards from the index are returned."""
-    from aubergeRP.config import get_config
-    index_url = get_config().marketplace.index_url
-    respx.get(index_url).mock(
-        return_value=httpx.Response(200, json=_SAMPLE_INDEX)
-    )
-    resp = client.get("/api/marketplace/search")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["total"] == 2
-    assert len(data["cards"]) == 2
-
-
-@respx.mock
-def test_marketplace_search_filters_by_name(client):
-    from aubergeRP.config import get_config
-    index_url = get_config().marketplace.index_url
-    respx.get(index_url).mock(
-        return_value=httpx.Response(200, json=_SAMPLE_INDEX)
-    )
-    resp = client.get("/api/marketplace/search?q=Elara")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["total"] == 1
-    assert data["cards"][0]["name"] == "Elara the Ranger"
-
-
-@respx.mock
-def test_marketplace_search_filters_by_tag(client):
-    from aubergeRP.config import get_config
-    index_url = get_config().marketplace.index_url
-    respx.get(index_url).mock(
-        return_value=httpx.Response(200, json=_SAMPLE_INDEX)
-    )
-    resp = client.get("/api/marketplace/search?q=pirate")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["total"] == 1
-    assert data["cards"][0]["id"] == "card-002"
-
-
-@respx.mock
-def test_marketplace_search_no_results(client):
-    from aubergeRP.config import get_config
-    index_url = get_config().marketplace.index_url
-    respx.get(index_url).mock(
-        return_value=httpx.Response(200, json=_SAMPLE_INDEX)
-    )
-    resp = client.get("/api/marketplace/search?q=nonexistent_xyz")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["total"] == 0
-
-
-@respx.mock
-def test_marketplace_search_index_unavailable(client):
-    from aubergeRP.config import get_config
-    index_url = get_config().marketplace.index_url
-    respx.get(index_url).mock(return_value=httpx.Response(503))
-    resp = client.get("/api/marketplace/search")
-    assert resp.status_code == 502
-
-
-def test_marketplace_rejects_file_url(client, monkeypatch):
-    """A file:// index URL must be rejected (SSRF protection)."""
-    from aubergeRP.config import get_config
-    get_config().marketplace.index_url = "file:///etc/passwd"
-    resp = client.get("/api/marketplace/search")
-    assert resp.status_code == 400
-    # restore default
-    get_config().marketplace.index_url = "https://raw.githubusercontent.com/odoucet/aubergeRP/main/marketplace/index.json"
-
-
-# ===========================================================================
-# 2. GUI customization
+# 1. GUI customization
 # ===========================================================================
 
 def test_gui_config_defaults(client):
@@ -195,7 +88,7 @@ def test_gui_config_partial_update(client):
 
 
 # ===========================================================================
-# 3. Plugin system skeleton
+# 2. Plugin system skeleton
 # ===========================================================================
 
 class _NullPlugin(BasePlugin):

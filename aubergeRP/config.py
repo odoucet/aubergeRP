@@ -56,13 +56,6 @@ class GuiConfig(BaseModel):
     custom_footer_html: str = ""
 
 
-class MarketplaceConfig(BaseModel):
-    """Character card marketplace settings."""
-
-    # URL of the hosted marketplace index (JSON array of card descriptors).
-    index_url: str = "https://raw.githubusercontent.com/odoucet/aubergeRP/main/marketplace/index.json"
-
-
 class Config(BaseModel):
     app: AppConfig = AppConfig()
     active_connectors: ActiveConnectorsConfig = ActiveConnectorsConfig()
@@ -70,7 +63,6 @@ class Config(BaseModel):
     scheduler: SchedulerConfig = SchedulerConfig()
     chat: ChatConfig = ChatConfig()
     gui: GuiConfig = GuiConfig()
-    marketplace: MarketplaceConfig = MarketplaceConfig()
 
     @field_validator("app", mode="before")
     @classmethod
@@ -100,11 +92,6 @@ class Config(BaseModel):
     @field_validator("gui", mode="before")
     @classmethod
     def validate_gui(cls, v: object) -> object:
-        return v or {}
-
-    @field_validator("marketplace", mode="before")
-    @classmethod
-    def validate_marketplace(cls, v: object) -> object:
         return v or {}
 
 def _apply_env_overrides(config: Config) -> Config:

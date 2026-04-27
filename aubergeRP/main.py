@@ -20,7 +20,6 @@ from .routers import connectors as connectors_router
 from .routers import conversations as conversations_router
 from .routers import health as health_router
 from .routers import images as images_router
-from .routers import marketplace as marketplace_router
 from .services.example_seed_service import seed_example_characters
 
 _BUILTIN_WORKFLOWS_DIR = Path(__file__).parent / "comfyui_workflows"
@@ -143,7 +142,6 @@ def create_app() -> FastAPI:
     app.include_router(config_router.router, prefix="/api")
     app.include_router(images_router.router, prefix="/api")
     app.include_router(health_router.router, prefix="/api")
-    app.include_router(marketplace_router.router, prefix="/api")
 
     # ── API reference (Redoc) ───────────────────────────────────────────────
     @app.get("/api-docs", include_in_schema=False, response_class=HTMLResponse)
