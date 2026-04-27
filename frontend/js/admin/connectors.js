@@ -183,7 +183,7 @@ function renderConnectorCard(c) {
           <span class="conn-backend-badge">${escHtml(c.backend)}</span>
         </div>
         ${meta ? `<div class="conn-meta">${meta}</div>` : ''}
-        <div class="conn-status ${statusClass}">${statusText}</div>
+        <div class="conn-status ${statusClass}" id="conn-status-${c.id}">${statusText}</div>
       </div>
       <div class="conn-actions">
         <button class="btn btn-secondary btn-sm" data-action="test" data-id="${c.id}">Test</button>
@@ -423,6 +423,31 @@ async function handleSave() {
     saveBtn.disabled = false;
     saveBtn.textContent = 'Save';
   }
+}
+
+// ── Health badge update ───────────────────────────────────────────────────────
+
+/**
+ * Update connector status badges from health data without a full re-render.
+ * Called by the 30-second health polling loop in admin/index.html.
+ *
+ * @param {Object} healthData - response from GET /api/health/
+ */
+export function applyHealthBadges(healthData) {
+  const connectors = healthData?.connectors;
+  if (!connectors || typeof connectors !== 'object' || Array.isArray(connectors)) return;
+  Object.values(connectors).forEach(c => {
+    if (!c || !c.id) return;
+    const el = document.getElementById(`conn-status-${c.id}`);
+    if (!el) return;
+    if (c.connected === true) {
+      el.className = 'conn-status ok';
+      el.textContent = '✅ Connected';
+    } else if (c.connected === false) {
+      el.className = 'conn-status fail';
+      el.textContent = '❌ Not connected';
+    }
+  });
 }
 
 // ── Util ─────────────────────────────────────────────────────────────────────
