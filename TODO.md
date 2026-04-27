@@ -16,9 +16,15 @@ Print it in the logs on startup (generated randomly if not set in env) and prote
 
 - [ ] Ability to change text display speed (+ preview of what it looks like).
 
+- [ ] The "test" function of a connector in admin does not check if the model is listed.
+Example with URL: http://ollama:11434/v1  ·  Model: qwen3.6-27b:q4km
+Last test: Connected. 2 model(s) available (flux-klein:9b-q4km, glm47-flash:q4_0).
+=> model not listed, which gives a 404 if we try to use it later in the front.
+
 Front
 -----
 
+- [ ] if a chat failed, and we click on "retry", the original message is added again to the chat history, invisible first, but if we refresh the page, we can see that the message is duplicated.
 
 Bug fixes
 ---------
