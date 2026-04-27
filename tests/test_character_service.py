@@ -16,7 +16,8 @@ from aubergeRP.services.character_service import (
 FIXTURES = Path(__file__).parent / "fixtures"
 
 # Minimal 1×1 white PNG bytes (used as dummy avatar carrier)
-import struct, zlib as _zlib
+import struct
+import zlib as _zlib
 
 
 def _minimal_png() -> bytes:

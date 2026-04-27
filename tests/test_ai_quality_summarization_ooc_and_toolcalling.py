@@ -21,32 +21,32 @@ Covers:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 from unittest.mock import MagicMock
 
+import httpx
 import pytest
 import respx
-import httpx
 
+from aubergeRP.connectors.openai_text import OpenAITextConnector
 from aubergeRP.models.character import CharacterCard, CharacterData
+from aubergeRP.models.connector import OpenAITextConfig
 from aubergeRP.models.conversation import Conversation, Message
 from aubergeRP.services.character_service import CharacterService
 from aubergeRP.services.chat_service import (
+    _OOC_GUARDRAIL,
     ChatService,
     build_prompt,
     detect_ooc,
-    _OOC_GUARDRAIL,
 )
 from aubergeRP.services.conversation_service import ConversationService
 from aubergeRP.services.summarization_service import (
     count_prompt_tokens,
     maybe_summarize,
 )
-from aubergeRP.connectors.openai_text import OpenAITextConnector
-from aubergeRP.models.connector import OpenAITextConfig
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -54,7 +54,7 @@ from aubergeRP.models.connector import OpenAITextConfig
 
 
 def _now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _char(**overrides) -> CharacterCard:

@@ -1,8 +1,6 @@
 """Integration tests for /api/config via FastAPI TestClient."""
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 from fastapi.testclient import TestClient
 

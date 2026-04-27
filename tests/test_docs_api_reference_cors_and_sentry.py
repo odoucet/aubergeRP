@@ -11,15 +11,13 @@ Covers:
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 from aubergeRP.config import load_config, reset_config
-
 
 # ---------------------------------------------------------------------------
 # Repo root helpers
@@ -141,8 +139,9 @@ def test_init_sentry_calls_init_when_dsn_configured():
 
 def test_init_sentry_does_not_raise_when_sentry_missing():
     """_init_sentry() must not raise even if sentry_sdk is unavailable."""
-    from aubergeRP.main import _init_sentry
     import builtins
+
+    from aubergeRP.main import _init_sentry
     real_import = builtins.__import__
 
     def mock_import(name, *args, **kwargs):

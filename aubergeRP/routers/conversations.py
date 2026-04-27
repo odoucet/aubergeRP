@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends, Header, HTTPException
 
-from ..models.conversation import Conversation, ConversationCreate, ConversationSummary
+from ..models.conversation import ConversationCreate
 from ..services.character_service import CharacterNotFoundError, CharacterService
 from ..services.conversation_service import ConversationNotFoundError, ConversationService
 
@@ -28,7 +26,7 @@ def _not_found(conversation_id: str) -> HTTPException:
 
 @router.get("/")
 def list_conversations(
-    character_id: Optional[str] = None,
+    character_id: str | None = None,
     service: ConversationService = Depends(get_conversation_service),
     session_token: str = Depends(get_session_token),
 ):

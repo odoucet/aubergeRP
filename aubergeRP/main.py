@@ -2,17 +2,16 @@ from __future__ import annotations
 
 import logging
 import shutil
-from urllib.parse import urlparse
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .config import get_config
-from .constants import SESSION_TOKEN
 from .routers import characters as characters_router
 from .routers import chat as chat_router
 from .routers import config as config_router

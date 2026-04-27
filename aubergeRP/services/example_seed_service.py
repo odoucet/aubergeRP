@@ -6,8 +6,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from .character_service import CharacterService
 from ..utils.file_storage import read_json, write_json
+from .character_service import CharacterService
 
 logger = logging.getLogger(__name__)
 

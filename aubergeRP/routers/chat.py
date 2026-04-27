@@ -7,12 +7,12 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Header
 from fastapi.responses import StreamingResponse
 
+from ..connectors.manager import ConnectorManager
 from ..event_bus import EventBus, get_event_bus
 from ..models.chat import ChatMessageRequest
-from ..services.chat_service import ChatService
 from ..services.character_service import CharacterService
+from ..services.chat_service import ChatService
 from ..services.conversation_service import ConversationService
-from ..connectors.manager import ConnectorManager
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -86,7 +86,7 @@ async def chat_events(
                 try:
                     event = await asyncio.wait_for(q.get(), timeout=_KEEPALIVE_TIMEOUT)
                     yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     yield ": keepalive\n\n"
         finally:
             bus.unsubscribe(session_token, conversation_id, q)

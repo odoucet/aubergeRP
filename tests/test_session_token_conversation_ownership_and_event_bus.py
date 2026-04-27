@@ -11,9 +11,8 @@ Covers:
 """
 from __future__ import annotations
 
-import asyncio
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -24,7 +23,6 @@ from aubergeRP.main import create_app
 from aubergeRP.models.conversation import Conversation
 from aubergeRP.services.character_service import CharacterService
 from aubergeRP.services.conversation_service import ConversationService
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -42,7 +40,7 @@ def _write_ownerless_conversation(tmp_path: Path, conv_id: str, char_id: str = "
 
     convs_dir = tmp_path / "conversations"
     convs_dir.mkdir(parents=True, exist_ok=True)
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     data = {
         "id": conv_id,
         "character_id": char_id,
@@ -62,7 +60,7 @@ def _write_ownerless_conversation(tmp_path: Path, conv_id: str, char_id: str = "
 
 
 def test_conversation_model_has_owner_field():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     conv = Conversation(
         id="x",
         character_id="c",
@@ -75,7 +73,7 @@ def test_conversation_model_has_owner_field():
 
 
 def test_conversation_model_owner_stored():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     conv = Conversation(
         id="x",
         character_id="c",

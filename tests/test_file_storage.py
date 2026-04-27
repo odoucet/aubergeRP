@@ -1,6 +1,4 @@
-import json
 import pytest
-from pathlib import Path
 
 from aubergeRP.utils.file_storage import read_json, write_json
 

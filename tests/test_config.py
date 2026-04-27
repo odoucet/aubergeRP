@@ -1,8 +1,8 @@
+
 import pytest
 import yaml
-from pathlib import Path
 
-from aubergeRP.config import load_config, Config
+from aubergeRP.config import Config, load_config
 
 
 def test_load_defaults_when_no_file(tmp_path):

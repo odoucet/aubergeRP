@@ -10,7 +10,7 @@ extra dependency (tiktoken etc.) is required.
 """
 from __future__ import annotations
 
-import json
+from datetime import UTC
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -70,7 +70,7 @@ def _build_summary_prompt(messages: list[dict[str, Any]]) -> list[dict[str, Any]
 
 async def maybe_summarize(
     messages: list[dict[str, Any]],
-    connector: "TextConnector",
+    connector: TextConnector,
     context_window: int,
     threshold: float,
 ) -> list[dict[str, Any]]:
@@ -148,11 +148,11 @@ def pack_summary_into_conversation(
     # This helper is intentionally thin — callers supply the Message factory.
     # It returns a plain dict so the caller can wrap it in Message as needed.
     import uuid
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     cutoff = max(0, len(conversation_messages) - kept_count)
     kept = conversation_messages[cutoff:]
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     summary_entry = {
         "id": str(uuid.uuid4()),
         "role": "system",

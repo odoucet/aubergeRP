@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
@@ -117,7 +117,7 @@ class ConnectorManager:
         return self._connectors[connector_id]
 
     def create_connector(self, data: ConnectorCreate) -> ConnectorInstance:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         instance = ConnectorInstance(
             id=str(uuid.uuid4()),
             name=data.name,
@@ -144,7 +144,7 @@ class ConnectorManager:
             backend=data.backend,
             config=new_config,
             created_at=existing.created_at,
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
         )
         self._connectors[connector_id] = updated
         self._save_instance(updated)

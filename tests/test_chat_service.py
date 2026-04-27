@@ -1,12 +1,11 @@
 """Tests for chat_service — ImageMarkerParser, build_prompt, stream_chat."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 from unittest.mock import MagicMock
-
-import pytest
 
 from aubergeRP.models.character import CharacterCard, CharacterData
 from aubergeRP.models.conversation import Conversation
@@ -19,13 +18,12 @@ from aubergeRP.services.chat_service import (
 )
 from aubergeRP.services.conversation_service import ConversationService
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 def _now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _char(**overrides) -> CharacterCard:

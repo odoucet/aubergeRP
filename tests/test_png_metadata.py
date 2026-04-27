@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 import pytest
@@ -36,7 +35,8 @@ def test_read_v2_png():
 
 
 def test_read_returns_none_for_png_without_chara(tmp_path):
-    import struct, zlib
+    import struct
+    import zlib
 
     def chunk(t, d):
         crc = struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
@@ -99,7 +99,7 @@ def test_roundtrip_preserves_image_data(tmp_path):
     card = {"spec": "chara_card_v2", "spec_version": "2.0", "data": {"name": "X", "description": "Y"}}
     write_png_metadata(src, dst, card)
 
-    import struct, zlib
+    import struct
 
     data = dst.read_bytes()
     assert data[:8] == b"\x89PNG\r\n\x1a\n"

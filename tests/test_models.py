@@ -1,10 +1,10 @@
 """Tests for all Pydantic models: instantiation, validation, JSON round-trip."""
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
-NOW = datetime(2025, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+NOW = datetime(2025, 1, 15, 10, 30, 0, tzinfo=UTC)
 
 # ---------------------------------------------------------------------------
 # models/character.py
@@ -303,7 +303,6 @@ from aubergeRP.models.connector import (
     ConnectorInstance,
     ConnectorResponse,
     ConnectorTestResult,
-    ConnectorUpdate,
     OpenAIImageConfig,
     OpenAITextConfig,
 )

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import re
 import uuid
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 
 from ..connectors.manager import ConnectorManager
 from ..models.character import CharacterCard
@@ -298,7 +299,7 @@ class ChatService:
         conversation_service: ConversationService,
         character_service: CharacterService,
         connector_manager: ConnectorManager,
-        images_dir: "Path | str",
+        images_dir: Path | str,
         session_token: str = "",
         context_window: int = 4096,
         summarization_threshold: float = 0.75,

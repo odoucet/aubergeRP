@@ -10,7 +10,6 @@ from aubergeRP.connectors.openai_image import OpenAIImageConnector
 from aubergeRP.connectors.openai_text import OpenAITextConnector
 from aubergeRP.models.connector import ConnectorCreate, ConnectorUpdate
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

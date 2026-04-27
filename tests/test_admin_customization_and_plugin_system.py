@@ -15,7 +15,6 @@ Covers:
 """
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -24,7 +23,6 @@ from fastapi.testclient import TestClient
 from aubergeRP.config import reset_config
 from aubergeRP.plugins.base import BasePlugin
 from aubergeRP.plugins.manager import PluginManager
-
 
 # ---------------------------------------------------------------------------
 # App fixture — fresh config per test, save path redirected to tmp_path

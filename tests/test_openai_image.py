@@ -1,7 +1,8 @@
 import base64
 import json
-import pytest
+
 import httpx
+import pytest
 import respx
 
 from aubergeRP.connectors.openai_image import OpenAIImageConnector

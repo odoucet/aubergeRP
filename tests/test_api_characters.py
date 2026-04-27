@@ -1,6 +1,5 @@
 """Integration tests for /api/characters via FastAPI TestClient."""
 import io
-import json
 import struct
 import zlib
 from pathlib import Path

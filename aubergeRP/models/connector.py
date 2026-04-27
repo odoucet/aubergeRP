@@ -5,7 +5,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-
 ConnectorType = Literal["text", "image", "video", "audio"]
 ConnectorBackend = Literal["openai_api", "comfyui"]
 

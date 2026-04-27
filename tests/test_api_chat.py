@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
-import pytest
 from fastapi.testclient import TestClient
 
 from aubergeRP.main import create_app
