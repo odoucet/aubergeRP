@@ -230,8 +230,17 @@ async function selectConversation(id) {
     return;
   }
 
-  for (const msg of conv.messages) {
-    appendMessage(msg.role, msg.content, msg.images || []);
+  if (
+    conv.messages.length === 1
+    && conv.messages[0].role === 'assistant'
+    && typeof conv.messages[0].content === 'string'
+    && conv.messages[0].content.trim() !== ''
+  ) {
+    await appendAssistantMessageProgressively(conv.messages[0].content, conv.messages[0].images || []);
+  } else {
+    for (const msg of conv.messages) {
+      appendMessage(msg.role, msg.content, msg.images || []);
+    }
   }
   scrollToBottom();
 }
@@ -382,6 +391,30 @@ function appendMessage(role, content, images = []) {
   list.appendChild(wrapper);
   scrollToBottom();
   return bubble;
+}
+
+/**
+ * Render a full assistant message progressively using the same streaming
+ * renderer path as SSE responses.
+ */
+async function appendAssistantMessageProgressively(content, images = []) {
+  const streaming = createStreamingMessage();
+  const chunkSize = 4;
+  const delayMs = 14;
+
+  for (let i = 0; i < content.length; i += chunkSize) {
+    streaming.onToken(content.slice(i, i + chunkSize));
+    // Keep the same progressive feel as streamed responses for first_mes.
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+  }
+
+  for (const url of images) {
+    const genId = `initial-${Math.random().toString(36).slice(2, 10)}`;
+    streaming.onImageStart(genId, '');
+    streaming.onImageComplete(genId, url);
+  }
+
+  streaming.finalize();
 }
 
 /**
