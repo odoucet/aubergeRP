@@ -68,9 +68,9 @@ artefact — it is imported but unused in `main.py`. Ignore it.
 ```bash
 cd /home/runner/work/aubergeRP/aubergeRP
 pip install -r requirements.txt   # once
-pytest                             # all tests
-pytest tests/test_api_chat.py     # one file
-pytest -x                         # stop on first failure
+python -m pytest                             # all tests
+python -m pytest tests/test_api_chat.py     # one file
+python -m pytest -x                         # stop on first failure
 ```
 
 Tests use `pytest-asyncio` for async test functions and `respx` for mocking
