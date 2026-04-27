@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import contextlib
+import json
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..connectors.manager import ConnectorManager
@@ -12,8 +16,57 @@ from ..models.connector import (
 
 router = APIRouter(prefix="/connectors", tags=["connectors"])
 
-# In-memory cache for last test results (keyed by connector_id)
-_last_test_results: dict[str, bool] = {}
+
+class _TestResultsStore:
+    """Persistent key→bool|None store backed by a JSON sidecar file."""
+
+    def __init__(self) -> None:
+        self._data: dict[str, bool] = {}
+        self._path: Path | None = None
+
+    def _resolve_path(self) -> Path:
+        from ..config import get_config
+        data_dir = Path(get_config().app.data_dir)
+        return data_dir / "connector_test_results.json"
+
+    def _load(self) -> None:
+        path = self._resolve_path()
+        if path.exists():
+            try:
+                raw = json.loads(path.read_text(encoding="utf-8"))
+                if isinstance(raw, dict):
+                    self._data = {k: bool(v) for k, v in raw.items() if v is not None}
+            except Exception:
+                pass
+
+    def get(self, connector_id: str, default: bool | None = None) -> bool | None:
+        # Always load from disk to reflect persisted state across restarts.
+        # A small cache reset on each call is acceptable at this scale.
+        self._load()
+        return self._data.get(connector_id, default)
+
+    def set(self, connector_id: str, value: bool) -> None:
+        self._load()
+        self._data[connector_id] = value
+        self._persist()
+
+    def pop(self, connector_id: str, default: object = None) -> object:
+        self._load()
+        removed = self._data.pop(connector_id, default)
+        self._persist()
+        return removed
+
+    def _persist(self) -> None:
+        path = self._resolve_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(self._data, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+
+# Module-level singleton — shared between connectors and health routers.
+_last_test_results: _TestResultsStore = _TestResultsStore()
 
 
 def get_connector_manager() -> ConnectorManager:
@@ -81,6 +134,12 @@ def create_connector(
     if data.backend not in ("openai_api",):
         raise HTTPException(status_code=400, detail=f"Unknown backend '{data.backend}'")
     instance = manager.create_connector(data)
+    # Auto-activate if no active connector of this type exists yet.
+    if not manager.get_active_id_for_type(instance.type):
+        # ValueError is raised for unsupported connector types (e.g. video/audio);
+        # safe to skip auto-activation silently in that case.
+        with contextlib.suppress(ValueError):
+            manager.set_active(instance.id)
     return _redact(instance, manager.is_active(instance.id))
 
 
@@ -132,7 +191,7 @@ async def test_connector(
         raise _not_found(connector_id)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc))
-    _last_test_results[connector_id] = result.get("connected", False)
+    _last_test_results.set(connector_id, result.get("connected", False))
     return result
 
 

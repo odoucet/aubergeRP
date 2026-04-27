@@ -124,8 +124,17 @@ def test_create_connector_unknown_backend(client):
     assert resp.status_code in (400, 422)
 
 
-def test_create_connector_is_active_false_by_default(client):
+def test_create_connector_first_is_active_auto(client):
+    """First connector of a type is automatically activated (Sprint 12)."""
     resp = client.post("/api/connectors/", json=TEXT_PAYLOAD)
+    assert resp.json()["is_active"] is True
+
+
+def test_create_connector_second_not_active(client):
+    """Second connector of the same type is NOT auto-activated."""
+    client.post("/api/connectors/", json=TEXT_PAYLOAD)
+    second = {**TEXT_PAYLOAD, "name": "Second Ollama"}
+    resp = client.post("/api/connectors/", json=second)
     assert resp.json()["is_active"] is False
 
 
