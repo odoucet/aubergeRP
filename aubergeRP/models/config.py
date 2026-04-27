@@ -31,3 +31,28 @@ class ConfigUpdate(BaseModel):
     app: AppConfigResponse | None = None
     user: UserConfigResponse | None = None
     active_connectors: ActiveConnectorsResponse | None = None
+
+
+class AppConfigPatch(BaseModel):
+    """Per-field optional patch for app config."""
+    host: str | None = None
+    port: int | None = None
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] | None = None
+
+
+class ActiveConnectorsPatch(BaseModel):
+    """Per-field optional patch for active connectors."""
+    text: str | None = None
+    image: str | None = None
+
+
+class UserConfigPatch(BaseModel):
+    """Per-field optional patch for user config."""
+    name: str | None = None
+
+
+class ConfigPatch(BaseModel):
+    """Per-field PATCH semantics — only provided fields are updated."""
+    app: AppConfigPatch | None = None
+    user: UserConfigPatch | None = None
+    active_connectors: ActiveConnectorsPatch | None = None

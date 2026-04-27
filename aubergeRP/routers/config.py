@@ -9,6 +9,7 @@ from ..config import get_config
 from ..models.config import (
     ActiveConnectorsResponse,
     AppConfigResponse,
+    ConfigPatch,
     ConfigResponse,
     ConfigUpdate,
     UserConfigResponse,
@@ -60,6 +61,41 @@ def update_config(
     if update.active_connectors is not None:
         config.active_connectors.text = update.active_connectors.text
         config.active_connectors.image = update.active_connectors.image
+
+    data = {
+        "app": config.app.model_dump(),
+        "active_connectors": config.active_connectors.model_dump(),
+        "user": config.user.model_dump(),
+    }
+    with save_path.open("w") as f:
+        yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
+
+    return _to_response()
+
+
+@router.patch("/")
+def patch_config(
+    patch: ConfigPatch,
+    save_path: Path = Depends(get_config_save_path),
+):
+    config = get_config()
+
+    if patch.app is not None:
+        if patch.app.host is not None:
+            config.app.host = patch.app.host
+        if patch.app.port is not None:
+            config.app.port = patch.app.port
+        if patch.app.log_level is not None:
+            config.app.log_level = patch.app.log_level
+
+    if patch.user is not None and patch.user.name is not None:
+        config.user.name = patch.user.name
+
+    if patch.active_connectors is not None:
+        if patch.active_connectors.text is not None:
+            config.active_connectors.text = patch.active_connectors.text
+        if patch.active_connectors.image is not None:
+            config.active_connectors.image = patch.active_connectors.image
 
     data = {
         "app": config.app.model_dump(),

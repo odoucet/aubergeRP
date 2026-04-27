@@ -164,6 +164,14 @@ class ConnectorManager:
     # Activation
     # ------------------------------------------------------------------
 
+    def get_active_id_for_type(self, connector_type: str) -> str:
+        """Return the active connector ID for a type, or '' if none is set."""
+        if connector_type == "text":
+            return self._config.active_connectors.text or ""
+        if connector_type == "image":
+            return self._config.active_connectors.image or ""
+        return ""
+
     def set_active(self, connector_id: str) -> None:
         instance = self.get_connector(connector_id)
         if instance.type == "text":

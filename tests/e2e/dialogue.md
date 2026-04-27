@@ -306,3 +306,34 @@ The "← Chat" link in the admin header must navigate back to the chat page.
 - CLICK: a.chat-link
 - EXPECT_TITLE: aubergeRP
 - SCREENSHOT: navigate-back-to-chat
+
+---
+
+## Scenario: First Connector Auto-Activates (Sprint 12)
+
+Adding the first connector of a type should automatically make it active
+without requiring an explicit "Activate" click.
+
+- NAVIGATE: /admin/#connectors
+- WAIT_FOR: #add-connector-btn
+- CLICK: #add-connector-btn
+- WAIT_FOR: #connector-dialog
+- FILL: #conn-name | Sprint12 TextBot
+- CLICK: #connector-dialog-save
+- WAIT_FOR: .connector-card
+- EXPECT_TEXT: .connector-card | Active
+- SCREENSHOT: first-connector-auto-activated
+
+---
+
+## Scenario: Health Connector Status Null Before Test (Sprint 12)
+
+Before any connection test is run the health panel must not show "Connected"
+or "Disconnected" — the status must be absent or shown as unknown.
+
+- NAVIGATE: /admin/#health
+- WAIT_FOR: #section-health
+- CLICK: .nav-btn[data-section="health"]
+- WAIT_FOR: #health-content
+- EXPECT_NOT_VISIBLE: .health-status-connected
+- SCREENSHOT: health-status-null-before-test

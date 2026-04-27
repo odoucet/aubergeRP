@@ -18,7 +18,7 @@ def _connector_info(manager: ConnectorManager, connector_id: str | None) -> dict
         instance = manager.get_connector(connector_id)
     except KeyError:
         return None
-    connected = _last_test_results.get(connector_id, False)
+    connected = _last_test_results.get(connector_id, None)
     return {"id": instance.id, "name": instance.name, "connected": connected}
 
 
