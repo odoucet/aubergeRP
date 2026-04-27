@@ -66,14 +66,14 @@ aubergeRP is a self-hosted roleplay frontend that combines:
 - Serves the static frontend files.
 - Exposes a REST + SSE API for all operations.
 - Internal services (not microservices — just logical modules in one process).
-- All data stored locally as JSON/YAML files on disk (no database).
+- Persistent data (characters, conversations, messages) stored in a local **SQLite** database (`data/auberge.db`) managed via **SQLModel**. Connector config files, avatars, and generated images remain on disk.
 
 ### 3.4 External: Generation Backends (via Connectors)
 
 aubergeRP communicates with external services only through **connectors**. Each connector is a module for a specific modality:
 
 - **Text connectors** — any OpenAI-compatible chat completions API.
-- **Image connectors** — any OpenAI-compatible images API.
+- **Image connectors** — any OpenAI-compatible images API, or a local **ComfyUI** instance.
 - **Video / audio connectors** — see [POST-MVP.md](POST-MVP.md).
 
 All connectors are configured by the user via the Admin UI. See [06 — Connector System](06-connector-system.md).
@@ -107,24 +107,35 @@ The Chat UI calls **one** generation-triggering endpoint: `POST /api/chat/{id}/m
 |---|---|
 | Static HTML + vanilla JS | Zero build step, easy to serve, easy to modify |
 | FastAPI (Python) | Mature async, native SSE, good AI ecosystem |
-| JSON/YAML file storage (no DB) | Simplest persistence for the MVP |
+| SQLite via SQLModel | Structured persistence, easy migrations, no separate DB server |
 | SSE (not WebSocket) | Simpler than WebSocket for unidirectional streaming; sufficient |
 | Connector-based architecture | Decouples core logic from specific backends |
 | OpenAI-compatible API as default | De facto standard for both text and images |
 | Single process | FastAPI serves API + frontend |
 
-## 7. MVP Scope
+## 7. Current Scope
 
 ### In Scope
 
 - **Single user, local deployment.** (Code is structured to allow multi-user later — see § 9.)
 - Text and image connector types.
 - OpenAI-compatible API backend for both text and image.
+- **ComfyUI** backend for image generation (local Stable Diffusion with workflow templates).
 - One active connector per type at a time.
 - Character library with SillyTavern V1/V2 import/export.
-- Conversation persistence as JSON files.
-- Admin UI for connectors, config, characters.
+- Conversation persistence in SQLite.
+- Admin UI for connectors, config, characters, and GUI customization.
 - Chat UI for roleplay with image display inline.
+- **Docker** packaging (Dockerfile + docker-compose).
+- Environment-variable config overrides.
+- Sentry error tracking (optional, DSN in config).
+- CORS auto-detection middleware.
+- Background media cleanup scheduler.
+- Automatic conversation summarization.
+- OOC (out-of-character) protection.
+- Character marketplace browser.
+- Plugin system skeleton.
+- Interactive API reference at `/api-docs`.
 
 ### Out of Scope
 

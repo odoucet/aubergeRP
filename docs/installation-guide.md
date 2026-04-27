@@ -8,7 +8,7 @@ This guide explains how to install and run aubergeRP on Linux, macOS, and Window
 
 | Requirement | Minimum version |
 |-------------|-----------------|
-| Python      | 3.11            |
+| Python      | 3.12            |
 | pip         | 23+             |
 | Git         | Any recent      |
 
@@ -100,8 +100,8 @@ The quick-start steps above work on macOS (Intel and Apple Silicon).
 ### Homebrew Python (recommended)
 
 ```bash
-brew install python@3.11
-python3.11 -m venv .venv
+brew install python@3.12
+python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -145,7 +145,7 @@ launchctl load ~/Library/LaunchAgents/com.aubergerp.plist
 
 ### Step-by-step
 
-1. Download and install Python 3.11+ from https://www.python.org/downloads/  
+1. Download and install Python 3.12+ from https://www.python.org/downloads/  
    ✅ Make sure to check **"Add Python to PATH"** during installation.
 
 2. Open **PowerShell** (or cmd) and navigate to the project:

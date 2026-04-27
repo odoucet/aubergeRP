@@ -12,11 +12,15 @@
 
 ## 2. Authentication
 
-**MVP has no authentication.** aubergeRP is a single-user local deployment. All endpoints are open.
+**No authentication.** aubergeRP is a single-user local deployment. All endpoints are open.
 
 Multi-user session handling is specified in [POST-MVP.md](POST-MVP.md).
 
 The constant `SESSION_TOKEN = "00000000-0000-0000-0000-000000000000"` is used internally wherever a per-user identifier will later plug in (e.g., image folder path). See [00 § 9](00-architecture-overview.md). This constant is **never exposed in the API**.
+
+### API Reference
+
+An interactive API reference (Redoc) is served at **`GET /api-docs`** and the raw OpenAPI schema at **`GET /openapi.json`**.
 
 ## 3. Health
 
@@ -214,9 +218,25 @@ Retrieve a generated image file.
 - **200 OK** — `image/png`.
 - **404 Not Found** — image does not exist.
 
-In the MVP, `session_token` is always the constant `00000000-0000-0000-0000-000000000000`.
+In the current single-user setup, `session_token` is always the constant `00000000-0000-0000-0000-000000000000`.
 
 > Note: there is no public HTTP endpoint for triggering image generation. Image generation is invoked by `chat_service` as an in-process Python call to the active image connector. See [06 § 7](06-connector-system.md).
+
+### `POST /api/images/cleanup`
+
+Manually trigger deletion of old generated images.
+
+**Request body:**
+```json
+{"older_than_days": 30}
+```
+
+**Response: 200 OK**
+```json
+{"deleted": 5}
+```
+
+`older_than_days` must be ≥ 1. Returns the count of files deleted. A background scheduler can also run this automatically (see [09 § 1](09-configuration-and-setup.md)).
 
 ---
 
@@ -356,7 +376,37 @@ Partial update. Only provided fields are written.
 
 ---
 
-## 10. Error Response Format
+## 10. Marketplace
+
+### `GET /api/marketplace/search`
+
+Fetch and filter community character cards from the configured marketplace index.
+
+**Query parameters:** `q` (optional) — search query (matches name, description, tags).
+
+**Response: 200 OK**
+```json
+{
+  "cards": [
+    {
+      "id": "string",
+      "name": "Elara the Elf",
+      "description": "A fantasy tavern keeper",
+      "tags": ["fantasy", "elf"],
+      "creator": "someone",
+      "download_url": "https://...",
+      "preview_url": "https://..."
+    }
+  ],
+  "total": 1
+}
+```
+
+The index URL is configured via `marketplace.index_url` in `config.yaml`. Only `http` and `https` schemes are accepted. After browsing, import a card by fetching its `download_url` and posting the result to `POST /api/characters/import`.
+
+---
+
+## 11. Error Response Format
 
 All error responses:
 

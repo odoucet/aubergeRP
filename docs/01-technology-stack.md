@@ -26,13 +26,16 @@ aubergeRP targets minimal dependencies, zero-build-step frontend, and a **connec
 | `Pillow` | PNG metadata read/write for character cards | ≥ 10.0, < 12.0 |
 | `python-multipart` | File upload handling | ≥ 0.0.9, < 1.0 |
 | `pyyaml` | YAML configuration file parsing | ≥ 6.0, < 7.0 |
+| `sqlmodel` | SQLite ORM + Pydantic integration | ≥ 0.0.18, < 1.0 |
+| `websockets` | WebSocket client for ComfyUI progress monitoring | ≥ 12.0, < 14.0 |
+| `aiofiles` | Async file I/O helpers | ≥ 23.0, < 25.0 |
+| `sentry-sdk[fastapi]` | Optional error tracking (no-op if DSN not set) | ≥ 2.0, < 3.0 |
 
 ### Storage
 
 | Component | Choice | Rationale |
 |---|---|---|
-| Characters | JSON files | No DB setup, human-readable, easy to debug |
-| Conversations | JSON files | One file per conversation |
+| Characters, Conversations, Messages | SQLite (`data/auberge.db`) via **SQLModel** | Structured queries, migrations, no separate DB server |
 | Configuration | YAML file (`config.yaml`) | Human-readable, supports comments |
 | Connector instances | JSON files | One file per connector |
 | Generated images | Files on disk | Organized per session (see [02 § 5](02-project-structure.md)) |
@@ -40,7 +43,7 @@ aubergeRP targets minimal dependencies, zero-build-step frontend, and a **connec
 
 File layout is specified in [02 — Project Structure](02-project-structure.md).
 
-Writes to conversation JSON files are **atomic** (write to temp file + `os.rename`).
+Writes to connector JSON files are **atomic** (write to temp file + `os.rename`). Database writes use SQLAlchemy sessions (ACID guarantees from SQLite).
 
 ## 3. Frontend
 
@@ -77,8 +80,10 @@ File layout is specified in [02 — Project Structure](02-project-structure.md).
 | Tool | Purpose |
 |---|---|
 | `pytest` | Unit and integration testing |
+| `pytest-asyncio` | Async test support |
 | `ruff` | Linting and formatting |
 | `mypy` | Optional static type checking |
+| `respx` | Mock `httpx` calls in tests |
 
 ### Makefile
 
@@ -95,7 +100,7 @@ A `Makefile` at the project root provides developer targets:
 
 - **Unit tests** for services (character parsing, connector logic, prompt building).
 - **Integration tests** for API endpoints (using FastAPI test client).
-- **No frontend tests in MVP** (manual testing).
+- **No frontend tests** (manual testing).
 - Every pull request **must** include tests for the new or modified functionality.
 
 ## 6. Dependency Policy

@@ -12,7 +12,7 @@ Consequences:
 
 ## 2. Connector Types
 
-| Type | MVP |
+| Type | Status |
 |---|---|
 | `text` (chat completions) | ✅ |
 | `image` (image generation) | ✅ |
@@ -23,13 +23,12 @@ Consequences:
 
 A **backend** is the specific service implementation for a connector type.
 
-| Backend ID | Supported Types | Description | MVP |
+| Backend ID | Supported Types | Description | Status |
 |---|---|---|---|
 | `openai_api` | `text`, `image` | Any OpenAI-compatible API (Ollama, OpenRouter, OpenAI, vLLM, LM Studio, …) | ✅ |
+| `comfyui` | `image` | Local ComfyUI instance with workflow templates | ✅ |
 
-The OpenAI-compatible API format is the de facto standard. For images, services like OpenRouter (which routes to Gemini/DALL-E/Flux), OpenAI directly, or any compatible server all use the same `/v1/images/generations` endpoint. Zero extra setup; no GPU required locally.
-
-Additional backends (e.g., ComfyUI) are listed in [POST-MVP.md](POST-MVP.md).
+Additional backends (e.g., video, audio) are listed in [POST-MVP.md](POST-MVP.md).
 
 ## 4. Architecture
 
@@ -109,6 +108,14 @@ Notes:
 | `size` | string | no | `1024x1024` | Default image size |
 | `timeout` | integer | no | `120` | Request timeout (seconds) |
 
+#### `comfyui` (image)
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `base_url` | string | yes | `http://localhost:8188` | Base URL of the ComfyUI server |
+| `workflow` | string | no | `default` | Workflow template name (without `.json`) |
+| `timeout` | integer | no | `120` | Request timeout (seconds) |
+
 ## 6. Connector Interface
 
 All connectors implement a type-specific abstract base class.
@@ -163,7 +170,7 @@ class ImageConnector(BaseConnector):
 
 Video/audio connector interfaces are specified in [POST-MVP.md](POST-MVP.md).
 
-## 7. MVP Implementations
+## 7. Implementations
 
 ### 7.1 `OpenAITextConnector`
 
@@ -207,7 +214,31 @@ The connector:
 2. Reads `data[0]`. If `b64_json` is present, decode it. Otherwise fetch the `url`.
 3. Returns the raw image bytes.
 
-`negative_prompt` is not part of the OpenAI spec. If provided, the connector appends `". Avoid: <negative_prompt>"` to the prompt (MVP fallback). Backends that support a dedicated negative prompt (e.g., ComfyUI, post-MVP) will use it natively.
+`negative_prompt` is not part of the OpenAI spec. If provided, the connector appends `". Avoid: <negative_prompt>"` to the prompt.
+
+### 7.3 `ComfyUIConnector`
+
+Talks to a local ComfyUI instance via its REST API and WebSocket.
+
+```
+POST {base_url}/prompt
+Body: <workflow JSON with __PROMPT__ and __NEGATIVE__ placeholders substituted>
+```
+
+1. Submits the workflow via `POST /prompt`, receiving a `prompt_id`.
+2. Opens a WebSocket (`ws://{host}/ws?clientId={uuid}`) to receive progress events.
+3. When the WebSocket signals completion, fetches the output image via `GET /view?filename=...`.
+4. Returns the raw PNG bytes.
+
+**Workflow templates** live in `data/comfyui_workflows/` (user directory, seeded from built-in templates on startup). The active workflow is selected by name via the connector's `workflow` config field.
+
+#### `comfyui` config fields
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `base_url` | string | yes | `http://localhost:8188` | Base URL of the ComfyUI server |
+| `workflow` | string | no | `default` | Workflow template name (without `.json`) |
+| `timeout` | integer | no | `120` | Request timeout (seconds) |
 
 ## 8. Connector Manager
 

@@ -7,18 +7,18 @@ The goal is to provide a clean, minimal, and extensible alternative to tools lik
 * Roleplay chat with SillyTavern-compatible character cards.
 * Image generation during roleplay, triggered automatically by the LLM.
 * Character-consistent visuals.
-* Future support for ComfyUI workflows, video, and audio generation.
+* ComfyUI support for local Stable Diffusion workflows.
 
 ## Architecture — Connector System
 
 aubergeRP uses a **connector-based architecture** where every external generation backend is a pluggable module. Each connector handles a specific modality:
 
-| Connector Type | Description | MVP Backend |
+| Connector Type | Description | Available Backends |
 |---|---|---|
 | **Text** | Chat completions / LLM | OpenAI-compatible API (Ollama, OpenRouter, OpenAI, vLLM, …) |
-| **Image** | Image generation | OpenAI-compatible API (OpenRouter → Gemini/DALL-E/Flux, OpenAI, …) |
-| **Video** | Video generation | Post-MVP |
-| **Audio** | TTS / audio generation | Post-MVP |
+| **Image** | Image generation | OpenAI-compatible API (OpenRouter → Gemini/DALL-E/Flux, OpenAI, …), ComfyUI |
+| **Video** | Video generation | Not yet implemented |
+| **Audio** | TTS / audio generation | Not yet implemented |
 
 Adding a new backend = implementing a new connector class. The rest of the app does not change.
 
@@ -32,7 +32,7 @@ Adding a new backend = implementing a new connector class. The rest of the app d
 [ Text           [ Image
   Connector ]      Connector ]
    ↓              ↓
-[ LLM Backend ]  [ Image API ]
+[ LLM Backend ]  [ Image API / ComfyUI ]
 ```
 
 ## Key Features
@@ -40,20 +40,35 @@ Adding a new backend = implementing a new connector class. The rest of the app d
 ### LLM-Driven Roleplay
 * Local or remote LLM support via text connectors (Ollama, OpenAI-compatible APIs).
 * SillyTavern-compatible character cards (import/export JSON and PNG).
+* Automatic conversation summarization when approaching context-window limits.
+* OOC (out-of-character) protection guardrails.
 
 ### Multimodal Generation
-* Image generation via image connectors (OpenRouter, OpenAI, …).
+* Image generation via image connectors (OpenRouter, OpenAI, ComfyUI, …).
 * Images are triggered **by the LLM itself** using an inline marker in its response (see [docs/05-chat-and-conversations.md](docs/05-chat-and-conversations.md)).
 
 ### Connector System
-* Pluggable backends per modality (text, image, video, audio).
+* Pluggable backends per modality (text, image).
 * One active connector per type at a time.
 * Add, configure, test, and switch connectors from the Admin UI.
 
 ### Modular Architecture
 * Frontend: static HTML + vanilla JS, no build step.
 * Backend: Python / FastAPI.
+* SQLite storage via SQLModel (automatic migrations).
 * All external backends accessed through connectors only.
+
+### Deployment
+* Docker and docker-compose support.
+* Environment-variable config overrides.
+* Optional Sentry error tracking.
+* Background media cleanup scheduler.
+
+### Admin & Customization
+* Character marketplace browser (import community cards).
+* GUI customization (custom CSS, header/footer HTML).
+* Plugin system for third-party extensions.
+* Interactive API reference at `/api-docs`.
 
 ## Documentation
 
@@ -71,7 +86,8 @@ Full specifications live in [`docs/`](docs/):
 | [07 — Frontend Chat UI](docs/07-frontend-chat-ui.md) | Chat interface specification |
 | [08 — Admin Interface](docs/08-admin-interface.md) | Admin panel for connectors and characters |
 | [09 — Configuration](docs/09-configuration-and-setup.md) | Config file, startup sequence, project files |
-| [POST-MVP](docs/POST-MVP.md) | Features out of scope for the MVP |
+| [Installation Guide](docs/installation-guide.md) | Step-by-step setup for Linux, macOS, Windows, Docker |
+| [POST-MVP](docs/POST-MVP.md) | Features not yet implemented |
 
 ## Disclaimer
 

@@ -4,8 +4,10 @@
 
 A separate page within aubergeRP that provides:
 
-- **Connector management** — add, configure, test, and activate connectors for text, image, (post-MVP: video, audio).
+- **Connector management** — add, configure, test, and activate connectors for text and image (video and audio are out of scope — see [POST-MVP.md](POST-MVP.md)).
 - **Character library management** — import, edit, duplicate, export, delete.
+- **Marketplace** — browse and import community character cards.
+- **GUI customization** — inject custom CSS and HTML into every page.
 - **System health overview.**
 
 ## 2. Technology
@@ -172,6 +174,7 @@ Form rules:
 │  System Health                          [Refresh]    │
 ├──────────────────────────────────────────────────────┤
 │  aubergeRP Version: 0.1.0                            │
+│  API Reference: http://localhost:8000/api-docs        │
 │                                                      │
 │  Active Connectors:                                  │
 │  Text:  ✅ My Ollama                                 │
@@ -190,7 +193,48 @@ Form rules:
 └──────────────────────────────────────────────────────┘
 ```
 
-Data is fetched from `GET /api/health`, plus character/conversation counts from their respective list endpoints.
+Data is fetched from `GET /api/health`, plus character/conversation counts from their respective list endpoints. The API Reference link points to `/api-docs` (Redoc).
+
+### 4.4 Marketplace
+
+Browse and import community character cards from the configured marketplace index.
+
+```
+┌──────────────────────────────────────────────────────┐
+│  Marketplace                    [Search: ________]   │
+├──────────────────────────────────────────────────────┤
+│  ┌────┐                                              │
+│  │ 🧝 │  Elara the Elf            [Preview] [Import] │
+│  └────┘  Tags: fantasy, elf                          │
+│  ────────────────────────────────────────────────────│
+│  ┌────┐                                              │
+│  │ 🧙 │  Grimwald the Wizard      [Preview] [Import] │
+│  └────┘  Tags: fantasy, wizard                       │
+└──────────────────────────────────────────────────────┘
+```
+
+- Search calls `GET /api/marketplace/search?q=<query>`.
+- Import fetches the card's `download_url` and posts it to `POST /api/characters/import`.
+- The marketplace index URL is configurable via `marketplace.index_url` in `config.yaml`.
+
+### 4.5 Customization
+
+Inject custom CSS and HTML into every aubergeRP page.
+
+```
+┌──────────────────────────────────────────────────────┐
+│  GUI Customization                                   │
+├──────────────────────────────────────────────────────┤
+│  Custom CSS:          [textarea___________________]  │
+│  Header HTML:         [textarea___________________]  │
+│  Footer HTML:         [textarea___________________]  │
+│                                              [Save]  │
+└──────────────────────────────────────────────────────┘
+```
+
+- Changes are saved via `PUT /api/config` (fields under `gui`).
+- `custom_css` is injected inside a `<style>` tag in every page's `<head>`.
+- `custom_header_html` and `custom_footer_html` are injected at the top/bottom of the page body.
 
 ## 5. First-Time Setup Flow
 
@@ -198,9 +242,11 @@ Data is fetched from `GET /api/health`, plus character/conversation counts from 
 2. Connectors section is empty.
 3. Click `+ Add New` → select type `text`, backend `openai_api`.
 4. Enter the LLM backend URL (e.g., `http://localhost:11434/v1` for Ollama). Click Test, then Save. The connector is automatically activated (first of its type).
-5. Click `+ Add New` again → select type `image`, backend `openai_api`, enter an image API URL + key. Test + Save.
-6. Go to Characters, import or create a character card.
-7. Click `← Chat` to start roleplaying.
+5. Click `+ Add New` again → select type `image`. Choose `openai_api` for a remote API or `comfyui` for a local Stable Diffusion instance. Enter the required fields. Test + Save.
+6. Go to **Characters** and import or create a character card, or browse the **Marketplace** to import a community card.
+7. Optionally, open **Customization** to inject custom CSS or header/footer HTML.
+8. Click `← Chat` to start roleplaying.
+9. The interactive API reference is available at `http://localhost:8000/api-docs`.
 
 ## 6. API Endpoints
 
