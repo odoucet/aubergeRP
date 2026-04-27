@@ -22,8 +22,10 @@
   <nav id="admin-nav" aria-label="Admin sections">
     <button class="nav-btn active" data-section="connectors" aria-current="page">Connectors</button>
     <button class="nav-btn" data-section="characters">Characters</button>
+    <button class="nav-btn" data-section="marketplace">Marketplace</button>
     <button class="nav-btn" data-section="health">Health</button>
     <button class="nav-btn" data-section="config">Configuration</button>
+    <button class="nav-btn" data-section="customize">Customization</button>
   </nav>
 
   <!-- Content area -->
@@ -51,6 +53,20 @@
       </div>
       <div id="character-list" class="character-list" aria-live="polite">
         <div class="loading-row">Loading…</div>
+      </div>
+    </section>
+
+    <!-- ── Marketplace ── -->
+    <section id="section-marketplace" class="admin-section" style="display:none" aria-label="Character marketplace">
+      <div class="section-header">
+        <h1>Marketplace</h1>
+      </div>
+      <div class="field-row" style="margin-bottom:1rem;">
+        <input type="text" id="marketplace-search" placeholder="Search characters…" autocomplete="off" style="flex:1">
+        <button class="btn btn-primary" id="marketplace-search-btn" style="margin-left:0.5rem;">Search</button>
+      </div>
+      <div id="marketplace-results" class="character-list" aria-live="polite">
+        <div class="loading-row">Enter a search term or click Search to browse.</div>
       </div>
     </section>
 
@@ -122,6 +138,33 @@
         <button class="btn btn-secondary" id="cleanup-images-btn">Clean up images</button>
       </div>
       <div id="cleanup-feedback" style="margin-top:0.5rem;font-size:0.875rem;"></div>
+    </section>
+
+    <!-- ── Customization ── -->
+    <section id="section-customize" class="admin-section" style="display:none" aria-label="GUI Customization">
+      <div class="section-header">
+        <h1>Customization</h1>
+        <button class="btn btn-primary" id="customize-save-btn">Save</button>
+      </div>
+      <div id="customize-feedback"></div>
+
+      <div class="field-divider">Custom CSS</div>
+      <div class="field-row" style="align-items:flex-start">
+        <label for="customize-css">CSS</label>
+        <textarea id="customize-css" rows="8" placeholder="/* your custom CSS */" style="font-family:monospace;font-size:0.85rem;"></textarea>
+      </div>
+
+      <div class="field-divider">Custom Header HTML</div>
+      <div class="field-row" style="align-items:flex-start">
+        <label for="customize-header-html">Header HTML</label>
+        <textarea id="customize-header-html" rows="4" placeholder="<!-- injected inside <header> -->" style="font-family:monospace;font-size:0.85rem;"></textarea>
+      </div>
+
+      <div class="field-divider">Custom Footer HTML</div>
+      <div class="field-row" style="align-items:flex-start">
+        <label for="customize-footer-html">Footer HTML</label>
+        <textarea id="customize-footer-html" rows="4" placeholder="<!-- injected inside <footer> -->" style="font-family:monospace;font-size:0.85rem;"></textarea>
+      </div>
     </section>
 
   </main>
@@ -307,10 +350,14 @@
   import { initConnectors } from '/js/admin/connectors.js';
   import { initCharacters } from '/js/admin/characters.js';
   import { initConfig }     from '/js/admin/config.js';
+  import { initMarketplace } from '/js/admin/marketplace.js';
   import { applyHealthBadges } from '/js/admin/connectors.js';
+  import { applyGuiCustomization } from '/js/gui-customization.js';
+
+  applyGuiCustomization();
 
   // ── Section routing (hash-based) ────────────────────────────────────────
-  const SECTIONS = ['connectors', 'characters', 'health', 'config'];
+  const SECTIONS = ['connectors', 'characters', 'marketplace', 'health', 'config', 'customize'];
   const sectionEls = {};
   const navBtns = {};
 
@@ -329,8 +376,10 @@
     window.location.hash = name;
     if (name === 'connectors') connectorCtrl.refresh();
     else if (name === 'characters') charCtrl.refresh();
+    else if (name === 'marketplace') marketplaceCtrl.refresh();
     else if (name === 'health') loadHealth();
     else if (name === 'config') configCtrl.refresh();
+    else if (name === 'customize') loadCustomize();
   }
 
   SECTIONS.forEach(s => {
@@ -399,6 +448,11 @@
           <dt>Characters</dt><dd>${Array.isArray(chars) ? chars.length : '?'}</dd>
           <dt>Conversations</dt><dd>${Array.isArray(convs) ? convs.length : '?'}</dd>
         </dl>
+        <h3 class="health-subheading">API Reference</h3>
+        <dl class="health-dl">
+          <dt>Interactive Docs</dt><dd><a href="/api-docs" target="_blank">Open API Reference (Redoc)</a></dd>
+          <dt>OpenAPI Spec</dt><dd><a href="/openapi.json" target="_blank">/openapi.json</a></dd>
+        </dl>
       `;
     } catch (err) {
       el.innerHTML = `<div class="error-banner">Cannot connect to aubergeRP API: ${err.message}</div>`;
@@ -407,10 +461,51 @@
 
   document.getElementById('refresh-health-btn').addEventListener('click', loadHealth);
 
+  // ── Customization section ─────────────────────────────────────────────
+  async function loadCustomize() {
+    const feedbackEl = document.getElementById('customize-feedback');
+    feedbackEl.innerHTML = '';
+    try {
+      const cfg = await fetch('/api/config/gui').then(r => r.json());
+      document.getElementById('customize-css').value = cfg.custom_css || '';
+      document.getElementById('customize-header-html').value = cfg.custom_header_html || '';
+      document.getElementById('customize-footer-html').value = cfg.custom_footer_html || '';
+    } catch (err) {
+      feedbackEl.innerHTML = `<div class="error-banner">Cannot load GUI config: ${err.message}</div>`;
+    }
+  }
+
+  document.getElementById('customize-save-btn').addEventListener('click', async () => {
+    const feedbackEl = document.getElementById('customize-feedback');
+    feedbackEl.innerHTML = '';
+    const btn = document.getElementById('customize-save-btn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    const body = {
+      custom_css: document.getElementById('customize-css').value,
+      custom_header_html: document.getElementById('customize-header-html').value,
+      custom_footer_html: document.getElementById('customize-footer-html').value,
+    };
+    try {
+      await fetch('/api/config/gui', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      showToast('Customization saved. Reload pages to apply.', false);
+    } catch (err) {
+      feedbackEl.innerHTML = `<div class="error-banner">${err.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Save';
+    }
+  });
+
   // ── Init modules ──────────────────────────────────────────────────────
-  const connectorCtrl = initConnectors({ showToast, showConfirm });
-  const charCtrl      = initCharacters({ showToast, showConfirm });
-  const configCtrl    = initConfig({ showToast });
+  const connectorCtrl  = initConnectors({ showToast, showConfirm });
+  const charCtrl       = initCharacters({ showToast, showConfirm });
+  const configCtrl     = initConfig({ showToast });
+  const marketplaceCtrl = initMarketplace({ showToast });
 
   // ── Health polling (every 30s) — updates connector status badges ──────────
   async function pollHealth() {

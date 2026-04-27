@@ -13,6 +13,7 @@ class AppConfig(BaseModel):
     port: int = 8000
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     data_dir: str = "data"
+    sentry_dsn: str = ""
 
 
 class ActiveConnectorsConfig(BaseModel):
@@ -44,12 +45,32 @@ class ChatConfig(BaseModel):
     ooc_protection: bool = True
 
 
+class GuiConfig(BaseModel):
+    """GUI customization settings."""
+
+    # Arbitrary CSS injected into every page inside a <style> tag.
+    custom_css: str = ""
+    # Raw HTML inserted just after the opening <header> tag.
+    custom_header_html: str = ""
+    # Raw HTML inserted just before the closing </footer> tag.
+    custom_footer_html: str = ""
+
+
+class MarketplaceConfig(BaseModel):
+    """Character card marketplace settings."""
+
+    # URL of the hosted marketplace index (JSON array of card descriptors).
+    index_url: str = "https://raw.githubusercontent.com/odoucet/aubergeRP/main/marketplace/index.json"
+
+
 class Config(BaseModel):
     app: AppConfig = AppConfig()
     active_connectors: ActiveConnectorsConfig = ActiveConnectorsConfig()
     user: UserConfig = UserConfig()
     scheduler: SchedulerConfig = SchedulerConfig()
     chat: ChatConfig = ChatConfig()
+    gui: GuiConfig = GuiConfig()
+    marketplace: MarketplaceConfig = MarketplaceConfig()
 
     @field_validator("app", mode="before")
     @classmethod
@@ -76,6 +97,16 @@ class Config(BaseModel):
     def validate_chat(cls, v: object) -> object:
         return v or {}
 
+    @field_validator("gui", mode="before")
+    @classmethod
+    def validate_gui(cls, v: object) -> object:
+        return v or {}
+
+    @field_validator("marketplace", mode="before")
+    @classmethod
+    def validate_marketplace(cls, v: object) -> object:
+        return v or {}
+
 def _apply_env_overrides(config: Config) -> Config:
     """Override config values with environment variables if set.
 
@@ -85,6 +116,7 @@ def _apply_env_overrides(config: Config) -> Config:
         AUBERGE_PORT          → config.app.port  (integer)
         AUBERGE_LOG_LEVEL     → config.app.log_level
         AUBERGE_USER_NAME     → config.user.name
+        AUBERGE_SENTRY_DSN    → config.app.sentry_dsn
     """
     if val := os.environ.get("AUBERGE_DATA_DIR"):
         config.app.data_dir = val
@@ -96,6 +128,8 @@ def _apply_env_overrides(config: Config) -> Config:
         config.app.log_level = val  # type: ignore[assignment]
     if val := os.environ.get("AUBERGE_USER_NAME"):
         config.user.name = val
+    if val := os.environ.get("AUBERGE_SENTRY_DSN"):
+        config.app.sentry_dsn = val
     return config
 
 def load_config(path: str | Path = "config.yaml") -> Config:

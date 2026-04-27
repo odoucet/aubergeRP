@@ -56,3 +56,19 @@ class ConfigPatch(BaseModel):
     app: AppConfigPatch | None = None
     user: UserConfigPatch | None = None
     active_connectors: ActiveConnectorsPatch | None = None
+
+
+class GuiConfigResponse(BaseModel):
+    """GUI customization settings returned by the API."""
+
+    custom_css: str = ""
+    custom_header_html: str = ""
+    custom_footer_html: str = ""
+
+
+class GuiConfigUpdate(BaseModel):
+    """Full GUI customization update."""
+
+    custom_css: str = ""
+    custom_header_html: str = ""
+    custom_footer_html: str = ""

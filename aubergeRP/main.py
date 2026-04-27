@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import shutil
+from urllib.parse import urlparse
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .config import get_config
@@ -17,6 +19,7 @@ from .routers import connectors as connectors_router
 from .routers import conversations as conversations_router
 from .routers import health as health_router
 from .routers import images as images_router
+from .routers import marketplace as marketplace_router
 
 _BUILTIN_WORKFLOWS_DIR = Path(__file__).parent / "comfyui_workflows"
 
@@ -39,9 +42,46 @@ def _init_data_dirs(data_dir: str) -> None:
                 shutil.copy2(src, dst)
 
 
+def _init_sentry(dsn: str) -> None:
+    """Initialise Sentry SDK if a DSN is configured."""
+    if not dsn:
+        return
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.starlette import StarletteIntegration
+
+        sentry_sdk.init(
+            dsn=dsn,
+            integrations=[StarletteIntegration(), FastApiIntegration()],
+            traces_sample_rate=0.1,
+            send_default_pii=False,
+        )
+    except ImportError:
+        pass  # sentry-sdk is an optional dependency
+
+
+_REDOC_HTML = """<!DOCTYPE html>
+<html>
+<head>
+  <title>aubergeRP — API Reference</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
+  <style>body { margin: 0; padding: 0; }</style>
+</head>
+<body>
+  <redoc spec-url='/openapi.json'></redoc>
+  <script src="https://cdn.jsdelivr.net/npm/redoc/bundles/redoc.standalone.js"></script>
+</body>
+</html>
+"""
+
+
 def create_app() -> FastAPI:
     config = get_config()
     _init_data_dirs(config.app.data_dir)
+    _init_sentry(config.app.sentry_dsn)
 
     # Initialise SQLite database and run migrations
     from .database import init_db
@@ -61,7 +101,32 @@ def create_app() -> FastAPI:
         version="0.1.0",
         description="A lightweight roleplay frontend with pluggable connectors",
         lifespan=lifespan,
+        # Disable default docs paths — we serve our own at /api-docs
+        docs_url=None,
+        redoc_url=None,
     )
+
+    # ── CORS auto-detection middleware ──────────────────────────────────────
+    # Reads the Host header from each request and adds it as an allowed origin
+    # so that browsers on the same machine always pass CORS checks.
+    @app.middleware("http")
+    async def cors_auto_detect(request: Request, call_next) -> Response:  # type: ignore[type-arg]
+        response = await call_next(request)
+        host = request.headers.get("host", "")
+        origin = request.headers.get("origin", "")
+        if origin and host:
+            try:
+                # Compare the origin's netloc (host+port) against the Host header
+                # to avoid substring-match false positives (e.g. evil.host.com vs host.com).
+                origin_netloc = urlparse(origin).netloc
+                if origin_netloc == host:
+                    response.headers["Access-Control-Allow-Origin"] = origin
+                    response.headers["Access-Control-Allow-Credentials"] = "true"
+                    response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+                    response.headers["Access-Control-Allow-Headers"] = "*"
+            except Exception:
+                pass
+        return response
 
     app.include_router(characters_router.router, prefix="/api")
     app.include_router(conversations_router.router, prefix="/api")
@@ -70,6 +135,12 @@ def create_app() -> FastAPI:
     app.include_router(config_router.router, prefix="/api")
     app.include_router(images_router.router, prefix="/api")
     app.include_router(health_router.router, prefix="/api")
+    app.include_router(marketplace_router.router, prefix="/api")
+
+    # ── API reference (Redoc) ───────────────────────────────────────────────
+    @app.get("/api-docs", include_in_schema=False, response_class=HTMLResponse)
+    async def api_docs() -> HTMLResponse:
+        return HTMLResponse(content=_REDOC_HTML)
 
     frontend = Path("frontend")
     if frontend.exists():
