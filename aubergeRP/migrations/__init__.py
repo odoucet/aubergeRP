@@ -63,7 +63,7 @@ def _load_custom_migrations(data_dir: str | Path) -> dict[int, tuple[str, Migrat
             continue
         module = importlib.util.module_from_spec(spec)
         sys.modules[f"_custom_migration_{version}"] = module
-        spec.loader.exec_module(module)  # type: ignore[attr-defined]
+        spec.loader.exec_module(module)
         if not hasattr(module, "migrate"):
             continue
         description = getattr(module, "DESCRIPTION", path.stem)

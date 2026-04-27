@@ -5,6 +5,7 @@ import shutil
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Awaitable, Callable
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
@@ -116,7 +117,10 @@ def create_app() -> FastAPI:
     # Reads the Host header from each request and adds it as an allowed origin
     # so that browsers on the same machine always pass CORS checks.
     @app.middleware("http")
-    async def cors_auto_detect(request: Request, call_next) -> Response:  # type: ignore[type-arg]
+    async def cors_auto_detect(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
         response = await call_next(request)
         host = request.headers.get("host", "")
         origin = request.headers.get("origin", "")

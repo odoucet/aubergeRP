@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import json
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -102,7 +103,7 @@ def _not_found(connector_id: str) -> HTTPException:
 # Static routes MUST be declared before parameterised ones
 
 @router.get("/backends")
-def list_backends():
+def list_backends() -> list[dict[str, Any]]:
     return [
         {
             "id": "openai_api",
@@ -157,7 +158,7 @@ def list_comfyui_workflows(
 def list_connectors(
     type: str | None = None,
     manager: ConnectorManager = Depends(get_connector_manager),
-):
+) -> list[ConnectorResponse]:
     instances = manager.list_connectors(type=type)
     return [_redact(i, manager.is_active(i.id)) for i in instances]
 
@@ -166,7 +167,7 @@ def list_connectors(
 def create_connector(
     data: ConnectorCreate,
     manager: ConnectorManager = Depends(get_connector_manager),
-):
+) -> ConnectorResponse:
     if data.backend not in ("openai_api", "comfyui"):
         raise HTTPException(status_code=400, detail=f"Unknown backend '{data.backend}'")
     instance = manager.create_connector(data)
@@ -183,7 +184,7 @@ def create_connector(
 def get_connector(
     connector_id: str,
     manager: ConnectorManager = Depends(get_connector_manager),
-):
+) -> ConnectorResponse:
     try:
         instance = manager.get_connector(connector_id)
     except KeyError:
@@ -196,7 +197,7 @@ def update_connector(
     connector_id: str,
     data: ConnectorUpdate,
     manager: ConnectorManager = Depends(get_connector_manager),
-):
+) -> ConnectorResponse:
     try:
         instance = manager.update_connector(connector_id, data)
     except KeyError:
@@ -208,7 +209,7 @@ def update_connector(
 def delete_connector(
     connector_id: str,
     manager: ConnectorManager = Depends(get_connector_manager),
-):
+) -> None:
     try:
         manager.delete_connector(connector_id)
     except KeyError:
@@ -220,7 +221,7 @@ def delete_connector(
 async def test_connector(
     connector_id: str,
     manager: ConnectorManager = Depends(get_connector_manager),
-):
+) -> dict[str, Any]:
     try:
         result = await manager.test_connector(connector_id)
     except KeyError:
@@ -235,7 +236,7 @@ async def test_connector(
 def activate_connector(
     connector_id: str,
     manager: ConnectorManager = Depends(get_connector_manager),
-):
+) -> dict[str, Any]:
     try:
         manager.set_active(connector_id)
         instance = manager.get_connector(connector_id)

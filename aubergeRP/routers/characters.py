@@ -5,7 +5,7 @@ import json
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse
 
-from ..models.character import CharacterData
+from ..models.character import CharacterCard, CharacterData, CharacterSummary
 from ..services.character_service import (
     CharacterImportError,
     CharacterNotFoundError,
@@ -30,7 +30,7 @@ def _not_found(character_id: str) -> HTTPException:
 async def import_character(
     file: UploadFile = File(...),
     service: CharacterService = Depends(get_character_service),
-):
+) -> CharacterCard:
     content = await file.read()
     filename = file.filename or ""
     try:
@@ -44,7 +44,7 @@ async def import_character(
 
 
 @router.get("/")
-def list_characters(service: CharacterService = Depends(get_character_service)):
+def list_characters(service: CharacterService = Depends(get_character_service)) -> list[CharacterSummary]:
     return service.list_characters()
 
 
@@ -52,7 +52,7 @@ def list_characters(service: CharacterService = Depends(get_character_service)):
 def create_character(
     data: CharacterData,
     service: CharacterService = Depends(get_character_service),
-):
+) -> CharacterCard:
     return service.create_character(data)
 
 
@@ -60,7 +60,7 @@ def create_character(
 def get_character(
     character_id: str,
     service: CharacterService = Depends(get_character_service),
-):
+) -> CharacterCard:
     try:
         return service.get_character(character_id)
     except CharacterNotFoundError:
@@ -72,7 +72,7 @@ def update_character(
     character_id: str,
     data: CharacterData,
     service: CharacterService = Depends(get_character_service),
-):
+) -> CharacterCard:
     try:
         return service.update_character(character_id, data)
     except CharacterNotFoundError:
@@ -83,7 +83,7 @@ def update_character(
 def delete_character(
     character_id: str,
     service: CharacterService = Depends(get_character_service),
-):
+) -> None:
     try:
         service.delete_character(character_id)
     except CharacterNotFoundError:
@@ -94,7 +94,7 @@ def delete_character(
 def get_avatar(
     character_id: str,
     service: CharacterService = Depends(get_character_service),
-):
+) -> FileResponse:
     try:
         service.get_character(character_id)
     except CharacterNotFoundError:
@@ -110,7 +110,7 @@ async def upload_avatar(
     character_id: str,
     file: UploadFile = File(...),
     service: CharacterService = Depends(get_character_service),
-):
+) -> dict[str, str]:
     try:
         service.get_character(character_id)
     except CharacterNotFoundError:
@@ -124,7 +124,7 @@ async def upload_avatar(
 def export_json(
     character_id: str,
     service: CharacterService = Depends(get_character_service),
-):
+) -> Response:
     try:
         data = service.export_character_json(character_id)
     except CharacterNotFoundError:
@@ -141,7 +141,7 @@ def export_json(
 def export_png(
     character_id: str,
     service: CharacterService = Depends(get_character_service),
-):
+) -> Response:
     try:
         content = service.export_character_png(character_id)
     except CharacterNotFoundError:
@@ -159,7 +159,7 @@ def export_png(
 def duplicate_character(
     character_id: str,
     service: CharacterService = Depends(get_character_service),
-):
+) -> CharacterCard:
     try:
         return service.duplicate_character(character_id)
     except CharacterNotFoundError:

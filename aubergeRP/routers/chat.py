@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import AsyncGenerator
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Header
@@ -52,8 +53,8 @@ async def chat(
     session_token: str = Depends(get_session_token),
     service: ChatService = Depends(get_chat_service),
     bus: EventBus = Depends(get_event_bus),
-):
-    async def event_generator():
+) -> StreamingResponse:
+    async def event_generator() -> AsyncGenerator[str, None]:
         async for event in service.stream_chat(conversation_id, body.content):
             await bus.publish(session_token, conversation_id, event)
             yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
@@ -66,7 +67,7 @@ async def chat_events(
     conversation_id: str,
     session_token: str = "",
     bus: EventBus = Depends(get_event_bus),
-):
+) -> StreamingResponse:
     """Long-lived SSE endpoint for multi-browser event delivery.
 
     Other browser tabs sharing the same session token subscribe here and
@@ -80,7 +81,7 @@ async def chat_events(
     """
     q = bus.subscribe(session_token, conversation_id)
 
-    async def event_generator():
+    async def event_generator() -> AsyncGenerator[str, None]:
         try:
             while True:
                 try:

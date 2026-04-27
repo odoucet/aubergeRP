@@ -20,7 +20,7 @@ class OpenAITextConnector(TextConnector):
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.config.api_key}", "Content-Type": "application/json"}
 
-    async def test_connection(self) -> dict:
+    async def test_connection(self) -> dict[str, Any]:
         try:
             async with httpx.AsyncClient(timeout=self.config.timeout) as client:
                 response = await client.get(
@@ -36,7 +36,7 @@ class OpenAITextConnector(TextConnector):
 
     async def stream_chat_completion(
         self,
-        messages: list[dict],
+        messages: list[dict[str, Any]],
         model: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
@@ -69,10 +69,10 @@ class OpenAITextConnector(TextConnector):
                 except (json.JSONDecodeError, KeyError, IndexError):
                     continue
 
-    async def stream_chat_completion_with_tools(  # type: ignore[override]
+    async def stream_chat_completion_with_tools(
         self,
-        messages: list[dict],
-        tools: list[dict],
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
         model: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,

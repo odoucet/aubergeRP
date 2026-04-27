@@ -129,7 +129,8 @@ def summarized_content_from_messages(messages: list[dict[str, Any]]) -> str | No
         if msg.get("role") == "system" and str(msg.get("content", "")).startswith(
             "[Summary of earlier conversation]"
         ):
-            return msg["content"]
+            content = msg.get("content")
+            return content if isinstance(content, str) else str(content)
     return None
 
 

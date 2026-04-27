@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from typing import Any
 
 import httpx
 
@@ -17,7 +18,7 @@ class OpenAIImageConnector(ImageConnector):
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.config.api_key}", "Content-Type": "application/json"}
 
-    async def test_connection(self) -> dict:
+    async def test_connection(self) -> dict[str, Any]:
         try:
             async with httpx.AsyncClient(timeout=self.config.timeout) as client:
                 response = await client.get(

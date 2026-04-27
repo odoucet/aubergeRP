@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 
+from ..models.conversation import Conversation, ConversationSummary
 from ..models.conversation import ConversationCreate
 from ..services.character_service import CharacterNotFoundError, CharacterService
 from ..services.conversation_service import ConversationNotFoundError, ConversationService
@@ -29,7 +30,7 @@ def list_conversations(
     character_id: str | None = None,
     service: ConversationService = Depends(get_conversation_service),
     session_token: str = Depends(get_session_token),
-):
+) -> list[ConversationSummary]:
     return service.list_conversations(character_id, owner=session_token)
 
 
@@ -38,7 +39,7 @@ def create_conversation(
     body: ConversationCreate,
     service: ConversationService = Depends(get_conversation_service),
     session_token: str = Depends(get_session_token),
-):
+) -> Conversation:
     try:
         return service.create_conversation(body.character_id, owner=session_token)
     except CharacterNotFoundError:
@@ -49,7 +50,7 @@ def create_conversation(
 def get_conversation(
     conversation_id: str,
     service: ConversationService = Depends(get_conversation_service),
-):
+) -> Conversation:
     try:
         return service.get_conversation(conversation_id)
     except ConversationNotFoundError:
@@ -60,7 +61,7 @@ def get_conversation(
 def delete_conversation(
     conversation_id: str,
     service: ConversationService = Depends(get_conversation_service),
-):
+) -> None:
     try:
         service.delete_conversation(conversation_id)
     except ConversationNotFoundError:

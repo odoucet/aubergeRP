@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 from fastapi import APIRouter, Depends
 
 from ..config import get_config
@@ -53,7 +53,7 @@ def _save_config(save_path: Path) -> None:
 
 
 @router.get("/")
-def get_config_endpoint():
+def get_config_endpoint() -> ConfigResponse:
     return _to_response()
 
 
@@ -61,7 +61,7 @@ def get_config_endpoint():
 def update_config(
     update: ConfigUpdate,
     save_path: Path = Depends(get_config_save_path),
-):
+) -> ConfigResponse:
     config = get_config()
 
     if update.app is not None:
@@ -84,7 +84,7 @@ def update_config(
 def patch_config(
     patch: ConfigPatch,
     save_path: Path = Depends(get_config_save_path),
-):
+) -> ConfigResponse:
     config = get_config()
 
     if patch.app is not None:

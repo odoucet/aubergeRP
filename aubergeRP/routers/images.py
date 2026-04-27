@@ -13,7 +13,7 @@ router = APIRouter(prefix="/images", tags=["images"])
 
 
 @router.get("/{session_token}/{image_id}")
-def get_image(session_token: str, image_id: str):
+def get_image(session_token: str, image_id: str) -> FileResponse:
     config = get_config()
     # image_id may or may not include extension; normalise to bare stem + .png
     stem = image_id[:-4] if image_id.lower().endswith(".png") else image_id

@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from sqlmodel import Session
 
@@ -52,7 +53,7 @@ def _import_characters(session: Session, data_dir: Path) -> None:
 
     for path in sorted(chars_dir.glob("*.json")):
         try:
-            raw: dict = json.loads(path.read_text(encoding="utf-8"))
+            raw: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
             continue
 
@@ -87,7 +88,7 @@ def _import_conversations(session: Session, data_dir: Path) -> None:
 
     for path in sorted(convs_dir.glob("*.json")):
         try:
-            raw: dict = json.loads(path.read_text(encoding="utf-8"))
+            raw: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
             continue
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter
 
 from ..config import get_config
@@ -11,7 +13,7 @@ router = APIRouter(prefix="/health", tags=["health"])
 _VERSION = "0.1.0"
 
 
-def _connector_info(manager: ConnectorManager, connector_id: str | None) -> dict | None:
+def _connector_info(manager: ConnectorManager, connector_id: str | None) -> dict[str, Any] | None:
     if not connector_id:
         return None
     try:
@@ -23,7 +25,7 @@ def _connector_info(manager: ConnectorManager, connector_id: str | None) -> dict
 
 
 @router.get("/")
-def health():
+def health() -> dict[str, Any]:
     config = get_config()
     manager = ConnectorManager(data_dir=config.app.data_dir, config=config)
     text_id = config.active_connectors.text or None

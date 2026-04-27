@@ -4,7 +4,7 @@ import json
 import uuid
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -52,9 +52,15 @@ class ComfyUIConnector(ImageConnector):
         builtin_path = _BUILTIN_WORKFLOWS_DIR / f"{name}.json"
 
         if user_path.exists():
-            return json.loads(user_path.read_text(encoding="utf-8"))
+            raw = json.loads(user_path.read_text(encoding="utf-8"))
+            if isinstance(raw, dict):
+                return cast(dict[str, Any], raw)
+            raise ValueError(f"Workflow '{name}' in {user_path} must be a JSON object")
         if builtin_path.exists():
-            return json.loads(builtin_path.read_text(encoding="utf-8"))
+            raw = json.loads(builtin_path.read_text(encoding="utf-8"))
+            if isinstance(raw, dict):
+                return cast(dict[str, Any], raw)
+            raise ValueError(f"Workflow '{name}' in {builtin_path} must be a JSON object")
         raise FileNotFoundError(
             f"Workflow '{name}' not found in {self._workflows_dir} or built-in templates"
         )
@@ -69,7 +75,10 @@ class ComfyUIConnector(ImageConnector):
         safe_neg = negative_prompt.replace("\\", "\\\\").replace('"', '\\"')
         raw = raw.replace(_PROMPT_PLACEHOLDER, safe_prompt)
         raw = raw.replace(_NEGATIVE_PLACEHOLDER, safe_neg)
-        return json.loads(raw)  # type: ignore[no-any-return]
+        parsed = json.loads(raw)
+        if not isinstance(parsed, dict):
+            raise ValueError("Injected workflow must remain a JSON object")
+        return cast(dict[str, Any], parsed)
 
     # ------------------------------------------------------------------
     # Public interface
@@ -94,10 +103,13 @@ class ComfyUIConnector(ImageConnector):
         """Generate an image and return raw bytes (no progress reporting)."""
         async for event in self.generate_image_with_progress(prompt, negative_prompt, model, size):
             if event["type"] == "complete":
-                return event["bytes"]  # type: ignore[return-value]
+                payload = event.get("bytes")
+                if isinstance(payload, (bytes, bytearray)):
+                    return bytes(payload)
+                raise RuntimeError("ComfyUI completion event missing bytes payload")
         raise RuntimeError("ComfyUI image generation did not produce a result")
 
-    async def generate_image_with_progress(  # type: ignore[override]
+    async def generate_image_with_progress(
         self,
         prompt: str,
         negative_prompt: str = "",
@@ -115,7 +127,7 @@ class ComfyUIConnector(ImageConnector):
         # Monitor via WebSocket; fall back to HTTP polling on failure
         ws_connected = False
         try:
-            import websockets  # type: ignore[import-untyped]  # noqa: PLC0415
+            import websockets  # noqa: PLC0415
 
             async with websockets.connect(self._ws_url(client_id)) as ws:
                 ws_connected = True
@@ -156,7 +168,13 @@ class ComfyUIConnector(ImageConnector):
                 json={"client_id": client_id, "prompt": workflow},
             )
             resp.raise_for_status()
-            return resp.json()["prompt_id"]  # type: ignore[no-any-return]
+            data = resp.json()
+            if not isinstance(data, dict):
+                raise RuntimeError("Invalid ComfyUI /prompt response payload")
+            prompt_id = data.get("prompt_id")
+            if not isinstance(prompt_id, str):
+                raise RuntimeError("ComfyUI /prompt response missing prompt_id")
+            return prompt_id
 
     async def _poll_until_done(self, prompt_id: str) -> None:
         """Poll GET /history/{prompt_id} until the entry appears."""

@@ -10,7 +10,7 @@ class BaseConnector(ABC):
     backend_id: str
 
     @abstractmethod
-    async def test_connection(self) -> dict:
+    async def test_connection(self) -> dict[str, Any]:
         """Return {'connected': bool, 'details': {...}}."""
 
 
@@ -22,9 +22,9 @@ class TextConnector(BaseConnector):
     supports_tool_calling: bool = False
 
     @abstractmethod
-    async def stream_chat_completion(
+    def stream_chat_completion(
         self,
-        messages: list[dict],
+        messages: list[dict[str, Any]],
         model: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
@@ -33,8 +33,8 @@ class TextConnector(BaseConnector):
 
     async def stream_chat_completion_with_tools(
         self,
-        messages: list[dict],
-        tools: list[dict],
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
         model: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,

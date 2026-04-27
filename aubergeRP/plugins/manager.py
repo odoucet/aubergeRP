@@ -82,7 +82,7 @@ class PluginManager:
             if spec is None or spec.loader is None:
                 return
             module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)  # type: ignore[attr-defined]
+            spec.loader.exec_module(module)
         except Exception:
             logger.exception("Failed to import plugin file '%s'", path)
             return

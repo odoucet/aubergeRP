@@ -3,8 +3,9 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from ..config import Config
 from ..models.connector import (
@@ -200,7 +201,7 @@ class ConnectorManager:
     # Test
     # ------------------------------------------------------------------
 
-    async def test_connector(self, connector_id: str) -> dict:
+    async def test_connector(self, connector_id: str) -> dict[str, Any]:
         instance = self.get_connector(connector_id)
         conn = self._build_connector(instance)
         return await conn.test_connection()
