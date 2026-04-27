@@ -2,17 +2,17 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --color-bg:        #1a1a2e;
-  --color-surface:   #16213e;
-  --color-surface2:  #0f3460;
+  --color-bg:        #12121e;
+  --color-surface:   #1a1a2e;
+  --color-surface2:  #1e2850;
   --color-accent:    #e94560;
-  --color-text:      #e0e0e0;
-  --color-text-muted:#8a8a9a;
-  --color-border:    #2a2a4a;
+  --color-text:      #e8e8f4;
+  --color-text-muted:#a8a8c4;
+  --color-border:    #38385c;
   --color-user-bg:   #e94560;
   --color-user-text: #fff;
-  --color-asst-bg:   #16213e;
-  --color-asst-text: #e0e0e0;
+  --color-asst-bg:   #1a1a2e;
+  --color-asst-text: #e8e8f4;
   --sidebar-w:       280px;
   --header-h:        52px;
   --statusbar-h:     32px;
@@ -527,7 +527,7 @@ body {
   background: var(--color-text-muted);
   flex-shrink: 0;
 }
-.status-dot.ok  { background: #4caf50; }
+.status-dot.ok  { background: #3ac97a; }
 .status-dot.err { background: var(--color-accent); }
 .status-dot.na  { background: var(--color-text-muted); }
 
