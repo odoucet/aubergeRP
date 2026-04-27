@@ -81,6 +81,60 @@ _REDOC_HTML = """<!DOCTYPE html>
 """
 
 
+def _autoprovision_connectors(config: "Config", data_dir: str) -> None:  # noqa: F821
+    """Create and activate connectors from env vars if not already present.
+
+    Env vars (all optional):
+        AUBERGE_LLM_API_URL   OpenAI-compatible base URL  (e.g. http://ollama:11434/v1)
+        AUBERGE_LLM_MODEL     Model name                  (e.g. glm47-flash:q4_0)
+        AUBERGE_IMG_API_URL   Image API base URL
+        AUBERGE_IMG_MODEL     Image model name
+    """
+    import os
+
+    from .connectors.manager import ConnectorManager
+    from .models.connector import ConnectorCreate
+
+    specs = [
+        ("text",  os.environ.get("AUBERGE_LLM_API_URL", "").strip(), os.environ.get("AUBERGE_LLM_MODEL", "").strip()),
+        ("image", os.environ.get("AUBERGE_IMG_API_URL", "").strip(), os.environ.get("AUBERGE_IMG_MODEL", "").strip()),
+    ]
+    if not any(url and model for _, url, model in specs):
+        return
+
+    manager = ConnectorManager(data_dir=data_dir, config=config)
+
+    for conn_type, url, model in specs:
+        if not url or not model:
+            continue
+        existing = [
+            c for c in manager.list_connectors(conn_type)
+            if c.config.get("base_url") == url and c.config.get("model") == model
+        ]
+        if existing:
+            inst = existing[0]
+            if not manager.is_active(inst.id):
+                logger.info("Auto-provision: activating existing %s connector '%s'", conn_type, model)
+                try:
+                    manager.set_active(inst.id)
+                except OSError:
+                    logger.warning("Auto-provision: config.yaml is read-only, active connector not persisted")
+            else:
+                logger.info("Auto-provision: %s connector '%s' already active", conn_type, model)
+            continue
+        logger.info("Auto-provision: creating %s connector '%s' @ %s", conn_type, model, url)
+        inst = manager.create_connector(ConnectorCreate(
+            name=model,
+            type=conn_type,
+            backend="openai_api",
+            config={"base_url": url, "model": model, "api_key": ""},
+        ))
+        try:
+            manager.set_active(inst.id)
+        except OSError:
+            logger.warning("Auto-provision: config.yaml is read-only, active connector not persisted")
+
+
 def create_app() -> FastAPI:
     logging.basicConfig(level=logging.INFO)
     config = get_config()
@@ -92,6 +146,7 @@ def create_app() -> FastAPI:
     )
     _init_data_dirs(config.app.data_dir)
     _init_sentry(config.app.sentry_dsn)
+    _autoprovision_connectors(config, config.app.data_dir)
 
     # Initialise SQLite database and run migrations
     from .database import init_db

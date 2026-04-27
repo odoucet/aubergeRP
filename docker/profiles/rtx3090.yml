@@ -29,6 +29,7 @@ services:
 
   auberge-app:
     environment:
-      AI_API_ENDPOINT: http://ollama:11434
-      CURRENT_LLM: *llm_name
-      CURRENT_IMG: *img_name
+      AUBERGE_LLM_API_URL: http://ollama:11434/v1
+      AUBERGE_LLM_MODEL: *llm_name
+      AUBERGE_IMG_API_URL: http://ollama:11434/v1
+      AUBERGE_IMG_MODEL: *img_name

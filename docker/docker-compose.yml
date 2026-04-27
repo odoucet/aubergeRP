@@ -18,7 +18,7 @@ services:
       - ../data:/data
       - ../aubergeRP:/app/aubergeRP:ro
       - ../frontend:/app/frontend:ro
-      - ../config.yaml:/app/config.yaml:ro
+      - ../config.yaml:/app/config.yaml
     ports:
       - "${AUBERGE_PORT:-8123}:8123"
     depends_on:
