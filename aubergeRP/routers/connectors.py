@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ..connectors.manager import ConnectorManager
 from ..models.connector import (
@@ -166,10 +166,10 @@ def list_comfyui_workflows(
 
 @router.get("/")
 def list_connectors(
-    type: str | None = None,
+    connector_type: str | None = Query(default=None, alias="type"),
     manager: ConnectorManager = Depends(get_connector_manager),
 ) -> list[ConnectorResponse]:
-    instances = manager.list_connectors(type=type)
+    instances = manager.list_connectors(connector_type=connector_type)
     return [_redact(i, manager.is_active(i.id)) for i in instances]
 
 

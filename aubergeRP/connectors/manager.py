@@ -106,10 +106,10 @@ class ConnectorManager:
     # CRUD
     # ------------------------------------------------------------------
 
-    def list_connectors(self, type: str | None = None) -> list[ConnectorInstance]:
+    def list_connectors(self, connector_type: str | None = None) -> list[ConnectorInstance]:
         result = list(self._connectors.values())
-        if type is not None:
-            result = [c for c in result if c.type == type]
+        if connector_type is not None:
+            result = [c for c in result if c.type == connector_type]
         return result
 
     def get_connector(self, connector_id: str) -> ConnectorInstance:

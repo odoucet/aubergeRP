@@ -12,6 +12,14 @@ line-length = 120
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
 
+[tool.ruff.lint.per-file-ignores]
+"aubergeRP/plugins/base.py" = ["B027"]
+"aubergeRP/routers/*.py" = ["B008", "B904"]
+"aubergeRP/**/__init__.py" = ["N999"]
+"tests/test_character_service.py" = ["E402", "B017"]
+"tests/test_config.py" = ["B017"]
+"tests/test_models.py" = ["E402", "B017"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

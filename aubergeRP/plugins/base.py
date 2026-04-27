@@ -10,11 +10,10 @@ they care about.
 
 from __future__ import annotations
 
-from abc import ABC
 from typing import Any
 
 
-class BasePlugin(ABC):
+class BasePlugin:
     """Base class for all aubergeRP plugins.
 
     Subclass this and override the hook methods you need.  Every hook

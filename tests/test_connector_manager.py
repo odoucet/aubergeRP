@@ -122,8 +122,8 @@ def test_list_filter_by_type(tmp_path):
     mgr = make_manager(tmp_path)
     mgr.create_connector(text_create())
     mgr.create_connector(image_create())
-    text_list = mgr.list_connectors(type="text")
-    image_list = mgr.list_connectors(type="image")
+    text_list = mgr.list_connectors(connector_type="text")
+    image_list = mgr.list_connectors(connector_type="image")
     assert len(text_list) == 1 and text_list[0].type == "text"
     assert len(image_list) == 1 and image_list[0].type == "image"
 
