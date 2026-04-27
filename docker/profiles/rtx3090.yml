@@ -1,11 +1,11 @@
 # RTX 3090 (24 GB VRAM)
 
 x-gguf:
-  llm_repo: unsloth/GLM-4.7-Flash-GGUF
-  llm_file: GLM-4.7-Flash-Q4_0.gguf
-  llm_size: ~17.2 GB
-  llm_name: &llm_name glm47-flash:q4_0
-  llm_modelfile: glm47flash.Modelfile
+  llm_repo: unsloth/Qwen3.6-27B-GGUF
+  llm_file: Qwen3.6-27B-Q4_K_M.gguf
+  llm_size: ~16.8 GB
+  llm_name: &llm_name qwen3.6-27b:q4km
+  llm_modelfile: qwen3.6-27b.Modelfile
   img_repo: unsloth/FLUX.2-klein-9B-GGUF
   img_file: flux-2-klein-9b-Q4_K_M.gguf
   img_size: ~5.91 GB
