@@ -27,7 +27,9 @@ class MediaService:
     def list_media(self) -> list[MediaRow]:
         with self._get_session() as session:
             rows = list(
-                session.exec(select(MediaRow).order_by(MediaRow.created_at.desc()))
+                session.exec(
+                    select(MediaRow).order_by(MediaRow.__table__.c.created_at.desc())
+                )
             )
             return rows
 

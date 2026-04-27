@@ -175,12 +175,12 @@ class StatisticsService:
 
         today = datetime.now(UTC).date()
         start = today - timedelta(days=max(1, days) - 1)
-        timeline_map: dict[str, dict[str, int | str]] = {}
+        timeline_map: dict[str, dict[str, Any]] = {}
         for i in range(max(1, days)):
             day = start + timedelta(days=i)
-            key = day.isoformat()
-            timeline_map[key] = {
-                "date": key,
+            day_key = day.isoformat()
+            timeline_map[day_key] = {
+                "date": day_key,
                 "llm_calls": 0,
                 "tokens_in": 0,
                 "tokens_out": 0,

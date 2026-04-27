@@ -7,7 +7,7 @@ from sqlmodel import Session
 
 def migrate(session: Session) -> None:
     """Create llm_call_stats when upgrading existing databases."""
-    session.exec(
+    session.execute(
         text(
             """
         CREATE TABLE IF NOT EXISTS llm_call_stats (
@@ -27,7 +27,7 @@ def migrate(session: Session) -> None:
         """
         )
     )
-    session.exec(
+    session.execute(
         text(
             "CREATE INDEX IF NOT EXISTS ix_llm_call_stats_conversation_id ON llm_call_stats (conversation_id)"
         )

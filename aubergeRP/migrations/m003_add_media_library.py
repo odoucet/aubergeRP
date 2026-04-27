@@ -11,7 +11,7 @@ from sqlmodel import Session
 
 def migrate(session: Session) -> None:
     """Create media_library table and import existing message image URLs."""
-    session.exec(
+    session.execute(
         text(
             """
         CREATE TABLE IF NOT EXISTS media_library (
@@ -28,21 +28,21 @@ def migrate(session: Session) -> None:
         """
         )
     )
-    session.exec(
+    session.execute(
         text(
             "CREATE INDEX IF NOT EXISTS ix_media_library_conversation_id ON media_library (conversation_id)"
         )
     )
-    session.exec(
+    session.execute(
         text(
             "CREATE INDEX IF NOT EXISTS ix_media_library_message_id ON media_library (message_id)"
         )
     )
-    session.exec(
+    session.execute(
         text("CREATE INDEX IF NOT EXISTS ix_media_library_owner ON media_library (owner)")
     )
 
-    rows = session.exec(
+    rows = session.execute(
         text(
             """
             SELECT m.id, m.conversation_id, m.images_json, m.timestamp, COALESCE(c.owner, '')
