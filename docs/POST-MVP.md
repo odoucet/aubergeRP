@@ -4,10 +4,7 @@ This document lists features that are not yet implemented. Items that have been 
 
 ## 1. Multi-User Support
 
-- **Per-user session tokens.** Replace the constant `SESSION_TOKEN = "00000000-0000-0000-0000-000000000000"` with a per-client token (cookie or `localStorage`). The token identifier lands naturally in `data/images/{session-token}/` — no file-layout change. See the `# TODO(multi-user): ...` markers in the code.
-- **Per-user conversation ownership.** The `owner` column exists in the `conversations` table but is not yet populated or used for filtering. Filter `GET /api/conversations` by the caller's session token.
-- **Shareable read-only conversation links** (e.g., `?conversation=<uuid>` for cross-session viewing).
-- **Authentication** (password and/or IP-based access control; admin-protected section).
+- **Authentication** (password and/or IP-based access control; admin-protected section). Note: session scoping (per-user token, conversation ownership, image isolation, session sharing, multi-browser SSE) is already fully implemented.
 
 ## 2. New Connector Backends
 

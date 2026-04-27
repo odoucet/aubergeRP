@@ -1,100 +1,94 @@
-AubergeRP — Post-MVP Sprint Backlog
-=====================================
+AubergeRP — Remaining Work
+==========================
+Last updated: 2026-04-27
+
+All sprints 13–18 are complete (including the full multi-user session-token
+stack: localStorage UUID, X-Session-Token header, per-session image folders,
+conversation owner scoping, "Share session" button, and multi-browser SSE via
+EventBus).
+
+The items below represent all remaining unimplemented features.
 
 --------------------------------------------------------------------------------
-SPRINT 13 — Multi-User Foundation
-Priority: MEDIUM (from POST-MVP.md §1)
+SPRINT 19 — Authentication
+Priority: HIGH (required before any public/shared deployment)
 --------------------------------------------------------------------------------
-[ ] Per-user session tokens (cookie or localStorage UUID)
-    - Replace hardcoded SESSION_TOKEN constant with per-client token
-    - Images stored under data/images/{session-token}/ (no layout change)
-[ ] Per-user conversation ownership
-    - Add owner field to Conversation model
-    - Filter GET /api/conversations by caller's session token
-[ ] ability to share a session token on GUI (button "Share session") to 
-    copy/paste url to another browser and install the same session-token on it.
-[ ] handle multi-browser for SSE (if multiple browser are opened, they should all receive updates)
+[ ] Basic access control
+    - Password-protected access (HTTP Basic Auth or form-based login)
+    - Or IP allowlist for trusted-network deployments
+    - Admin panel protected separately from the chat UI
+    - Config: app.auth_mode ("none" | "password" | "ip_allowlist")
+    - Config: app.password (bcrypt hash) or app.allowed_ips (list of CIDR ranges)
+[ ] Session invalidation
+    - Logout endpoint: DELETE /api/session
+    - Expire sessions after configurable idle timeout
 
 --------------------------------------------------------------------------------
-SPRINT 14 — ComfyUI Connector
-Priority: MEDIUM (from POST-MVP.md §2)
+SPRINT 20 — AI Quality
+Priority: MEDIUM
 --------------------------------------------------------------------------------
-[ ] ComfyUI image connector implementation
-    - POST /prompt, GET /history/{prompt_id}, GET /view?filename=... support
-    - WebSocket progress monitoring
-    - Workflow templates in data/comfyui_workflows/ (default + user-customizable)
-    - Add websockets (>=12.0) to requirements
-[ ] ComfyUI connector admin UI
-    - Workflow selector dropdown in admin connector config
-    - Progress bar in chat during image generation
+[ ] Hallucination mitigation
+    - Detect clearly off-topic or repetitive assistant responses
+    - Configurable: retry with higher temperature or a corrective system message
+    - Config: chat.hallucination_retry (bool, default false)
+[ ] Enforced NSFW content filtering
+    - Optional pre/post-processing layer around LLM responses
+    - Config: chat.nsfw_filter ("off" | "warn" | "block")
+    - Warn mode: append a disclaimer; block mode: replace response with a refusal
+[ ] Manual "Generate Image" button
+    - UI button in the chat input area that triggers image generation without
+      relying on the LLM emitting a [IMG: ...] marker
+    - POST /api/chat/{id}/generate-image with an optional prompt override
 
 --------------------------------------------------------------------------------
-SPRINT 15 — Infrastructure
-Priority: LOW-MEDIUM (from POST-MVP.md §3)
+SPRINT 21 — Advanced Chat Features
+Priority: LOW
 --------------------------------------------------------------------------------
-[ ] Docker + docker-compose packaging
-    - Dockerfile (Python slim, non-root user)
-    - docker-compose.yml with volume mounts for data/ and config.yaml
-[ ] Environment-variable overrides for config
-    - AUBERGE_DATA_DIR, AUBERGE_API_KEY, etc. override config.yaml values
-[ ] Automatic media cleanup
-    - Admin UI button: "Clean up images older than N days"
-    - Background scheduler option (configurable, default disabled)
-[ ] Database storage
-    - Replace JSON flat-file storage with SQLite via SQLModel or similar
-    - Migration path from JSON files
-    - handle future migrations when the SQLModel is updated. Allow to plug custom python code to handle some updates.
-
-
---------------------------------------------------------------------------------
-SPRINT 16 — AI Quality
-Priority: LOW (from POST-MVP.md §4 & §5)
---------------------------------------------------------------------------------
-[x] Automatic conversation summarization
-    - Compress history when approaching token limit
-    - Configurable threshold (default: 75% of model context window)
-[x] OOC (out-of-character) protection
-    - Detect attempts to break character and add system-level guardrails
-[x] Tool-calling / structured output for image triggers
-    - Replace [IMG: …] marker with native structured outputs on supporting backends
+[ ] Multi-character conversations
+    - Allow more than one character to participate in a single conversation
+    - Each character has its own avatar, name, and system prompt
+    - Backend: conversation.characters: list[str] instead of character_id: str
+    - Frontend: character tabs or turn-selector in the chat UI
+[ ] Multi-model support
+    - Use different connector/model for chat vs. summarization vs. classification
+    - Config: chat.summarization_connector_id, chat.classification_connector_id
+    - Falls back to the active text connector if not set
+[ ] Automatic proactive image triggering
+    - LLM decides on its own when to emit an image (not only on user request)
+    - Requires prompt-engineering changes and possibly a second pass / tool call
+    - Config: chat.proactive_images (bool, default false)
+[ ] Quota management
+    - Per-conversation token or cost limit; warn when approaching; block when exceeded
+    - Config: chat.max_tokens_per_conversation, chat.max_cost_per_conversation
 
 --------------------------------------------------------------------------------
-SPRINT 17 — Admin & Customization
-Priority: LOW (from POST-MVP.md §6)
+SPRINT 22 — Video & Audio Connectors
+Priority: LOW
 --------------------------------------------------------------------------------
-[x] Character card marketplace browser
-    - Search/import community character cards from a hosted index
-    - GET /api/marketplace/search?q=... proxies a configurable index URL
-    - Import button fetches card JSON and calls /api/characters/import
-    - Marketplace section added to Admin UI
-[x] GUI customization
-    - Custom CSS injection via admin UI
-    - Custom header/footer HTML
-    - GET/PUT /api/config/gui endpoints
-    - applyGuiCustomization() JS module injected into all pages
-    - "Customization" section added to Admin UI
-[x] Plugin system skeleton
-    - Define plugin interface for third-party connectors and hooks
-    - BasePlugin abstract class (aubergeRP/plugins/base.py)
-    - PluginManager with discover(), load_plugin(), call_hook() (aubergeRP/plugins/manager.py)
-    - Hooks: on_load, on_unload, on_message_received, on_message_sent, on_image_generated, on_connector_test
+[ ] Video generation connector (image-to-video)
+    - Backend ID: "openai_api" (if API supports it) or dedicated backend
+    - Interface: VideoConnector.generate_video(prompt, image_bytes) -> bytes
+    - Admin UI: video connector section (type "video" in connector form)
+    - Chat: [VID: ...] marker analogous to [IMG: ...]
+[ ] Audio / TTS connector
+    - Backend ID: "openai_api" (TTS endpoint) or elevenlabs, etc.
+    - Interface: AudioConnector.synthesize(text) -> bytes (mp3/wav)
+    - Chat: play audio inline after each assistant message (configurable)
 
 --------------------------------------------------------------------------------
-SPRINT 18 — Documentation & Deployment
-Priority: LOW (from POST-MVP.md §7)
+SPRINT 23 — Infrastructure & Housekeeping
+Priority: LOW
 --------------------------------------------------------------------------------
-[x] End-user installation guide
-    - Step-by-step guide for Linux, macOS, Windows (including Docker path)
-    - docs/installation-guide.md
-[x] Auto-generated API reference
-    - Export OpenAPI spec as browsable HTML (redoc or swagger-ui static build)
-    - GET /api-docs serves Redoc HTML pointing at /openapi.json
-    - Link in Health section of Admin UI
-[x] CORS auto-detection
-    - Detect Host header and adjust allowed origins automatically
-    - HTTP middleware in main.py: if Origin matches Host, sets ACAO header
-[x] Sentry error tracking integration
-    - Optional DSN config field; errors reported to Sentry when configured
-    - app.sentry_dsn config field (default: "")
-    - AUBERGE_SENTRY_DSN env var override
-    - _init_sentry() called at app startup; no-op if sentry-sdk not installed
+[ ] Remove dead SESSION_TOKEN constant
+    - constants.py exports SESSION_TOKEN = "00000000-..." which is still imported
+      in main.py but never used there. Remove import from main.py.
+    - Keep constants.py if other code needs it, otherwise delete entirely.
+[ ] Clean up legacy data-dir subdirs
+    - _init_data_dirs() still creates characters/ and conversations/ subdirectories
+      that are only needed for the one-time JSON→SQLite migration (m001).
+    - After enough time has passed for users to have migrated, remove those from
+      the auto-created set (they can remain on disk; just stop creating them fresh).
+[ ] Cloud deployment / sync
+    - Research options: hosted SQLite (Turso/LiteFS), Postgres backend, or
+      rsync-based backup to object storage
+    - Scope and spec in a separate ADR before implementation
