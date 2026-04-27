@@ -20,7 +20,7 @@ services:
       - ../frontend:/app/frontend:ro
       - ../config.yaml:/app/config.yaml:ro
     ports:
-      - "${AUBERGE_PORT:-8123}:8000"
+      - "${AUBERGE_PORT:-8123}:8123"
     depends_on:
       - ollama
 
