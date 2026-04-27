@@ -95,12 +95,21 @@ async function loadBackends() {
       name: 'OpenAI-Compatible API',
       supported_types: ['text', 'image', 'video', 'audio'],
       config_schema: {
-        base_url:    { type: 'string', required: true },
-        api_key:     { type: 'string', required: false },
-        model:       { type: 'string', required: true },
-        max_tokens:  { type: 'number', required: false },
-        temperature: { type: 'number', required: false },
-        timeout:     { type: 'number', required: false },
+        common: {
+          base_url: { type: 'string', required: true },
+          api_key: { type: 'string', required: false },
+          model: { type: 'string', required: true },
+          timeout: { type: 'number', required: false },
+        },
+        by_type: {
+          text: {
+            max_tokens: { type: 'number', required: false },
+            temperature: { type: 'number', required: false },
+          },
+          image: {
+            size: { type: 'string', required: false },
+          },
+        },
       }
     }];
     updateBackendOptions();
@@ -311,30 +320,128 @@ function updateBackendOptions() {
 }
 
 function renderConfigFields(backendId, existingConfig) {
+  const selectedType = typeSelect.value;
   const backend = backends.find(b => b.id === backendId);
   if (!backend || !backend.config_schema) {
-    // Render a generic set
-    configFields.innerHTML = renderField('base_url', 'Base URL', 'string', true, existingConfig.base_url || '')
-      + renderField('api_key', 'API Key', 'string', false, '')
-      + renderField('model', 'Model', 'string', true, existingConfig.model || '');
+    const commonEntries = [
+      ['base_url', { type: 'string', required: true }],
+      ['api_key', { type: 'string', required: false }],
+      ['model', { type: 'string', required: true }],
+      ['timeout', { type: 'number', required: false }],
+    ];
+    const typeEntries = selectedType === 'text'
+      ? [
+          ['max_tokens', { type: 'number', required: false }],
+          ['temperature', { type: 'number', required: false }],
+        ]
+      : selectedType === 'image'
+        ? [['size', { type: 'string', required: false }]]
+        : [];
+
+    configFields.innerHTML = renderConfigSections(commonEntries, typeEntries, selectedType, existingConfig);
     return;
   }
-  configFields.innerHTML = Object.entries(backend.config_schema)
+
+  const splitSchema = splitSchemaByCommonAndType(backend.config_schema, selectedType);
+  configFields.innerHTML = renderConfigSections(
+    splitSchema.commonEntries,
+    splitSchema.typeEntries,
+    selectedType,
+    existingConfig,
+  );
+
+  // Populate workflow select if present
+  if (splitSchema.hasWorkflowSelect) {
+    populateWorkflowSelect(existingConfig.workflow || 'default');
+  }
+}
+
+function renderConfigSections(commonEntries, typeEntries, selectedType, existingConfig) {
+  const commonHtml = renderSchemaEntries(commonEntries, existingConfig);
+  const typeHtml = renderSchemaEntries(typeEntries, existingConfig);
+
+  let html = '';
+  if (commonHtml) {
+    html += `<div class="field-divider">Common Fields</div>${commonHtml}`;
+  }
+  if (typeHtml) {
+    html += `<div class="field-divider">Type-Specific Fields (${escHtml(selectedType)})</div>${typeHtml}`;
+  }
+  return html;
+}
+
+function renderSchemaEntries(entries, existingConfig) {
+  return entries
     .filter(([key]) => key !== 'api_key_set')
     .map(([key, schema]) => {
       const isApiKey = key === 'api_key';
-      let val = isApiKey ? '' : (existingConfig[key] !== undefined ? String(existingConfig[key]) : '');
-      let placeholder = isApiKey && existingApiKeySet ? '(set — leave blank to keep)' : '';
+      const value = isApiKey ? '' : (existingConfig[key] !== undefined ? String(existingConfig[key]) : '');
+      const placeholder = isApiKey && existingApiKeySet ? '(set — leave blank to keep)' : '';
       if (schema.type === 'workflow_select') {
-        return renderWorkflowSelect(key, schemaLabel(key), val);
+        return renderWorkflowSelect(key, schemaLabel(key), value);
       }
-      return renderField(key, schemaLabel(key), schema.type || 'string', schema.required || false, val, placeholder, isApiKey ? 'password' : null);
-    }).join('');
+      return renderField(
+        key,
+        schemaLabel(key),
+        schema.type || 'string',
+        schema.required || false,
+        value,
+        placeholder,
+        isApiKey ? 'password' : null,
+      );
+    })
+    .join('');
+}
 
-  // Populate workflow select if present
-  if (backend.config_schema.workflow?.type === 'workflow_select') {
-    populateWorkflowSelect(existingConfig.workflow || 'default');
+function splitSchemaByCommonAndType(configSchema, connectorType) {
+  const result = {
+    commonEntries: [],
+    typeEntries: [],
+    hasWorkflowSelect: false,
+  };
+
+  if (!configSchema || typeof configSchema !== 'object') return result;
+
+  // New format: { common: {...}, by_type: { text: {...}, image: {...} } }
+  if (configSchema.common || configSchema.by_type) {
+    const common = configSchema.common && typeof configSchema.common === 'object'
+      ? configSchema.common
+      : {};
+    const byType = configSchema.by_type && typeof configSchema.by_type === 'object'
+      ? (configSchema.by_type[connectorType] || {})
+      : {};
+
+    result.commonEntries = Object.entries(common);
+    result.typeEntries = Object.entries(byType);
+    result.hasWorkflowSelect = result.commonEntries.concat(result.typeEntries)
+      .some(([, schema]) => schema && schema.type === 'workflow_select');
+    return result;
   }
+
+  // Legacy flat format support
+  const merged = { ...configSchema };
+  if (connectorType === 'text') {
+    delete merged.size;
+  } else if (connectorType === 'image') {
+    delete merged.max_tokens;
+    delete merged.temperature;
+  } else {
+    delete merged.max_tokens;
+    delete merged.temperature;
+    delete merged.size;
+  }
+
+  const commonKeys = new Set(['base_url', 'api_key', 'model', 'timeout']);
+  for (const [key, schema] of Object.entries(merged)) {
+    if (commonKeys.has(key)) {
+      result.commonEntries.push([key, schema]);
+    } else {
+      result.typeEntries.push([key, schema]);
+    }
+  }
+  result.hasWorkflowSelect = result.commonEntries.concat(result.typeEntries)
+    .some(([, schema]) => schema && schema.type === 'workflow_select');
+  return result;
 }
 
 function schemaLabel(key) {

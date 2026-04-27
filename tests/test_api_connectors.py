@@ -274,6 +274,33 @@ def test_list_backends(client):
     assert "openai_api" in ids
 
 
+def test_openai_backend_schema_has_common_and_per_type_fields(client):
+    resp = client.get("/api/connectors/backends")
+    assert resp.status_code == 200
+    data = resp.json()
+    openai = next(b for b in data if b["id"] == "openai_api")
+    schema = openai["config_schema"]
+    assert "common" in schema
+    assert "by_type" in schema
+    assert "timeout" in schema["common"]
+    assert "max_tokens" in schema["by_type"]["text"]
+    assert "temperature" in schema["by_type"]["text"]
+    assert "size" in schema["by_type"]["image"]
+
+
+def test_comfyui_backend_schema_has_common_and_per_type_fields(client):
+    resp = client.get("/api/connectors/backends")
+    assert resp.status_code == 200
+    data = resp.json()
+    comfy = next(b for b in data if b["id"] == "comfyui")
+    schema = comfy["config_schema"]
+    assert "common" in schema
+    assert "by_type" in schema
+    assert "base_url" in schema["common"]
+    assert "timeout" in schema["common"]
+    assert "workflow" in schema["by_type"]["image"]
+
+
 # ---------------------------------------------------------------------------
 # Redaction
 # ---------------------------------------------------------------------------

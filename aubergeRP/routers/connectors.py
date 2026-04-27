@@ -109,9 +109,21 @@ def list_backends():
             "name": "OpenAI-Compatible API",
             "supported_types": ["text", "image"],
             "config_schema": {
-                "base_url": {"type": "string", "required": True},
-                "api_key": {"type": "string", "required": False},
-                "model": {"type": "string", "required": True},
+                "common": {
+                    "base_url": {"type": "string", "required": True},
+                    "api_key": {"type": "string", "required": False},
+                    "model": {"type": "string", "required": True},
+                    "timeout": {"type": "number", "required": False},
+                },
+                "by_type": {
+                    "text": {
+                        "max_tokens": {"type": "number", "required": False},
+                        "temperature": {"type": "number", "required": False},
+                    },
+                    "image": {
+                        "size": {"type": "string", "required": False},
+                    },
+                },
             },
         },
         {
@@ -119,9 +131,15 @@ def list_backends():
             "name": "ComfyUI",
             "supported_types": ["image"],
             "config_schema": {
-                "base_url": {"type": "string", "required": True},
-                "workflow": {"type": "workflow_select", "required": False},
-                "timeout": {"type": "number", "required": False},
+                "common": {
+                    "base_url": {"type": "string", "required": True},
+                    "timeout": {"type": "number", "required": False},
+                },
+                "by_type": {
+                    "image": {
+                        "workflow": {"type": "workflow_select", "required": False},
+                    },
+                },
             },
         },
     ]
