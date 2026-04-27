@@ -5,6 +5,7 @@ import os
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, cast
 
 from sqlmodel import Session, select
 
@@ -26,10 +27,9 @@ class MediaService:
 
     def list_media(self) -> list[MediaRow]:
         with self._get_session() as session:
+            created_at_expr = cast(Any, MediaRow.created_at)
             rows = list(
-                session.exec(
-                    select(MediaRow).order_by(MediaRow.__table__.c.created_at.desc())
-                )
+                session.exec(select(MediaRow).order_by(created_at_expr.desc()))
             )
             return rows
 
