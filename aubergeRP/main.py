@@ -6,7 +6,6 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from .config import get_config
-from .constants import SESSION_TOKEN
 from .routers import characters as characters_router
 from .routers import chat as chat_router
 from .routers import config as config_router
@@ -18,10 +17,7 @@ from .routers import images as images_router
 
 def _init_data_dirs(data_dir: str) -> None:
     base = Path(data_dir)
-    for subdir in [
-        "characters", "conversations", "connectors", "avatars",
-        f"images/{SESSION_TOKEN}",
-    ]:
+    for subdir in ["characters", "conversations", "connectors", "avatars", "images"]:
         (base / subdir).mkdir(parents=True, exist_ok=True)
 
 

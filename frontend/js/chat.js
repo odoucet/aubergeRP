@@ -8,6 +8,8 @@ import {
   deleteConversation,
   sendMessage,
   fetchHealth,
+  getSessionToken,
+  copyShareUrl,
 } from './api.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -17,6 +19,11 @@ let _activeCharacter = null;
 let _streaming = false;
 let _healthInterval = null;
 let _lastUserMessage = null;
+
+/** EventSource used by other browser tabs to receive remote SSE events. */
+let _remoteEventSource = null;
+/** Streaming message handler for events arriving on the remote EventSource. */
+let _remoteStreaming = null;
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 
@@ -37,6 +44,19 @@ export function initChat() {
   });
 
   document.getElementById('new-conv-btn').addEventListener('click', handleNewConversation);
+
+  // "Share session" button
+  const shareBtn = document.getElementById('share-session-btn');
+  if (shareBtn) {
+    shareBtn.addEventListener('click', async () => {
+      try {
+        await copyShareUrl();
+        showToast('Session URL copied — open it in another browser to share this session.');
+      } catch (err) {
+        showToast('Could not copy URL: ' + err.message);
+      }
+    });
+  }
 
   // Health polling
   startHealthPolling();
@@ -194,6 +214,9 @@ async function selectConversation(id) {
   highlightActiveConv(id);
   clearMessages();
 
+  // Subscribe this tab to remote events for the newly selected conversation
+  subscribeRemoteEvents(id);
+
   // Close sidebar on small mobile screens after selecting a conversation
   if (window.innerWidth < 768) {
     document.dispatchEvent(new CustomEvent('closeSidebar'));
@@ -217,6 +240,56 @@ function highlightActiveConv(id) {
   document.querySelectorAll('#conv-list li').forEach(li => {
     li.classList.toggle('active', li.dataset.id === id);
   });
+}
+
+// ── Remote SSE (multi-browser) ────────────────────────────────────────────────
+
+/**
+ * Subscribe to the server-side event bus for the active conversation.
+ * Events pushed by other browser tabs sharing the same session token are
+ * received here and rendered when this tab is not the one that sent the
+ * message (i.e. _streaming is false).
+ */
+function subscribeRemoteEvents(conversationId) {
+  closeRemoteEvents();
+
+  const token = getSessionToken();
+  const url = `/api/chat/${encodeURIComponent(conversationId)}/events?token=${encodeURIComponent(token)}`;
+  const es = new EventSource(url);
+  _remoteEventSource = es;
+
+  es.onmessage = e => {
+    // Ignore events while this tab is already streaming from POST response
+    if (_streaming) return;
+
+    let event;
+    try { event = JSON.parse(e.data); } catch (_) { return; }
+
+    if (event.type === 'token' || event.type === 'image_start') {
+      if (!_remoteStreaming) {
+        _remoteStreaming = createStreamingMessage();
+      }
+    }
+
+    if (_remoteStreaming) {
+      dispatchSSEEvent(event, _remoteStreaming);
+      if (event.type === 'done' || event.type === 'error') {
+        _remoteStreaming = null;
+      }
+    }
+  };
+
+  es.onerror = () => {
+    // EventSource auto-reconnects on transient errors; nothing extra needed.
+  };
+}
+
+function closeRemoteEvents() {
+  if (_remoteEventSource) {
+    _remoteEventSource.close();
+    _remoteEventSource = null;
+  }
+  _remoteStreaming = null;
 }
 
 async function handleNewConversation() {

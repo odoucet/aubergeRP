@@ -19,6 +19,7 @@ class Conversation(BaseModel):
     character_id: str
     character_name: str
     title: str
+    owner: str = ""
     messages: list[Message] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
@@ -29,6 +30,7 @@ class ConversationSummary(BaseModel):
     character_id: str
     character_name: str
     title: str
+    owner: str = ""
     message_count: int
     created_at: datetime
     updated_at: datetime

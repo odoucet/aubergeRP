@@ -51,13 +51,14 @@ class ConversationService:
             character_id=conv.character_id,
             character_name=conv.character_name,
             title=conv.title,
+            owner=conv.owner,
             message_count=len(conv.messages),
             created_at=conv.created_at,
             updated_at=conv.updated_at,
         )
 
     def create_conversation(
-        self, character_id: str, user_name: str = "User"
+        self, character_id: str, user_name: str = "User", owner: str = ""
     ) -> Conversation:
         char = self._character_service.get_character(character_id)
         now = datetime.now(timezone.utc)
@@ -76,6 +77,7 @@ class ConversationService:
             character_id=character_id,
             character_name=char.data.name,
             title=title,
+            owner=owner,
             messages=messages,
             created_at=now,
             updated_at=now,
@@ -87,7 +89,7 @@ class ConversationService:
         return self._load(conversation_id)
 
     def list_conversations(
-        self, character_id: "Optional[str]" = None
+        self, character_id: "Optional[str]" = None, owner: "Optional[str]" = None
     ) -> list[ConversationSummary]:
         if not self._convs_dir.exists():
             return []
@@ -95,8 +97,13 @@ class ConversationService:
         for path in sorted(self._convs_dir.glob("*.json")):
             try:
                 conv = Conversation(**read_json(path))
-                if character_id is None or conv.character_id == character_id:
-                    result.append(self._summary(conv))
+                if character_id is not None and conv.character_id != character_id:
+                    continue
+                # Filter by owner: skip conversations owned by a different user.
+                # Ownerless conversations (owner="") are visible to everyone.
+                if owner and conv.owner and conv.owner != owner:
+                    continue
+                result.append(self._summary(conv))
             except Exception:
                 pass
         return result
