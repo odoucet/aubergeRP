@@ -263,7 +263,37 @@ body {
 
 /* images inside messages */
 .msg-images { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
-.msg-image { max-width: 260px; max-height: 260px; border-radius: 8px; object-fit: contain; cursor: pointer; border: 1px solid var(--color-border); }
+
+/* image wrapper: provides positioning context for copy button */
+.img-wrapper {
+  position: relative;
+  display: inline-block;
+}
+.img-wrapper:hover .img-copy-btn { opacity: 1; }
+
+.msg-image { max-width: 260px; max-height: 260px; border-radius: 8px; object-fit: contain; cursor: pointer; border: 1px solid var(--color-border); display: block; }
+
+/* copy-to-clipboard button on hover over generated images */
+.img-copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  font-size: 1rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.img-copy-btn:hover { background: rgba(0,0,0,0.85); }
 
 /* image placeholder */
 .img-placeholder {
@@ -331,6 +361,9 @@ body {
 
 /* inline error */
 .msg-error {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   font-size: 0.82rem;
   color: var(--color-accent);
   padding: 0.5rem 0.8rem;
@@ -340,6 +373,21 @@ body {
   align-self: flex-start;
   max-width: 80%;
 }
+
+/* retry button inside error message */
+.msg-retry-btn {
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+}
+.msg-retry-btn:hover { opacity: 0.85; }
 
 /* toast */
 #toast {
@@ -468,3 +516,42 @@ body {
   #char-header { padding: 0.5rem 0.75rem; }
   #message-list { padding: 0.75rem 0.5rem; }
 }
+
+/* ─── Lightbox ───────────────────────────────────────────────────────────── */
+#lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+#lightbox.open { display: flex; }
+
+#lightbox-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 8px;
+  object-fit: contain;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+}
+
+#lightbox-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255,255,255,0.12);
+  border: none;
+  color: #fff;
+  font-size: 1.4rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+#lightbox-close:hover { background: rgba(255,255,255,0.25); }
