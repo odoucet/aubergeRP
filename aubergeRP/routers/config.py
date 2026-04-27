@@ -12,6 +12,8 @@ from ..models.config import (
     ConfigPatch,
     ConfigResponse,
     ConfigUpdate,
+    GuiConfigResponse,
+    GuiConfigUpdate,
     UserConfigResponse,
 )
 
@@ -38,6 +40,18 @@ def _to_response() -> ConfigResponse:
     )
 
 
+def _save_config(save_path: Path) -> None:
+    config = get_config()
+    data = {
+        "app": config.app.model_dump(),
+        "active_connectors": config.active_connectors.model_dump(),
+        "user": config.user.model_dump(),
+        "gui": config.gui.model_dump(),
+    }
+    with save_path.open("w") as f:
+        yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
+
+
 @router.get("/")
 def get_config_endpoint():
     return _to_response()
@@ -62,14 +76,7 @@ def update_config(
         config.active_connectors.text = update.active_connectors.text
         config.active_connectors.image = update.active_connectors.image
 
-    data = {
-        "app": config.app.model_dump(),
-        "active_connectors": config.active_connectors.model_dump(),
-        "user": config.user.model_dump(),
-    }
-    with save_path.open("w") as f:
-        yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
-
+    _save_config(save_path)
     return _to_response()
 
 
@@ -97,12 +104,34 @@ def patch_config(
         if patch.active_connectors.image is not None:
             config.active_connectors.image = patch.active_connectors.image
 
-    data = {
-        "app": config.app.model_dump(),
-        "active_connectors": config.active_connectors.model_dump(),
-        "user": config.user.model_dump(),
-    }
-    with save_path.open("w") as f:
-        yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
-
+    _save_config(save_path)
     return _to_response()
+
+
+# ── GUI Customization ─────────────────────────────────────────────────────────
+
+@router.get("/gui", response_model=GuiConfigResponse)
+def get_gui_config() -> GuiConfigResponse:
+    config = get_config()
+    return GuiConfigResponse(
+        custom_css=config.gui.custom_css,
+        custom_header_html=config.gui.custom_header_html,
+        custom_footer_html=config.gui.custom_footer_html,
+    )
+
+
+@router.put("/gui", response_model=GuiConfigResponse)
+def update_gui_config(
+    update: GuiConfigUpdate,
+    save_path: Path = Depends(get_config_save_path),
+) -> GuiConfigResponse:
+    config = get_config()
+    config.gui.custom_css = update.custom_css
+    config.gui.custom_header_html = update.custom_header_html
+    config.gui.custom_footer_html = update.custom_footer_html
+    _save_config(save_path)
+    return GuiConfigResponse(
+        custom_css=config.gui.custom_css,
+        custom_header_html=config.gui.custom_header_html,
+        custom_footer_html=config.gui.custom_footer_html,
+    )

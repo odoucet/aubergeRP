@@ -104,6 +104,7 @@
 
 <!-- App modules -->
 <script type="module">
+  import { applyGuiCustomization } from '/js/gui-customization.js';
   import { initCharacters, loadCharacters, setSelectedCharacter } from '/js/characters.js';
   import { initChat, onCharacterSelected, showToast } from '/js/chat.js';
 
@@ -130,6 +131,7 @@
   }
 
   // Init
+  applyGuiCustomization();
   initCharacters(onCharSelected);
   initChat();
 

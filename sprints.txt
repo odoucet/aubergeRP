@@ -62,23 +62,39 @@ Priority: LOW (from POST-MVP.md §4 & §5)
 SPRINT 17 — Admin & Customization
 Priority: LOW (from POST-MVP.md §6)
 --------------------------------------------------------------------------------
-[ ] Character card marketplace browser
+[x] Character card marketplace browser
     - Search/import community character cards from a hosted index
-[ ] GUI customization
+    - GET /api/marketplace/search?q=... proxies a configurable index URL
+    - Import button fetches card JSON and calls /api/characters/import
+    - Marketplace section added to Admin UI
+[x] GUI customization
     - Custom CSS injection via admin UI
     - Custom header/footer HTML
-[ ] Plugin system skeleton
+    - GET/PUT /api/config/gui endpoints
+    - applyGuiCustomization() JS module injected into all pages
+    - "Customization" section added to Admin UI
+[x] Plugin system skeleton
     - Define plugin interface for third-party connectors and hooks
+    - BasePlugin abstract class (aubergeRP/plugins/base.py)
+    - PluginManager with discover(), load_plugin(), call_hook() (aubergeRP/plugins/manager.py)
+    - Hooks: on_load, on_unload, on_message_received, on_message_sent, on_image_generated, on_connector_test
 
 --------------------------------------------------------------------------------
 SPRINT 18 — Documentation & Deployment
 Priority: LOW (from POST-MVP.md §7)
 --------------------------------------------------------------------------------
-[ ] End-user installation guide
+[x] End-user installation guide
     - Step-by-step guide for Linux, macOS, Windows (including Docker path)
-[ ] Auto-generated API reference
+    - docs/installation-guide.md
+[x] Auto-generated API reference
     - Export OpenAPI spec as browsable HTML (redoc or swagger-ui static build)
-[ ] CORS auto-detection
+    - GET /api-docs serves Redoc HTML pointing at /openapi.json
+    - Link in Health section of Admin UI
+[x] CORS auto-detection
     - Detect Host header and adjust allowed origins automatically
-[ ] Sentry error tracking integration
+    - HTTP middleware in main.py: if Origin matches Host, sets ACAO header
+[x] Sentry error tracking integration
     - Optional DSN config field; errors reported to Sentry when configured
+    - app.sentry_dsn config field (default: "")
+    - AUBERGE_SENTRY_DSN env var override
+    - _init_sentry() called at app startup; no-op if sentry-sdk not installed
