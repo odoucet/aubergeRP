@@ -70,6 +70,18 @@ body {
 }
 #header .admin-link:hover { color: var(--color-text); border-color: var(--color-text-muted); }
 
+#header .share-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 4px 10px;
+  transition: color 0.2s, border-color 0.2s;
+}
+#header .share-btn:hover { color: var(--color-text); border-color: var(--color-text-muted); }
+
 /* ─── Layout: main row ─────────────────────────────────────────────────── */
 #main {
   flex: 1;

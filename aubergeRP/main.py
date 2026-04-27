@@ -7,7 +7,6 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from .config import get_config
-from .constants import SESSION_TOKEN
 from .routers import characters as characters_router
 from .routers import chat as chat_router
 from .routers import config as config_router

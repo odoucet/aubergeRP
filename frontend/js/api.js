@@ -1,10 +1,65 @@
 /**
  * api.js — Thin wrappers around fetch for all aubergeRP REST endpoints.
  * All functions return the parsed JSON (or throw on HTTP errors).
+ *
+ * Session token management
+ * ─────────────────────────
+ * Each browser tab persists a UUID in localStorage under the key
+ * "auberge_session_token".  If the URL contains ?token=<uuid> (put there by
+ * the "Share session" feature), that value is installed into localStorage and
+ * the query-string is removed from the address bar before the app boots.
+ *
+ * The token is sent as the X-Session-Token header with every request so that
+ * the server can scope conversations and image storage per user.
  */
 
+// ── Session token ────────────────────────────────────────────────────────────
+
+const _TOKEN_KEY = 'auberge_session_token';
+
+function _initSessionToken() {
+  // Check if the URL carries a shared token
+  const params = new URLSearchParams(window.location.search);
+  const urlToken = params.get('token');
+  if (urlToken) {
+    localStorage.setItem(_TOKEN_KEY, urlToken);
+    // Remove ?token=… from the address bar without reloading
+    params.delete('token');
+    const clean = params.toString()
+      ? `${window.location.pathname}?${params}`
+      : window.location.pathname;
+    history.replaceState(null, '', clean);
+  }
+
+  // Create a new token if none exists
+  if (!localStorage.getItem(_TOKEN_KEY)) {
+    localStorage.setItem(_TOKEN_KEY, crypto.randomUUID());
+  }
+}
+
+_initSessionToken();
+
+export function getSessionToken() {
+  return localStorage.getItem(_TOKEN_KEY) || '';
+}
+
+/**
+ * Copy a shareable URL (with ?token=…) to the clipboard.
+ * Returns a Promise that resolves when the copy succeeds.
+ */
+export function copyShareUrl() {
+  const url = `${window.location.origin}${window.location.pathname}?token=${getSessionToken()}`;
+  return navigator.clipboard.writeText(url);
+}
+
+// ── Core fetch helper ────────────────────────────────────────────────────────
+
 async function apiFetch(path, options = {}) {
-  const res = await fetch(path, options);
+  const headers = {
+    'X-Session-Token': getSessionToken(),
+    ...(options.headers || {}),
+  };
+  const res = await fetch(path, { ...options, headers });
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
     try {
@@ -61,7 +116,10 @@ export function deleteConversation(id) {
 export async function sendMessage(conversationId, content) {
   const res = await fetch(`/api/chat/${conversationId}/message`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Session-Token': getSessionToken(),
+    },
     body: JSON.stringify({ content }),
   });
   if (!res.ok) {

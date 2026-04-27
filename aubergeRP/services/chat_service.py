@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any, AsyncIterator
 
 from ..connectors.manager import ConnectorManager
-from ..constants import SESSION_TOKEN
 from ..models.character import CharacterCard
 from ..models.conversation import Conversation
 from ..services.character_service import CharacterService
@@ -139,11 +138,13 @@ class ChatService:
         character_service: CharacterService,
         connector_manager: ConnectorManager,
         images_dir: "Path | str",
+        session_token: str = "",
     ) -> None:
         self._conversation_service = conversation_service
         self._character_service = character_service
         self._connector_manager = connector_manager
         self._images_dir = Path(images_dir)
+        self._session_token = session_token
 
     async def stream_chat(
         self,
@@ -236,7 +237,7 @@ class ChatService:
             self._images_dir.mkdir(parents=True, exist_ok=True)
             filename = f"{uuid.uuid4()}.png"
             (self._images_dir / filename).write_bytes(img_bytes)
-            url = f"/api/images/{SESSION_TOKEN}/{filename}"
+            url = f"/api/images/{self._session_token}/{filename}"
             yield {"type": "image_complete", "generation_id": gen_id, "image_url": url}
         except Exception as exc:
             yield {"type": "image_failed", "generation_id": gen_id, "detail": str(exc)}
