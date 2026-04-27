@@ -9,6 +9,8 @@ The chat system is the central user-facing feature. It handles:
 - Streaming of assistant tokens and image lifecycle events over a single SSE response.
 - **LLM-triggered** image generation via inline markers in the assistant's output.
 - Prompt construction from character data + conversation history.
+- **Automatic conversation summarization** — when the prompt approaches the configured context-window limit, older messages are compressed into a summary (configurable via `chat.context_window` and `chat.summarization_threshold`).
+- **OOC (out-of-character) protection** — detects attempts to break character and injects system-level guardrails when `chat.ooc_protection` is enabled.
 
 ## 2. Conversation Model
 

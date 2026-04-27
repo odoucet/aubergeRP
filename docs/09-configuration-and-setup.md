@@ -1,6 +1,6 @@
 # 09 — Configuration
 
-This document specifies the configuration file, the ancillary project files (`.gitignore`, `requirements.txt`, `pyproject.toml`), and the startup sequence. Installation / setup instructions are intentionally not part of the MVP documentation.
+This document specifies the configuration file, the ancillary project files (`.gitignore`, `requirements.txt`, `pyproject.toml`), and the startup sequence.
 
 ## 1. Configuration File
 
@@ -18,18 +18,53 @@ app:
   log_level: "INFO"
   # Data directory (relative to project root or absolute path)
   data_dir: "data"
+  # Optional Sentry DSN for error tracking. Leave empty to disable.
+  # sentry_dsn: ""
+
+# Environment-variable overrides (take precedence over this file):
+#   AUBERGE_DATA_DIR    → app.data_dir
+#   AUBERGE_HOST        → app.host
+#   AUBERGE_PORT        → app.port
+#   AUBERGE_LOG_LEVEL   → app.log_level
+#   AUBERGE_USER_NAME   → user.name
+#   AUBERGE_SENTRY_DSN  → app.sentry_dsn
 
 # Active connector IDs. The Admin UI writes these.
 # Leave empty on first start.
 active_connectors:
   text: ""
   image: ""
-  # video: ""   # post-MVP
-  # audio: ""   # post-MVP
 
 user:
   # Display name for the user in chat (used for {{user}} macro)
   name: "User"
+
+# Background media-cleanup scheduler (default: disabled)
+scheduler:
+  enabled: false
+  # How often to run cleanup (seconds). Default: 24 hours.
+  interval_seconds: 86400
+  # Delete images older than this many days.
+  cleanup_older_than_days: 30
+
+# AI quality settings
+chat:
+  # Estimated context window of the active text model (tokens).
+  context_window: 4096
+  # Summarise conversation history when this fraction of the context is used.
+  summarization_threshold: 0.75
+  # Enable out-of-character (OOC) protection guardrails.
+  ooc_protection: true
+
+# GUI customization (injected into every page)
+gui:
+  custom_css: ""
+  custom_header_html: ""
+  custom_footer_html: ""
+
+# Character marketplace
+marketplace:
+  index_url: "https://raw.githubusercontent.com/odoucet/aubergeRP/main/marketplace/index.json"
 ```
 
 ### Schema
@@ -40,11 +75,33 @@ user:
 | `app.port` | integer | `8000` | Bind port |
 | `app.log_level` | string | `"INFO"` | One of DEBUG, INFO, WARNING, ERROR |
 | `app.data_dir` | string | `"data"` | Path (relative or absolute) to the runtime data directory |
+| `app.sentry_dsn` | string | `""` | Sentry DSN (empty = disabled) |
 | `active_connectors.text` | string (UUID or `""`) | `""` | Active text connector ID |
 | `active_connectors.image` | string (UUID or `""`) | `""` | Active image connector ID |
 | `user.name` | string | `"User"` | Display name substituted for `{{user}}` macro |
+| `scheduler.enabled` | bool | `false` | Enable background media-cleanup scheduler |
+| `scheduler.interval_seconds` | integer | `86400` | Cleanup interval in seconds |
+| `scheduler.cleanup_older_than_days` | integer | `30` | Delete images older than N days |
+| `chat.context_window` | integer | `4096` | Estimated model context window in tokens |
+| `chat.summarization_threshold` | float | `0.75` | Summarize when this fraction of context is used |
+| `chat.ooc_protection` | bool | `true` | Enable OOC guardrail injection |
+| `gui.custom_css` | string | `""` | CSS injected in a `<style>` tag on every page |
+| `gui.custom_header_html` | string | `""` | HTML injected at the top of every page body |
+| `gui.custom_footer_html` | string | `""` | HTML injected at the bottom of every page body |
+| `marketplace.index_url` | string | (GitHub URL) | URL of the marketplace card index (http/https only) |
 
-No environment-variable overrides in the MVP. All configuration is in `config.yaml`, which the Admin UI writes.
+### Environment-Variable Overrides
+
+Environment variables override the corresponding `config.yaml` values at startup:
+
+| Variable | Config field |
+|---|---|
+| `AUBERGE_DATA_DIR` | `app.data_dir` |
+| `AUBERGE_HOST` | `app.host` |
+| `AUBERGE_PORT` | `app.port` |
+| `AUBERGE_LOG_LEVEL` | `app.log_level` |
+| `AUBERGE_USER_NAME` | `user.name` |
+| `AUBERGE_SENTRY_DSN` | `app.sentry_dsn` |
 
 ## 2. Configuration Loading
 
@@ -57,13 +114,12 @@ No environment-variable overrides in the MVP. All configuration is in `config.ya
 
 On startup, the backend ensures every required subdirectory exists under `app.data_dir`:
 
-- `characters/`
-- `conversations/`
 - `connectors/`
 - `avatars/`
-- `images/{SESSION_TOKEN}/` — where `SESSION_TOKEN` is the constant `00000000-0000-0000-0000-000000000000` (see [00 § 9](00-architecture-overview.md)).
+- `images/`
+- `comfyui_workflows/` (seeded from built-in templates on first run)
 
-Missing directories are created with `mkdir -p` semantics. The parent `data/` directory is created if missing.
+Missing directories are created with `mkdir -p` semantics. The parent `data/` directory is created if missing. The SQLite database file (`data/auberge.db`) is created automatically by `init_db()`.
 
 ## 4. `.gitignore`
 
@@ -105,6 +161,15 @@ sse-starlette>=2.0,<3.0
 Pillow>=10.0,<12.0
 python-multipart>=0.0.9,<1.0
 pyyaml>=6.0,<7.0
+sqlmodel>=0.0.18,<1.0
+aiofiles>=23.0,<25.0
+websockets>=12.0,<14.0
+sentry-sdk[fastapi]>=2.0,<3.0
+pytest>=8.0,<9.0
+pytest-asyncio>=0.23,<1.0
+ruff>=0.4,<1.0
+mypy>=1.10,<2.0
+respx
 ```
 
 ## 6. `pyproject.toml`
@@ -137,12 +202,17 @@ strict = true
 
 When `main.py` runs:
 
-1. Load configuration from `config.yaml` (defaults applied where missing).
-2. Initialize the data directory structure (§ 3).
-3. Create the FastAPI app (title, version, description).
-4. Load connectors from `data/connectors/` and initialize the ConnectorManager; active connectors are read from `config.yaml:active_connectors`.
-5. Mount all routers under `/api/`.
-6. Mount `frontend/` as static files at `/`.
-7. Log startup info (listening address, active connectors, data directory).
+1. Load configuration from `config.yaml` (defaults applied where missing; environment-variable overrides applied).
+2. Initialize Sentry if `app.sentry_dsn` is configured.
+3. Initialize the data directory structure (§ 3).
+4. Initialize SQLite database (`data/auberge.db`) and run pending migrations.
+5. Create the FastAPI app (title, version, description).
+6. Apply CORS auto-detection middleware.
+7. Load connectors from `data/connectors/` and initialize the ConnectorManager; active connectors are read from `config.yaml:active_connectors`.
+8. Mount all routers under `/api/`.
+9. Mount `frontend/` as static files at `/`.
+10. Mount Redoc API reference at `/api-docs`.
+11. Start the background scheduler (if `scheduler.enabled`).
+12. Log startup info (listening address, active connectors, data directory).
 
 No tokens are generated or logged. No auth middleware is installed.
