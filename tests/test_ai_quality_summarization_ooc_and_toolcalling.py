@@ -1,4 +1,4 @@
-"""Tests for Sprint 16: AI Quality
+"""AI quality tests for summarization, OOC protection, and tool-calling.
 
 Covers:
   1. Automatic conversation summarization

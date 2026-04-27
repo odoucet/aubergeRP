@@ -1,4 +1,4 @@
-"""Tests for Sprint 18 — Documentation & Deployment
+"""Tests for installation docs, API reference, CORS behavior, and Sentry config.
 
 Covers:
   1. Installation guide exists in docs/

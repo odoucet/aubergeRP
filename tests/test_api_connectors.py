@@ -125,7 +125,7 @@ def test_create_connector_unknown_backend(client):
 
 
 def test_create_connector_first_is_active_auto(client):
-    """First connector of a type is automatically activated (Sprint 12)."""
+    """First connector of a type is automatically activated."""
     resp = client.post("/api/connectors/", json=TEXT_PAYLOAD)
     assert resp.json()["is_active"] is True
 

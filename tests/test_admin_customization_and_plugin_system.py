@@ -1,4 +1,4 @@
-"""Tests for Sprint 17 — Admin & Customization
+"""Tests for admin GUI customization and plugin-system behaviors.
 
 Covers:
   1. GUI customization

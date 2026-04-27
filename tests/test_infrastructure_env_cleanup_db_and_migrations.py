@@ -1,5 +1,6 @@
 """
-Tests for Sprint 15 — Infrastructure
+Infrastructure tests for packaging, environment overrides, media cleanup,
+SQLite persistence, and migrations.
 
 Covers:
   1. Docker packaging files exist

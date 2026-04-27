@@ -1,9 +1,10 @@
 """
-Tests for Sprint 12: Backend Robustness & API Spec Compliance
+Tests for config patch merge semantics, connector health state,
+persisted connector test results, and auto-activation rules.
 
 Covers:
   1. PATCH /api/config — per-field partial merge semantics
-  2. Health endpoint: "connected" field is null before first test
+    2. Health endpoint: "connected" field is null before first connector test
   3. _last_test_results persisted to disk and survives restart
   4. POST /api/connectors/ auto-activates first connector of its type
 """

@@ -1,5 +1,6 @@
 """
-Tests for Sprint 13: Multi-User Foundation
+Tests for session-token scoping, conversation ownership, event-bus behavior,
+and multi-browser SSE delivery.
 
 Covers:
   1. Per-user session token: X-Session-Token header extracted and used
@@ -50,7 +51,7 @@ def _write_ownerless_conversation(tmp_path: Path, conv_id: str, char_id: str = "
         "messages": [],
         "created_at": now,
         "updated_at": now,
-        # no "owner" key — simulates a pre-sprint-13 file
+        # no "owner" key — simulates a legacy file created before ownership
     }
     (convs_dir / f"{conv_id}.json").write_text(json.dumps(data))
 

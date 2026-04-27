@@ -309,7 +309,7 @@ The "← Chat" link in the admin header must navigate back to the chat page.
 
 ---
 
-## Scenario: First Connector Auto-Activates (Sprint 12)
+## Scenario: First Connector Auto-Activates
 
 Adding the first connector of a type should automatically make it active
 without requiring an explicit "Activate" click.
@@ -318,7 +318,7 @@ without requiring an explicit "Activate" click.
 - WAIT_FOR: #add-connector-btn
 - CLICK: #add-connector-btn
 - WAIT_FOR: #connector-dialog
-- FILL: #conn-name | Sprint12 TextBot
+- FILL: #conn-name | Auto TextBot
 - CLICK: #connector-dialog-save
 - WAIT_FOR: .connector-card
 - EXPECT_TEXT: .connector-card | Active
@@ -326,7 +326,7 @@ without requiring an explicit "Activate" click.
 
 ---
 
-## Scenario: Health Connector Status Null Before Test (Sprint 12)
+## Scenario: Health Connector Status Null Before Test
 
 Before any connection test is run the health panel must not show "Connected"
 or "Disconnected" — the status must be absent or shown as unknown.

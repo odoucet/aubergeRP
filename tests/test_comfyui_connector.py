@@ -1,4 +1,4 @@
-"""Unit tests for the ComfyUI connector (Sprint 14)."""
+"""Unit tests for the ComfyUI connector."""
 from __future__ import annotations
 
 import json
