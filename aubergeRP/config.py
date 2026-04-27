@@ -120,12 +120,23 @@ def _apply_env_overrides(config: Config) -> Config:
     return config
 
 def load_config(path: str | Path = "config.yaml") -> Config:
-    config_path = Path(path)
+    import logging
+    log = logging.getLogger(__name__)
+    config_path = Path(path).resolve()
     if not config_path.exists():
+        log.warning("config.yaml not found at %s — using defaults", config_path)
         return _apply_env_overrides(Config())
     with config_path.open() as f:
         raw = yaml.safe_load(f) or {}
-    return _apply_env_overrides(Config(**raw))
+    config = _apply_env_overrides(Config(**raw))
+    log.info(
+        "Config loaded from %s | data_dir=%s active_text=%s active_image=%s",
+        config_path,
+        config.app.data_dir,
+        config.active_connectors.text or "(none)",
+        config.active_connectors.image or "(none)",
+    )
+    return config
 
 
 _config: Config | None = None

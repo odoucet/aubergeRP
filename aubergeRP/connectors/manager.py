@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import yaml  # type: ignore[import-untyped]
+
+logger = logging.getLogger(__name__)
 
 from ..config import Config
 from ..models.connector import (
@@ -43,14 +46,18 @@ class ConnectorManager:
 
     def _load_all(self) -> None:
         if not self._dir.exists():
+            logger.warning("Connectors directory not found: %s", self._dir.resolve())
             return
-        for path in sorted(self._dir.glob("*.json")):
+        files = sorted(self._dir.glob("*.json"))
+        logger.info("Loading connectors from %s (%d file(s))", self._dir.resolve(), len(files))
+        for path in files:
             try:
                 data = read_json(path)
                 instance = ConnectorInstance(**data)
                 self._connectors[instance.id] = instance
+                logger.info("  Loaded connector %s (%s / %s)", instance.id, instance.name, instance.type)
             except Exception:
-                pass  # skip malformed files
+                logger.warning("  Failed to load connector from %s", path, exc_info=True)
 
     def _save_instance(self, instance: ConnectorInstance) -> None:
         self._dir.mkdir(parents=True, exist_ok=True)
@@ -83,23 +90,39 @@ class ConnectorManager:
     def get_active_text_connector(self) -> TextConnector | None:
         active_id = self._config.active_connectors.text
         if not active_id:
+            logger.debug("No active text connector configured")
             return None
         try:
             instance = self.get_connector(active_id)
             conn = self._build_connector(instance)
-            return conn if isinstance(conn, TextConnector) else None
-        except (KeyError, ValueError):
+            if not isinstance(conn, TextConnector):
+                logger.warning("Active text connector %s is not a TextConnector", active_id)
+                return None
+            return conn
+        except KeyError:
+            logger.warning("Active text connector %s not found in loaded connectors", active_id)
+            return None
+        except ValueError as exc:
+            logger.warning("Failed to build active text connector %s: %s", active_id, exc)
             return None
 
     def get_active_image_connector(self) -> ImageConnector | None:
         active_id = self._config.active_connectors.image
         if not active_id:
+            logger.debug("No active image connector configured")
             return None
         try:
             instance = self.get_connector(active_id)
             conn = self._build_connector(instance)
-            return conn if isinstance(conn, ImageConnector) else None
-        except (KeyError, ValueError):
+            if not isinstance(conn, ImageConnector):
+                logger.warning("Active image connector %s is not an ImageConnector", active_id)
+                return None
+            return conn
+        except KeyError:
+            logger.warning("Active image connector %s not found in loaded connectors", active_id)
+            return None
+        except ValueError as exc:
+            logger.warning("Failed to build active image connector %s: %s", active_id, exc)
             return None
 
     # ------------------------------------------------------------------

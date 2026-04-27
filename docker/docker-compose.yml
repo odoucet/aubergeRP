@@ -15,9 +15,10 @@ services:
       dockerfile: Dockerfile
     container_name: auberge-app
     volumes:
-      - auberge_data:/data
+      - ../data:/data
       - ../aubergeRP:/app/aubergeRP:ro
       - ../frontend:/app/frontend:ro
+      - ../config.yaml:/app/config.yaml:ro
     ports:
       - "${AUBERGE_PORT:-8123}:8000"
     depends_on:
@@ -25,4 +26,3 @@ services:
 
 volumes:
   ollama_storage:
-  auberge_data:

@@ -82,7 +82,14 @@ _REDOC_HTML = """<!DOCTYPE html>
 
 
 def create_app() -> FastAPI:
+    logging.basicConfig(level=logging.INFO)
     config = get_config()
+    logger.info(
+        "Starting aubergeRP | data_dir=%s port=%s log_level=%s",
+        Path(config.app.data_dir).resolve(),
+        config.app.port,
+        config.app.log_level,
+    )
     _init_data_dirs(config.app.data_dir)
     _init_sentry(config.app.sentry_dsn)
 
