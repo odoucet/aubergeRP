@@ -2,9 +2,15 @@
  * gui-customization.js — Applies admin-configured CSS and HTML injections.
  *
  * Fetches GET /api/config/gui on load and applies:
- *   - custom_css        → injected as a <style> tag in <head>
+ *   - custom_css         → injected as a <style> tag in <head>
  *   - custom_header_html → inserted at the end of the <header> element
  *   - custom_footer_html → inserted before the end of the <footer> element
+ *
+ * Security note: The header/footer HTML is intentionally rendered via innerHTML
+ * because the feature is designed to allow arbitrary HTML injection by the
+ * server administrator (accessed only via the Admin UI).  End-users cannot set
+ * these values through any API endpoint.  Site operators should restrict access
+ * to the Admin UI appropriately.
  */
 
 export async function applyGuiCustomization() {
@@ -29,7 +35,8 @@ export async function applyGuiCustomization() {
     if (header) {
       const div = document.createElement('div');
       div.className = 'custom-header-inject';
-      div.innerHTML = cfg.custom_header_html;
+      // Admin-controlled HTML injection (see security note in file header)
+      div.innerHTML = cfg.custom_header_html; // eslint-disable-line no-unsanitized/property
       header.appendChild(div);
     }
   }
@@ -39,7 +46,8 @@ export async function applyGuiCustomization() {
     if (footer) {
       const div = document.createElement('div');
       div.className = 'custom-footer-inject';
-      div.innerHTML = cfg.custom_footer_html;
+      // Admin-controlled HTML injection (see security note in file header)
+      div.innerHTML = cfg.custom_footer_html; // eslint-disable-line no-unsanitized/property
       footer.appendChild(div);
     }
   }

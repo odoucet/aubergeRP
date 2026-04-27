@@ -32,6 +32,10 @@ let showToastFn = () => {};
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 export function initMarketplace({ showToast }) {
+  if (!searchInput || !searchBtn || !resultsEl) {
+    console.error('Marketplace: required DOM elements not found.');
+    return { refresh: () => {} };
+  }
   showToastFn = showToast;
   searchBtn.addEventListener('click', handleSearch);
   searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleSearch(); });
@@ -45,7 +49,7 @@ async function refresh() {
 }
 
 async function handleSearch() {
-  const q = (searchInput !== null ? searchInput.value : '').trim();
+  const q = (searchInput ? searchInput.value : '').trim();
   resultsEl.innerHTML = '<div class="loading-row">Searching…</div>';
   try {
     const data = await apiFetch(`/api/marketplace/search?q=${encodeURIComponent(q)}`);

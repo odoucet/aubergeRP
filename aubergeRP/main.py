@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .config import get_config
@@ -110,7 +110,7 @@ def create_app() -> FastAPI:
     # Reads the Host header from each request and adds it as an allowed origin
     # so that browsers on the same machine always pass CORS checks.
     @app.middleware("http")
-    async def cors_auto_detect(request: Request, call_next):  # type: ignore[type-arg]
+    async def cors_auto_detect(request: Request, call_next) -> Response:  # type: ignore[type-arg]
         response = await call_next(request)
         host = request.headers.get("host", "")
         origin = request.headers.get("origin", "")
