@@ -61,7 +61,7 @@ async def chat(
 @router.get("/{conversation_id}/events")
 async def chat_events(
     conversation_id: str,
-    token: str = "",
+    session_token: str = "",
     bus: EventBus = Depends(get_event_bus),
 ):
     """Long-lived SSE endpoint for multi-browser event delivery.
@@ -70,8 +70,12 @@ async def chat_events(
     receive every event published during chat, without having to be the tab
     that sent the message.  The connection is kept open with periodic
     keepalive comments so that EventSource auto-reconnect is not triggered.
+
+    The session token is passed as the ``session_token`` query parameter
+    (instead of a header) because the browser ``EventSource`` API does not
+    support custom request headers.
     """
-    q = bus.subscribe(token, conversation_id)
+    q = bus.subscribe(session_token, conversation_id)
 
     async def event_generator():
         try:
@@ -82,6 +86,6 @@ async def chat_events(
                 except asyncio.TimeoutError:
                     yield ": keepalive\n\n"
         finally:
-            bus.unsubscribe(token, conversation_id, q)
+            bus.unsubscribe(session_token, conversation_id, q)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")

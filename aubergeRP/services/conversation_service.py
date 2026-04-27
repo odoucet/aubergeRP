@@ -88,6 +88,25 @@ class ConversationService:
     def get_conversation(self, conversation_id: str) -> Conversation:
         return self._load(conversation_id)
 
+    @staticmethod
+    def _should_include(
+        conv: Conversation,
+        character_id: "Optional[str]",
+        owner: "Optional[str]",
+    ) -> bool:
+        """Return True if *conv* matches the given filters.
+
+        A conversation owned by a different user is excluded only when both the
+        conversation and the caller have a non-empty owner/token; ownerless
+        (legacy) conversations are always included so that pre-sprint-13 data
+        remains accessible.
+        """
+        if character_id is not None and conv.character_id != character_id:
+            return False
+        if owner and conv.owner and conv.owner != owner:
+            return False
+        return True
+
     def list_conversations(
         self, character_id: "Optional[str]" = None, owner: "Optional[str]" = None
     ) -> list[ConversationSummary]:
@@ -97,13 +116,8 @@ class ConversationService:
         for path in sorted(self._convs_dir.glob("*.json")):
             try:
                 conv = Conversation(**read_json(path))
-                if character_id is not None and conv.character_id != character_id:
-                    continue
-                # Filter by owner: skip conversations owned by a different user.
-                # Ownerless conversations (owner="") are visible to everyone.
-                if owner and conv.owner and conv.owner != owner:
-                    continue
-                result.append(self._summary(conv))
+                if self._should_include(conv, character_id, owner):
+                    result.append(self._summary(conv))
             except Exception:
                 pass
         return result

@@ -254,7 +254,7 @@ function subscribeRemoteEvents(conversationId) {
   closeRemoteEvents();
 
   const token = getSessionToken();
-  const url = `/api/chat/${encodeURIComponent(conversationId)}/events?token=${encodeURIComponent(token)}`;
+  const url = `/api/chat/${encodeURIComponent(conversationId)}/events?session_token=${encodeURIComponent(token)}`;
   const es = new EventSource(url);
   _remoteEventSource = es;
 
@@ -263,7 +263,10 @@ function subscribeRemoteEvents(conversationId) {
     if (_streaming) return;
 
     let event;
-    try { event = JSON.parse(e.data); } catch (_) { return; }
+    try { event = JSON.parse(e.data); } catch (err) {
+      console.error('[remote SSE] Failed to parse event:', e.data, err);
+      return;
+    }
 
     if (event.type === 'token' || event.type === 'image_start') {
       if (!_remoteStreaming) {
