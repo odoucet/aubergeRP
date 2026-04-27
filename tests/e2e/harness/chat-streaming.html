@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Streaming Harness</title>
+  <link rel="stylesheet" href="../../../frontend/css/main.css">
+</head>
+<body>
+  <section id="message-list" aria-label="Messages"></section>
+
+  <script type="module">
+    import { __test } from '../../../frontend/js/chat.js';
+
+    window.__chatHarness = {
+      startImage(prompt = 'a moonlit tavern') {
+        const streaming = __test.createStreamingMessage();
+        streaming.onImageStart('gen-1', prompt);
+        window.__streaming = streaming;
+      },
+      progressImage(step = 2, total = 5) {
+        window.__streaming?.onImageProgress('gen-1', step, total);
+      },
+      completeImage(url = 'https://example.test/image.png') {
+        window.__streaming?.onImageComplete('gen-1', url);
+      },
+      failImage(detail = 'Generation failed') {
+        window.__streaming?.onImageFailed('gen-1', detail);
+      },
+      finalize() {
+        window.__streaming?.finalize();
+      },
+      dispatchProgressEvent() {
+        const streaming = __test.createStreamingMessage();
+        __test.dispatchSSEEvent({ type: 'image_start', generation_id: 'gen-2', prompt: 'stormy castle' }, streaming);
+        __test.dispatchSSEEvent({ type: 'image_progress', generation_id: 'gen-2', step: 1, total: 4 }, streaming);
+        window.__streaming = streaming;
+      },
+    };
+  </script>
+</body>
+</html>

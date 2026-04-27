@@ -441,7 +441,13 @@ function createStreamingMessage() {
 
   const bubble = document.createElement('div');
   bubble.className = 'msg-bubble';
+  bubble.style.display = 'none';
   wrapper.appendChild(bubble);
+
+  const mediaStatus = document.createElement('div');
+  mediaStatus.className = 'msg-media-status';
+  mediaStatus.style.display = 'none';
+  wrapper.appendChild(mediaStatus);
 
   const imagesContainer = document.createElement('div');
   imagesContainer.className = 'msg-images';
@@ -450,23 +456,48 @@ function createStreamingMessage() {
   list.appendChild(wrapper);
 
   let rawText = '';
+  const pendingImages = new Set();
+
+  function updateMediaStatus() {
+    if (pendingImages.size === 0) {
+      mediaStatus.style.display = 'none';
+      mediaStatus.innerHTML = '';
+      return;
+    }
+
+    wrapper.style.display = '';
+    mediaStatus.style.display = '';
+    mediaStatus.innerHTML = `
+      <div class="msg-media-status-title">Image generation in progress</div>
+      <div class="msg-media-status-subtitle">
+        ${pendingImages.size === 1 ? 'An image is being generated for this reply.' : `${pendingImages.size} images are being generated for this reply.`}
+      </div>
+    `;
+  }
 
   return {
     onToken(token) {
       rawText += token;
       typingEl.remove();
       wrapper.style.display = '';
+      bubble.style.display = '';
       bubble.innerHTML = renderMarkdown(rawText);
       applyRoleplayHintStyling(bubble);
       scrollToBottom();
     },
     onImageStart(genId, prompt) {
+      typingEl.remove();
+      wrapper.style.display = '';
+      pendingImages.add(genId);
+      updateMediaStatus();
+
       const ph = document.createElement('div');
       ph.className = 'img-placeholder';
       ph.id = `img-ph-${genId}`;
       ph.innerHTML = `
         <div class="spinner" id="img-spinner-${genId}"></div>
-        <span>Generating image…</span>
+        <span class="img-placeholder-title">Generating image…</span>
+        ${prompt ? `<div class="img-placeholder-prompt">${escapeHtml(prompt)}</div>` : ''}
         <div class="img-progress" id="img-progress-${genId}" style="display:none">
           <div class="img-progress-bar" id="img-progress-bar-${genId}"></div>
         </div>
@@ -488,6 +519,8 @@ function createStreamingMessage() {
       scrollToBottom();
     },
     onImageComplete(genId, imageUrl) {
+      pendingImages.delete(genId);
+      updateMediaStatus();
       const ph = document.getElementById(`img-ph-${genId}`);
       if (ph) {
         ph.replaceWith(createImageElement(imageUrl));
@@ -495,6 +528,8 @@ function createStreamingMessage() {
       scrollToBottom();
     },
     onImageFailed(genId, detail) {
+      pendingImages.delete(genId);
+      updateMediaStatus();
       const ph = document.getElementById(`img-ph-${genId}`);
       if (ph) {
         const errEl = document.createElement('div');
@@ -506,6 +541,8 @@ function createStreamingMessage() {
     finalize() {
       typingEl.remove();
       wrapper.style.display = '';
+      if (rawText) bubble.style.display = '';
+      updateMediaStatus();
     },
   };
 }
@@ -704,6 +741,15 @@ function renderMarkdown(text) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
 }
 
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /**
  * Highlight roleplay instruction segments wrapped in [ ... ] or { ... }
  * without altering code blocks.
@@ -783,3 +829,8 @@ export function showToast(message, duration = 4000) {
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), duration);
 }
+
+export const __test = {
+  createStreamingMessage,
+  dispatchSSEEvent,
+};

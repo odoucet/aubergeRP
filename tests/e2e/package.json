@@ -5,6 +5,7 @@
   "main": "autotest.js",
   "scripts": {
     "test": "node autotest.js",
+    "test:chat-streaming": "node --test chat-streaming.test.mjs",
     "install-browsers": "npx playwright install chromium"
   },
   "dependencies": {
