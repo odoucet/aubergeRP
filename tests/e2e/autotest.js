@@ -11,7 +11,7 @@
  *   node autotest.js [--base-url <url>] [--no-issues] [--headless <bool>]
  *
  * Environment variables (override CLI flags):
- *   BASE_URL          Base URL of the running aubergeRP server (default: http://localhost:8000)
+ *   BASE_URL          Base URL of the running aubergeRP server (default: http://localhost:8123)
  *   CREATE_ISSUES     Set to "false" to skip GitHub issue creation
  *   HEADLESS          Set to "false" to show the browser window
  *   GH_REPO          GitHub repo slug (owner/repo) for issue creation; auto-detected if omitted
@@ -29,7 +29,7 @@ const { spawnSync } = require('child_process');
 function parseArgs() {
   const args = process.argv.slice(2);
   const opts = {
-    baseUrl: process.env.BASE_URL || 'http://localhost:8000',
+    baseUrl: process.env.BASE_URL || 'http://localhost:8123',
     createIssues: process.env.CREATE_ISSUES !== 'false',
     headless: process.env.HEADLESS !== 'false',
     ghRepo: process.env.GH_REPO || null,
@@ -89,7 +89,7 @@ function parseDialogue(mdPath) {
 
 // ── Step executor ─────────────────────────────────────────────────────────────
 
-const TIMEOUT = 8000; // ms for waits
+const TIMEOUT = 8123; // ms for waits
 
 /**
  * Execute a single step against the Playwright page.

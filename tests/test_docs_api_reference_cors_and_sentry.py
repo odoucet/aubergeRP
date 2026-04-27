@@ -94,10 +94,10 @@ def test_cors_auto_detect_same_host(client):
     """When Origin matches Host, ACAO header should be set."""
     resp = client.get(
         "/api/health/",
-        headers={"Host": "localhost:8000", "Origin": "http://localhost:8000"},
+        headers={"Host": "localhost:8123", "Origin": "http://localhost:8123"},
     )
     assert resp.status_code == 200
-    assert resp.headers.get("access-control-allow-origin") == "http://localhost:8000"
+    assert resp.headers.get("access-control-allow-origin") == "http://localhost:8123"
 
 
 def test_cors_no_origin_header(client):
@@ -110,7 +110,7 @@ def test_cors_mismatched_origin_no_header(client):
     """Requests from a different origin (not matching Host) get no ACAO header."""
     resp = client.get(
         "/api/health/",
-        headers={"Host": "localhost:8000", "Origin": "http://evil.example.com"},
+        headers={"Host": "localhost:8123", "Origin": "http://evil.example.com"},
     )
     assert "access-control-allow-origin" not in resp.headers
 

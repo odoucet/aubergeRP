@@ -15,7 +15,7 @@ GitHub Issue** (assigned to Copilot) for every UI bug it finds.
 | Node.js | ≥ 18 | `node --version` |
 | `gh` CLI | any | `gh auth login` required for issue creation |
 | Chromium | — | installed by the `install-browsers` script below |
-| aubergeRP server | running | default `http://localhost:8000` |
+| aubergeRP server | running | default `http://localhost:8123` |
 
 ---
 
@@ -48,7 +48,7 @@ bug found, assigning it to Copilot for automated remediation.
 node autotest.js [options]
 
 Options:
-  --base-url <url>   Base URL of the server  (default: http://localhost:8000)
+  --base-url <url>   Base URL of the server  (default: http://localhost:8123)
   --no-issues        Skip GitHub issue creation (dry-run)
   --headless false   Show the browser window
 
@@ -144,7 +144,7 @@ jobs:
         run: npm run install-browsers
         working-directory: tests/e2e
       - name: Start aubergeRP server
-        run: uvicorn aubergeRP.main:app --host 0.0.0.0 --port 8000 &
+        run: uvicorn aubergeRP.main:app --host 0.0.0.0 --port 8123 &
         env:
           AUBERGE_DATA_DIR: /tmp/auberge-data
       - name: Wait for server
@@ -153,7 +153,7 @@ jobs:
         run: node autotest.js
         working-directory: tests/e2e
         env:
-          BASE_URL: http://localhost:8000
+          BASE_URL: http://localhost:8123
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         if: always()

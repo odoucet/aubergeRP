@@ -2,7 +2,7 @@
 
 ## 1. General Conventions
 
-- **Base URL:** `http://localhost:8000`
+- **Base URL:** `http://localhost:8123`
 - **API prefix:** `/api`
 - **Content-Type:** `application/json` for JSON endpoints.
 - **File uploads:** `multipart/form-data`.
@@ -366,7 +366,7 @@ Return the current configuration (sensitive fields redacted).
 **Response: 200 OK**
 ```json
 {
-  "app": {"host": "0.0.0.0", "port": 8000, "log_level": "INFO"},
+  "app": {"host": "0.0.0.0", "port": 8123, "log_level": "INFO"},
   "user": {"name": "User"},
   "active_connectors": {"text": "uuid-string", "image": "uuid-string"}
 }

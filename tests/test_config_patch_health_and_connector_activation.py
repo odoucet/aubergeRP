@@ -82,7 +82,7 @@ def test_patch_user_name_only(config_client):
     data = resp.json()
     assert data["user"]["name"] == "Frodo"
     # Defaults must be unchanged
-    assert data["app"]["port"] == 8000
+    assert data["app"]["port"] == 8123
     assert data["app"]["host"] == "0.0.0.0"
     assert data["active_connectors"]["text"] == ""
 
@@ -103,7 +103,7 @@ def test_patch_active_connectors_text_only(config_client):
     config_client.put(
         "/api/config/",
         json={
-            "app": {"host": "0.0.0.0", "port": 8000, "log_level": "INFO"},
+            "app": {"host": "0.0.0.0", "port": 8123, "log_level": "INFO"},
             "user": {"name": "User"},
             "active_connectors": {"text": "", "image": "img-uuid"},
         },

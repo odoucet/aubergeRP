@@ -13,7 +13,7 @@ This document specifies the configuration file, the ancillary project files (`.g
 app:
   # Host and port for the aubergeRP server
   host: "0.0.0.0"
-  port: 8000
+  port: 8123
   # Log level: DEBUG, INFO, WARNING, ERROR
   log_level: "INFO"
   # Data directory (relative to project root or absolute path)
@@ -72,7 +72,7 @@ marketplace:
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `app.host` | string | `"0.0.0.0"` | Bind host |
-| `app.port` | integer | `8000` | Bind port |
+| `app.port` | integer | `8123` | Bind port |
 | `app.log_level` | string | `"INFO"` | One of DEBUG, INFO, WARNING, ERROR |
 | `app.data_dir` | string | `"data"` | Path (relative or absolute) to the runtime data directory |
 | `app.sentry_dsn` | string | `""` | Sentry DSN (empty = disabled) |

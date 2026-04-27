@@ -56,7 +56,7 @@ async function refresh() {
 
 function renderForm(cfg, connectors) {
   document.getElementById('cfg-host').value      = cfg.app.host      || '';
-  document.getElementById('cfg-port').value      = cfg.app.port      || 8000;
+  document.getElementById('cfg-port').value      = cfg.app.port      || 8123;
   document.getElementById('cfg-log-level').value = cfg.app.log_level || 'INFO';
   document.getElementById('cfg-user-name').value = cfg.user.name     || '';
 
@@ -89,7 +89,7 @@ async function handleSave() {
   const body = {
     app: {
       host:      document.getElementById('cfg-host').value.trim(),
-      port:      isNaN(port) ? 8000 : port,
+      port:      isNaN(port) ? 8123 : port,
       log_level: document.getElementById('cfg-log-level').value,
     },
     user: {

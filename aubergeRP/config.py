@@ -10,7 +10,7 @@ from pydantic import BaseModel, field_validator
 
 class AppConfig(BaseModel):
     host: str = "0.0.0.0"
-    port: int = 8000
+    port: int = 8123
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     data_dir: str = "data"
     sentry_dsn: str = ""

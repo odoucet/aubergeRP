@@ -94,7 +94,7 @@ A `Makefile` at the project root provides developer targets:
 | `make lint` | `ruff check` | Run linter |
 | `make lint-fix` | `ruff check --fix` | Run linter and auto-fix |
 | `make test` | `pytest` | Run test suite |
-| `make run` | `uvicorn aubergeRP.main:app --host 0.0.0.0 --port 8000` | Start the server |
+| `make run` | `uvicorn aubergeRP.main:app --host 0.0.0.0 --port 8123` | Start the server |
 
 ### Testing Strategy
 

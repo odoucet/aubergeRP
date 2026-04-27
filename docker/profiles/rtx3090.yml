@@ -1,6 +1,17 @@
 # RTX 3090 (24 GB VRAM)
-# LLM : GLM-4.7-Flash Q4_0  — unsloth/GLM-4.7-Flash-GGUF      (~17.2 GB)
-# IMG : FLUX.2-klein 9B Q4_K_M — unsloth/FLUX.2-klein-9B-GGUF  (~5.91 GB)
+
+x-gguf:
+  llm_repo: unsloth/GLM-4.7-Flash-GGUF
+  llm_file: GLM-4.7-Flash-Q4_0.gguf
+  llm_size: ~17.2 GB
+  llm_name: &llm_name glm47-flash:q4_0
+  llm_modelfile: glm47flash.Modelfile
+  img_repo: unsloth/FLUX.2-klein-9B-GGUF
+  img_file: flux-2-klein-9b-Q4_K_M.gguf
+  img_size: ~5.91 GB
+  img_name: &img_name flux-klein:9b-q4km
+  img_modelfile: flux-klein.Modelfile
+
 services:
   ollama:
     deploy:
@@ -11,13 +22,13 @@ services:
               count: 1
               capabilities: [gpu]
     environment:
-      - LLM_MODEL=glm47-flash:q4_0
-      - IMAGE_MODEL=flux-klein:9b-q4km
-      - OLLAMA_KEEP_ALIVE=-1
-      - OLLAMA_NUM_PARALLEL=2
+      LLM_MODEL: *llm_name
+      IMAGE_MODEL: *img_name
+      OLLAMA_KEEP_ALIVE: -1
+      OLLAMA_NUM_PARALLEL: 2
 
   auberge-app:
     environment:
-      - AI_API_ENDPOINT=http://ollama:11434
-      - CURRENT_LLM=${LLM_MODEL}
-      - CURRENT_IMG=${IMAGE_MODEL}
+      AI_API_ENDPOINT: http://ollama:11434
+      CURRENT_LLM: *llm_name
+      CURRENT_IMG: *img_name

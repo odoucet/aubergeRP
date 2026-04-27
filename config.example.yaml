@@ -4,7 +4,7 @@
 app:
   # Host and port for the aubergeRP server
   host: "0.0.0.0"
-  port: 8000
+  port: 8123
   # Log level: DEBUG, INFO, WARNING, ERROR
   log_level: "INFO"
   # Data directory (relative to project root or absolute path)

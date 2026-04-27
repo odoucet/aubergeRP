@@ -53,10 +53,10 @@ cp config.example.yaml config.yaml
 ### 1e. Start the server
 
 ```bash
-python -m uvicorn aubergeRP.main:app --host 0.0.0.0 --port 8000
+python -m uvicorn aubergeRP.main:app --host 0.0.0.0 --port 8123
 ```
 
-Open your browser at **http://localhost:8000**.
+Open your browser at **http://localhost:8123**.
 
 ---
 
@@ -77,7 +77,7 @@ After=network.target
 Type=simple
 User=aubergerp
 WorkingDirectory=/opt/aubergeRP
-ExecStart=/opt/aubergeRP/.venv/bin/uvicorn aubergeRP.main:app --host 0.0.0.0 --port 8000
+ExecStart=/opt/aubergeRP/.venv/bin/uvicorn aubergeRP.main:app --host 0.0.0.0 --port 8123
 Restart=on-failure
 
 [Install]
@@ -123,7 +123,7 @@ Create `~/Library/LaunchAgents/com.aubergerp.plist`:
     <string>/Users/YOU/aubergeRP/.venv/bin/uvicorn</string>
     <string>aubergeRP.main:app</string>
     <string>--host</string><string>0.0.0.0</string>
-    <string>--port</string><string>8000</string>
+    <string>--port</string><string>8123</string>
   </array>
   <key>WorkingDirectory</key>
   <string>/Users/YOU/aubergeRP</string>
@@ -173,17 +173,17 @@ launchctl load ~/Library/LaunchAgents/com.aubergerp.plist
 5. Start the server:
 
    ```powershell
-   python -m uvicorn aubergeRP.main:app --host 0.0.0.0 --port 8000
+   python -m uvicorn aubergeRP.main:app --host 0.0.0.0 --port 8123
    ```
 
-6. Open **http://localhost:8000** in your browser.
+6. Open **http://localhost:8123** in your browser.
 
 ### Running as a Windows Service (optional)
 
 Use [NSSM](https://nssm.cc/) to wrap uvicorn as a Windows service:
 
 ```bat
-nssm install aubergeRP "C:\aubergeRP\.venv\Scripts\uvicorn.exe" "aubergeRP.main:app --host 0.0.0.0 --port 8000"
+nssm install aubergeRP "C:\aubergeRP\.venv\Scripts\uvicorn.exe" "aubergeRP.main:app --host 0.0.0.0 --port 8123"
 nssm set aubergeRP AppDirectory C:\aubergeRP
 nssm start aubergeRP
 ```
@@ -261,7 +261,7 @@ cp config.example.yaml config.yaml
 docker compose up -d
 ```
 
-The server will be available at **http://localhost:8000**.
+The server will be available at **http://localhost:8123**.
 
 ---
 
@@ -290,11 +290,11 @@ environment:
 
 ## 6. Verifying the installation
 
-Open the **Admin** panel at **http://localhost:8000/admin/** and check:
+Open the **Admin** panel at **http://localhost:8123/admin/** and check:
 
 - **Health** tab → all services report their status.
-- **API Reference** at **http://localhost:8000/api-docs** → interactive Redoc UI.
-- **OpenAPI spec** at **http://localhost:8000/openapi.json** → machine-readable schema.
+- **API Reference** at **http://localhost:8123/api-docs** → interactive Redoc UI.
+- **OpenAPI spec** at **http://localhost:8123/openapi.json** → machine-readable schema.
 
 ---
 

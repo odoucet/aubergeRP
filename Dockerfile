@@ -11,11 +11,8 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application source
-COPY aubergeRP/ ./aubergeRP/
-COPY frontend/ ./frontend/
-
 # Data directory lives on a volume — create the mount point
+# Source (aubergeRP/ frontend/) is bind-mounted at runtime; see docker/docker-compose.yml
 RUN mkdir -p /data && chown auberge:auberge /data
 
 # Switch to the non-root user
@@ -23,6 +20,6 @@ USER auberge
 
 ENV AUBERGE_DATA_DIR=/data
 
-EXPOSE 8000
+EXPOSE 8123
 
-CMD ["uvicorn", "aubergeRP.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "aubergeRP.main:app", "--host", "0.0.0.0", "--port", "8123"]

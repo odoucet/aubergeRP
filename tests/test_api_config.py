@@ -30,7 +30,7 @@ def test_get_config_default(client):
     assert "user" in data
     assert "active_connectors" in data
     assert data["app"]["host"] == "0.0.0.0"
-    assert data["app"]["port"] == 8000
+    assert data["app"]["port"] == 8123
     assert data["user"]["name"] == "User"
     assert data["active_connectors"]["text"] == ""
     assert data["active_connectors"]["image"] == ""
@@ -54,7 +54,7 @@ def test_update_user_name(client):
     resp = client.put(
         "/api/config/",
         json={
-            "app": {"host": "0.0.0.0", "port": 8000, "log_level": "INFO"},
+            "app": {"host": "0.0.0.0", "port": 8123, "log_level": "INFO"},
             "user": {"name": "Gandalf"},
             "active_connectors": {"text": "", "image": ""},
         },
@@ -83,7 +83,7 @@ def test_update_active_connectors(client):
     resp = client.put(
         "/api/config/",
         json={
-            "app": {"host": "0.0.0.0", "port": 8000, "log_level": "INFO"},
+            "app": {"host": "0.0.0.0", "port": 8123, "log_level": "INFO"},
             "user": {"name": "User"},
             "active_connectors": {"text": "some-uuid", "image": "other-uuid"},
         },
@@ -108,7 +108,7 @@ def test_update_partial_null_fields(client):
     data = resp.json()
     assert data["user"]["name"] == "Frodo"
     # unchanged
-    assert data["app"]["port"] == 8000
+    assert data["app"]["port"] == 8123
 
 
 def test_update_config_persisted(client, tmp_path):
@@ -118,7 +118,7 @@ def test_update_config_persisted(client, tmp_path):
     client.put(
         "/api/config/",
         json={
-            "app": {"host": "0.0.0.0", "port": 8000, "log_level": "INFO"},
+            "app": {"host": "0.0.0.0", "port": 8123, "log_level": "INFO"},
             "user": {"name": "Bilbo"},
             "active_connectors": {"text": "", "image": ""},
         },

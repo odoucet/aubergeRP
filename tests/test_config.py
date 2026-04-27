@@ -9,7 +9,7 @@ def test_load_defaults_when_no_file(tmp_path):
     cfg = load_config(tmp_path / "nonexistent.yaml")
     assert isinstance(cfg, Config)
     assert cfg.app.host == "0.0.0.0"
-    assert cfg.app.port == 8000
+    assert cfg.app.port == 8123
     assert cfg.app.log_level == "INFO"
     assert cfg.app.data_dir == "data"
     assert cfg.active_connectors.text == ""
@@ -39,7 +39,7 @@ def test_load_partial_config(tmp_path):
     config_file.write_text(yaml.dump({"user": {"name": "Bob"}}))
     cfg = load_config(config_file)
     assert cfg.user.name == "Bob"
-    assert cfg.app.port == 8000
+    assert cfg.app.port == 8123
 
 
 def test_invalid_log_level_raises(tmp_path):

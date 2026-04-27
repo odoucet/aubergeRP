@@ -175,7 +175,7 @@ Form rules:
 │  System Health                          [Refresh]    │
 ├──────────────────────────────────────────────────────┤
 │  aubergeRP Version: 0.1.0                            │
-│  API Reference: http://localhost:8000/api-docs        │
+│  API Reference: http://localhost:8123/api-docs        │
 │                                                      │
 │  Active Connectors:                                  │
 │  Text:  ✅ My Ollama                                 │
@@ -266,7 +266,7 @@ Inject custom CSS and HTML into every aubergeRP page.
 
 ## 5. First-Time Setup Flow
 
-1. Open `http://localhost:8000/admin/`.
+1. Open `http://localhost:8123/admin/`.
 2. Connectors section is empty.
 3. Click `+ Add New` → select type `text`, backend `openai_api`.
 4. Enter the LLM backend URL (e.g., `http://localhost:11434/v1` for Ollama). Click Test, then Save. The connector is automatically activated (first of its type).
@@ -275,7 +275,7 @@ Inject custom CSS and HTML into every aubergeRP page.
 7. Send a few chat turns, then open **Statistics** to verify usage metrics (calls, tokens, latency).
 8. Optionally, open **Customization** to inject custom CSS or header/footer HTML.
 9. Click `← Chat` to start roleplaying.
-10. The interactive API reference is available at `http://localhost:8000/api-docs`.
+10. The interactive API reference is available at `http://localhost:8123/api-docs`.
 
 ## 6. API Endpoints
 

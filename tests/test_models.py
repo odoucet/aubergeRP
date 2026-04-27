@@ -453,16 +453,16 @@ from aubergeRP.models.config import (
 
 class TestConfigModels:
     def test_app_config_response(self):
-        a = AppConfigResponse(host="0.0.0.0", port=8000, log_level="INFO")
+        a = AppConfigResponse(host="0.0.0.0", port=8123, log_level="INFO")
         assert a.log_level == "INFO"
 
     def test_app_config_invalid_log_level(self):
         with pytest.raises(Exception):
-            AppConfigResponse(host="0.0.0.0", port=8000, log_level="VERBOSE")
+            AppConfigResponse(host="0.0.0.0", port=8123, log_level="VERBOSE")
 
     def test_config_response_full(self):
         cr = ConfigResponse(
-            app=AppConfigResponse(host="0.0.0.0", port=8000, log_level="DEBUG"),
+            app=AppConfigResponse(host="0.0.0.0", port=8123, log_level="DEBUG"),
             user=UserConfigResponse(name="Alice"),
             active_connectors=ActiveConnectorsResponse(text="uuid-1", image="uuid-2"),
         )

@@ -9,8 +9,20 @@ services:
     ports:
       - "11434:11434"
 
-  # TODO: Ajouter auberge-app ici, avec les variables d'environnement pour pointer vers ollama et les modèles.
-  # cf "make run"
+  auberge-app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: auberge-app
+    volumes:
+      - auberge_data:/data
+      - ../aubergeRP:/app/aubergeRP:ro
+      - ../frontend:/app/frontend:ro
+    ports:
+      - "${AUBERGE_PORT:-8123}:8000"
+    depends_on:
+      - ollama
 
 volumes:
   ollama_storage:
+  auberge_data:

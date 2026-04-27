@@ -1,7 +1,6 @@
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DOCKER_DIR       := docker
 PROFILES_DIR     := $(DOCKER_DIR)/profiles
-MODELFILES_DIR   := $(DOCKER_DIR)/modelfiles
 MODELS_DIR       := data/models
 COMPOSE_BASE     := $(DOCKER_DIR)/docker-compose.yml
 OLLAMA_CONTAINER := auberge-ai
@@ -11,16 +10,9 @@ AVAILABLE_PROFILES := $(patsubst $(PROFILES_DIR)/%.yml,%,$(wildcard $(PROFILES_D
 # Supports both: make docker rtx3090  and  make docker PROFILE=rtx3090
 PROFILE ?= $(word 2,$(MAKECMDGOALS))
 
-# ─── Per-profile model specs ──────────────────────────────────────────────────
-RTX3090_LLM_REPO := unsloth/GLM-4.7-Flash-GGUF
-RTX3090_LLM_FILE := GLM-4.7-Flash-Q4_0.gguf
-RTX3090_LLM_NAME := glm47-flash:q4_0
-RTX3090_LLM_MF   := glm47flash.Modelfile
-
-RTX3090_IMG_REPO := unsloth/FLUX.2-klein-9B-GGUF
-RTX3090_IMG_FILE := FLUX.2-klein-9B-Q4_K_M.gguf
-RTX3090_IMG_NAME := flux-klein:9b-q4km
-RTX3090_IMG_MF   := flux-klein.Modelfile
+# Read a value from the x-gguf section of a profile YAML
+# Usage: $(call gguf_get,key,profile)
+gguf_get = $(shell sed -n 's/^[[:space:]]*$(1)[[:space:]]*:[[:space:]]*//p' $(PROFILES_DIR)/$(2).yml | sed 's/^&[^ ]* //; s/[[:space:]]*#.*//')
 
 # ─── Terminal colours ─────────────────────────────────────────────────────────
 GREEN  := \033[1;32m
@@ -31,14 +23,14 @@ RESET  := \033[0m
 
 .PHONY: run test lint help \
         docker stop clean logs \
-        _compose-up _download-gguf _ollama-create _setup-rtx3090 \
+        _compose-up _download-gguf _ollama-create \
         $(AVAILABLE_PROFILES)
 
 # ─── Help ─────────────────────────────────────────────────────────────────────
 help:
 	@printf "$(BLUE)aubergeRP$(RESET) — available commands\n\n"
 	@printf "  $(YELLOW)Development$(RESET)\n"
-	@printf "    make run              Start dev server (hot-reload, port 8000)\n"
+	@printf "    make run              Start dev server (hot-reload, port 8123)\n"
 	@printf "    make test             Run test suite\n"
 	@printf "    make lint             Run ruff + mypy\n"
 	@printf "\n"
@@ -59,7 +51,7 @@ help:
 
 # ─── Dev targets ──────────────────────────────────────────────────────────────
 run:
-	python -m uvicorn aubergeRP.main:app --reload --host 0.0.0.0 --port 8000
+	python -m uvicorn aubergeRP.main:app --reload --host 0.0.0.0 --port 8123
 
 test:
 	python -m pytest tests/
@@ -137,10 +129,14 @@ _ollama-create:
 		printf "  $(GREEN)✓$(RESET) $(NAME) ready.\n"; \
 	fi
 
-# ─── RTX 3090 ─────────────────────────────────────────────────────────────────
-_setup-rtx3090:
-	@$(MAKE) --no-print-directory _download-gguf FILE=$(RTX3090_LLM_FILE) REPO=$(RTX3090_LLM_REPO)
-	@$(MAKE) --no-print-directory _download-gguf FILE=$(RTX3090_IMG_FILE) REPO=$(RTX3090_IMG_REPO)
-	@$(MAKE) --no-print-directory _compose-up    PROFILE=rtx3090
-	@$(MAKE) --no-print-directory _ollama-create NAME=$(RTX3090_LLM_NAME) MODELFILE=$(RTX3090_LLM_MF)
-	@$(MAKE) --no-print-directory _ollama-create NAME=$(RTX3090_IMG_NAME) MODELFILE=$(RTX3090_IMG_MF)
+# ─── Generic profile setup (reads specs from x-gguf in the profile YAML) ─────
+_setup-%:
+	@$(MAKE) --no-print-directory _download-gguf \
+		FILE=$(call gguf_get,llm_file,$*) REPO=$(call gguf_get,llm_repo,$*)
+	@$(MAKE) --no-print-directory _download-gguf \
+		FILE=$(call gguf_get,img_file,$*) REPO=$(call gguf_get,img_repo,$*)
+	@$(MAKE) --no-print-directory _compose-up PROFILE=$*
+	@$(MAKE) --no-print-directory _ollama-create \
+		NAME=$(call gguf_get,llm_name,$*) MODELFILE=$(call gguf_get,llm_modelfile,$*)
+	@$(MAKE) --no-print-directory _ollama-create \
+		NAME=$(call gguf_get,img_name,$*) MODELFILE=$(call gguf_get,img_modelfile,$*)

@@ -93,7 +93,7 @@ No manual "Generate Image" button — the LLM decides when to emit an image mark
 
 ### 5.1 First-Time User
 
-- Opens `http://localhost:8000`.
+- Opens `http://localhost:8123`.
 - Sidebar shows no characters; chat area shows: "No characters available. Import characters in the Admin panel." with a prominent link to `/admin/`.
 - Status bar reflects connector state.
 
