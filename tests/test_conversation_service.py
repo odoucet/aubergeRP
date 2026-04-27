@@ -117,11 +117,13 @@ def test_get_conversation(tmp_path):
     assert loaded.character_name == "Elara"
 
 
-def test_persistence_to_disk(tmp_path):
+def test_persistence_to_db(tmp_path):
     char_svc, conv_svc = make_services(tmp_path)
     char = make_character(char_svc)
     conv = conv_svc.create_conversation(char.id)
-    assert (tmp_path / "conversations" / f"{conv.id}.json").exists()
+    # verify the conversation can be retrieved from the DB
+    loaded = conv_svc.get_conversation(conv.id)
+    assert loaded.id == conv.id
 
 
 def test_get_not_found(tmp_path):

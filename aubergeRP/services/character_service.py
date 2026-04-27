@@ -4,12 +4,14 @@ import json
 import os
 import tempfile
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from sqlmodel import Session, select
+
+from ..db_models import CharacterRow
 from ..models.character import CharacterCard, CharacterData, CharacterSummary
-from ..utils.file_storage import read_json, write_json
 from ..utils.png_metadata import read_png_metadata, write_png_metadata
 
 
@@ -44,38 +46,48 @@ def _normalize_to_v2(raw: dict[str, Any]) -> dict[str, Any]:
     return _upgrade_v1_to_v2(raw)
 
 
+def _ensure_utc(dt: datetime) -> datetime:
+    """Ensure a datetime is timezone-aware (UTC). SQLite strips tzinfo."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt
+
+
+def _row_to_card(row: CharacterRow) -> CharacterCard:
+    data_dict = row.get_data()
+    return CharacterCard(
+        id=row.id,
+        has_avatar=row.has_avatar,
+        spec=row.spec,
+        spec_version=row.spec_version,
+        created_at=_ensure_utc(row.created_at),
+        updated_at=_ensure_utc(row.updated_at),
+        data=CharacterData(**data_dict),
+    )
+
+
 class CharacterService:
     def __init__(
         self,
         data_dir: Path | str,
         default_avatar: Path | str | None = None,
     ) -> None:
-        self._chars_dir = Path(data_dir) / "characters"
-        self._avatars_dir = Path(data_dir) / "avatars"
+        self._data_dir = Path(data_dir)
+        self._avatars_dir = self._data_dir / "avatars"
         self._default_avatar = (
             Path(default_avatar) if default_avatar
             else Path("frontend/assets/default-avatar.png")
         )
+        # Ensure the DB is initialised for this data directory
+        from ..database import init_db
+        init_db(self._data_dir)
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _char_path(self, character_id: str) -> Path:
-        return self._chars_dir / f"{character_id}.json"
+    def _get_session(self) -> Session:
+        from ..database import get_engine
+        return Session(get_engine(self._data_dir))
 
     def _avatar_path(self, character_id: str) -> Path:
         return self._avatars_dir / f"{character_id}.png"
-
-    def _load(self, character_id: str) -> CharacterCard:
-        path = self._char_path(character_id)
-        if not path.exists():
-            raise CharacterNotFoundError(f"Character '{character_id}' not found")
-        return CharacterCard(**read_json(path))
-
-    def _save(self, card: CharacterCard) -> None:
-        self._chars_dir.mkdir(parents=True, exist_ok=True)
-        write_json(self._char_path(card.id), card.model_dump(mode="json"))
 
     @staticmethod
     def _summary(card: CharacterCard) -> CharacterSummary:
@@ -97,7 +109,7 @@ class CharacterService:
         created_at: datetime | None = None,
         has_avatar: bool = False,
     ) -> CharacterCard:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         ext = dict(data.extensions)
         _ensure_auberge_ext(ext)
         data = data.model_copy(update={"extensions": ext})
@@ -114,18 +126,16 @@ class CharacterService:
     # ------------------------------------------------------------------
 
     def list_characters(self) -> list[CharacterSummary]:
-        if not self._chars_dir.exists():
-            return []
-        result = []
-        for path in sorted(self._chars_dir.glob("*.json")):
-            try:
-                result.append(self._summary(CharacterCard(**read_json(path))))
-            except Exception:
-                pass
-        return result
+        with self._get_session() as session:
+            rows = session.exec(select(CharacterRow)).all()
+        return [self._summary(_row_to_card(r)) for r in rows]
 
     def get_character(self, character_id: str) -> CharacterCard:
-        return self._load(character_id)
+        with self._get_session() as session:
+            row = session.get(CharacterRow, character_id)
+        if row is None:
+            raise CharacterNotFoundError(f"Character '{character_id}' not found")
+        return _row_to_card(row)
 
     def create_character(self, data: CharacterData) -> CharacterCard:
         card = self._build_card(data)
@@ -133,27 +143,31 @@ class CharacterService:
         return card
 
     def update_character(self, character_id: str, data: CharacterData) -> CharacterCard:
-        existing = self._load(character_id)
+        existing = self.get_character(character_id)
         ext = dict(data.extensions)
         _ensure_auberge_ext(ext)
         data = data.model_copy(update={"extensions": ext})
         updated = existing.model_copy(update={
             "data": data,
-            "updated_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(UTC),
         })
         self._save(updated)
         return updated
 
     def delete_character(self, character_id: str) -> None:
-        self._load(character_id)
-        self._char_path(character_id).unlink()
+        self.get_character(character_id)  # raises if not found
+        with self._get_session() as session:
+            row = session.get(CharacterRow, character_id)
+            if row is not None:
+                session.delete(row)
+                session.commit()
         avatar = self._avatar_path(character_id)
         if avatar.exists():
             avatar.unlink()
 
     def duplicate_character(self, character_id: str) -> CharacterCard:
-        original = self._load(character_id)
-        now = datetime.now(timezone.utc)
+        original = self.get_character(character_id)
+        now = datetime.now(UTC)
         new_id = str(uuid.uuid4())
         orig_avatar = self._avatar_path(character_id)
         has_avatar = orig_avatar.exists()
@@ -168,6 +182,21 @@ class CharacterService:
         })
         self._save(card)
         return card
+
+    def _save(self, card: CharacterCard) -> None:
+        data_dict = card.data.model_dump(mode="json")
+        row = CharacterRow(
+            id=card.id,
+            has_avatar=card.has_avatar,
+            spec=card.spec,
+            spec_version=card.spec_version,
+            data_json=json.dumps(data_dict, ensure_ascii=False),
+            created_at=card.created_at,
+            updated_at=card.updated_at,
+        )
+        with self._get_session() as session:
+            session.merge(row)
+            session.commit()
 
     # ------------------------------------------------------------------
     # Import
@@ -190,7 +219,7 @@ class CharacterService:
         card = self._create_from_raw(card_dict)
         # The full PNG becomes the avatar
         self.save_avatar(card.id, content)
-        return self._load(card.id)
+        return self.get_character(card.id)
 
     def _create_from_raw(self, raw: dict[str, Any]) -> CharacterCard:
         v2 = _normalize_to_v2(raw)
@@ -207,7 +236,7 @@ class CharacterService:
     # ------------------------------------------------------------------
 
     def export_character_json(self, character_id: str) -> dict[str, Any]:
-        card = self._load(character_id)
+        card = self.get_character(character_id)
         return {
             "spec": card.spec,
             "spec_version": card.spec_version,
@@ -235,14 +264,15 @@ class CharacterService:
     # ------------------------------------------------------------------
 
     def save_avatar(self, character_id: str, content: bytes) -> None:
-        card = self._load(character_id)
+        card = self.get_character(character_id)
         self._avatars_dir.mkdir(parents=True, exist_ok=True)
         self._avatar_path(character_id).write_bytes(content)
         if not card.has_avatar:
-            self._save(card.model_copy(update={
+            updated = card.model_copy(update={
                 "has_avatar": True,
-                "updated_at": datetime.now(timezone.utc),
-            }))
+                "updated_at": datetime.now(UTC),
+            })
+            self._save(updated)
 
     def get_avatar_path(self, character_id: str) -> Path | None:
         path = self._avatar_path(character_id)

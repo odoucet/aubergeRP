@@ -111,6 +111,17 @@
           <option value="">(none)</option>
         </select>
       </div>
+
+      <div class="field-divider">Media Cleanup</div>
+      <div class="field-row">
+        <label for="cfg-cleanup-days">Delete images older than (days)</label>
+        <input type="number" id="cfg-cleanup-days" min="1" value="30">
+      </div>
+      <div class="field-row">
+        <label></label>
+        <button class="btn btn-secondary" id="cleanup-images-btn">Clean up images</button>
+      </div>
+      <div id="cleanup-feedback" style="margin-top:0.5rem;font-size:0.875rem;"></div>
     </section>
 
   </main>
