@@ -136,6 +136,8 @@ def create_connector(
     instance = manager.create_connector(data)
     # Auto-activate if no active connector of this type exists yet.
     if not manager.get_active_id_for_type(instance.type):
+        # ValueError is raised for unsupported connector types (e.g. video/audio);
+        # safe to skip auto-activation silently in that case.
         with contextlib.suppress(ValueError):
             manager.set_active(instance.id)
     return _redact(instance, manager.is_active(instance.id))

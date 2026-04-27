@@ -182,13 +182,20 @@ def test_health_connected_null_before_any_test(health_client, tmp_path):
     assert text_info["connected"] is None, "connected must be null before any test"
 
 
-def test_health_connected_not_null_after_test(tmp_path, monkeypatch):
-    """After a successful test, connected must be a boolean."""
+def test_health_connected_not_null_after_test(tmp_path):
+    """After a test result is recorded, connected must be a bool (True or False)."""
+    from aubergeRP.config import get_config, reset_config
+    reset_config()
+    get_config().app.data_dir = str(tmp_path)
     from aubergeRP.routers.connectors import _last_test_results
 
-    # Manually set a result as if a test had been run
     connector_id = "fake-uuid"
     _last_test_results.set(connector_id, True)
+
+    # The store must return True (a boolean), not None
+    result = _last_test_results.get(connector_id)
+    assert result is True
+    assert isinstance(result, bool)
 
     # Clean up
     _last_test_results.pop(connector_id, None)
@@ -273,8 +280,8 @@ def test_delete_connector_removes_test_result(tmp_path):
         client.delete(f"/api/connectors/{cid}")
 
     # After deletion the entry should be gone
-    from aubergeRP.config import get_config as gc
-    gc().app.data_dir = str(tmp_path)
+    from aubergeRP.config import get_config
+    get_config().app.data_dir = str(tmp_path)
     store = _TestResultsStore()
     assert store.get(cid) is None
 
