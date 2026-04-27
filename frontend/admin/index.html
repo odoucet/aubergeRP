@@ -136,30 +136,27 @@
       <div class="field-divider">Custom CSS</div>
       <div class="field-row" style="align-items:flex-start">
         <label for="customize-css" title="Custom CSS injected on app pages.">CSS</label>
-        <textarea id="customize-css" class="code-input" rows="18" placeholder="/* your custom CSS */" title="Write custom CSS rules here."></textarea>
-        <div class="code-preview-wrap">
-          <div class="code-preview-title">Syntax Preview</div>
-          <pre id="customize-css-preview" class="code-preview" aria-hidden="true"></pre>
+        <div class="code-editor">
+          <pre id="customize-css-highlight" class="code-highlight" aria-hidden="true"></pre>
+          <textarea id="customize-css" class="code-input code-input-overlay" rows="18" placeholder="/* your custom CSS */" title="Write custom CSS rules here." spellcheck="false"></textarea>
         </div>
       </div>
 
       <div class="field-divider">Custom Header HTML</div>
       <div class="field-row" style="align-items:flex-start">
         <label for="customize-header-html" title="HTML inserted inside the page header.">Header HTML</label>
-        <textarea id="customize-header-html" class="code-input" rows="10" placeholder="<!-- injected inside <header> -->" title="Write custom HTML inserted in the header."></textarea>
-        <div class="code-preview-wrap">
-          <div class="code-preview-title">Syntax Preview</div>
-          <pre id="customize-header-html-preview" class="code-preview" aria-hidden="true"></pre>
+        <div class="code-editor">
+          <pre id="customize-header-html-highlight" class="code-highlight" aria-hidden="true"></pre>
+          <textarea id="customize-header-html" class="code-input code-input-overlay" rows="10" placeholder="<!-- injected inside <header> -->" title="Write custom HTML inserted in the header." spellcheck="false"></textarea>
         </div>
       </div>
 
       <div class="field-divider">Custom Footer HTML</div>
       <div class="field-row" style="align-items:flex-start">
         <label for="customize-footer-html" title="HTML inserted inside the page footer.">Footer HTML</label>
-        <textarea id="customize-footer-html" class="code-input" rows="10" placeholder="<!-- injected inside <footer> -->" title="Write custom HTML inserted in the footer."></textarea>
-        <div class="code-preview-wrap">
-          <div class="code-preview-title">Syntax Preview</div>
-          <pre id="customize-footer-html-preview" class="code-preview" aria-hidden="true"></pre>
+        <div class="code-editor">
+          <pre id="customize-footer-html-highlight" class="code-highlight" aria-hidden="true"></pre>
+          <textarea id="customize-footer-html" class="code-input code-input-overlay" rows="10" placeholder="<!-- injected inside <footer> -->" title="Write custom HTML inserted in the footer." spellcheck="false"></textarea>
         </div>
       </div>
     </section>
@@ -465,6 +462,7 @@
       document.getElementById('customize-css').value = cfg.custom_css || '';
       document.getElementById('customize-header-html').value = cfg.custom_header_html || '';
       document.getElementById('customize-footer-html').value = cfg.custom_footer_html || '';
+      refreshCustomizeHighlights();
     } catch (err) {
       feedbackEl.innerHTML = `<div class="error-banner">Cannot load GUI config: ${err.message}</div>`;
     }
@@ -502,28 +500,47 @@
   const configCtrl     = initConfig({ showToast });
 
   const _customizeEditors = [
-    { inputId: 'customize-css', previewId: 'customize-css-preview', language: 'css' },
-    { inputId: 'customize-header-html', previewId: 'customize-header-html-preview', language: 'html' },
-    { inputId: 'customize-footer-html', previewId: 'customize-footer-html-preview', language: 'html' },
+    { inputId: 'customize-css', highlightId: 'customize-css-highlight', language: 'css' },
+    { inputId: 'customize-header-html', highlightId: 'customize-header-html-highlight', language: 'html' },
+    { inputId: 'customize-footer-html', highlightId: 'customize-footer-html-highlight', language: 'html' },
   ];
 
-  function initCustomizeSyntaxPreview() {
-    _customizeEditors.forEach(({ inputId, previewId, language }) => {
+  function initCustomizeSyntaxHighlight() {
+    _customizeEditors.forEach(({ inputId, highlightId, language }) => {
       const input = document.getElementById(inputId);
-      const preview = document.getElementById(previewId);
-      if (!input || !preview) return;
-      input.addEventListener('input', () => renderSyntaxPreview(input, preview, language));
-      renderSyntaxPreview(input, preview, language);
+      const highlight = document.getElementById(highlightId);
+      if (!input || !highlight) return;
+      const refresh = () => renderSyntaxHighlight(input, highlight, language);
+      input.addEventListener('input', refresh);
+      input.addEventListener('scroll', () => syncHighlightScroll(input, highlight));
+      refresh();
+      syncHighlightScroll(input, highlight);
     });
   }
 
-  function renderSyntaxPreview(input, preview, language) {
+  function refreshCustomizeHighlights() {
+    _customizeEditors.forEach(({ inputId, highlightId, language }) => {
+      const input = document.getElementById(inputId);
+      const highlight = document.getElementById(highlightId);
+      if (!input || !highlight) return;
+      renderSyntaxHighlight(input, highlight, language);
+    });
+  }
+
+  function renderSyntaxHighlight(input, highlight, language) {
     const raw = input.value || '';
-    if (!raw.trim()) {
-      preview.innerHTML = '<span class="tok-muted">(empty)</span>';
-      return;
+    const highlighted = language === 'css' ? highlightCss(raw) : highlightHtml(raw);
+    // Keep one visual line when empty and preserve trailing newline alignment.
+    highlight.innerHTML = highlighted || '<span class="tok-muted"> </span>';
+    if (raw.endsWith('\n')) {
+      highlight.innerHTML += '\n';
     }
-    preview.innerHTML = language === 'css' ? highlightCss(raw) : highlightHtml(raw);
+    syncHighlightScroll(input, highlight);
+  }
+
+  function syncHighlightScroll(input, highlight) {
+    highlight.scrollTop = input.scrollTop;
+    highlight.scrollLeft = input.scrollLeft;
   }
 
   function escCode(text) {
@@ -554,7 +571,7 @@
     return out;
   }
 
-  initCustomizeSyntaxPreview();
+  initCustomizeSyntaxHighlight();
 
   // ── Health polling (every 30s) — updates connector status badges ──────────
   async function pollHealth() {
