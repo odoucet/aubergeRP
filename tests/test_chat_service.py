@@ -14,6 +14,7 @@ from aubergeRP.services.character_service import CharacterService
 from aubergeRP.services.chat_service import (
     ChatService,
     ImageMarkerParser,
+    _format_user_message_for_llm,
     build_prompt,
 )
 from aubergeRP.services.conversation_service import ConversationService
@@ -331,6 +332,56 @@ def test_build_prompt_resolves_user_macro():
     msgs = build_prompt(conv, char, user_name="Bob")
     system = msgs[0]
     assert "Bob" in system["content"]
+
+
+def test_format_user_message_for_llm_without_brackets_is_unchanged():
+    content = "Hello there"
+    assert _format_user_message_for_llm(content) == content
+
+
+def test_format_user_message_for_llm_extracts_dialogue_and_instructions():
+    content = "I step closer. [whispering] Hello {smiles}"
+    formatted = _format_user_message_for_llm(content)
+    assert "Dialogue:" in formatted
+    assert "I step closer. Hello" in formatted
+    assert "Roleplay instructions (non-dialogue):" in formatted
+    assert "- whispering" in formatted
+    assert "- smiles" in formatted
+
+
+def test_format_user_message_for_llm_with_only_instructions():
+    content = "[looks around] {listens carefully}"
+    formatted = _format_user_message_for_llm(content)
+    assert "Dialogue:" not in formatted
+    assert "Roleplay instructions (non-dialogue):" in formatted
+    assert "- looks around" in formatted
+    assert "- listens carefully" in formatted
+
+
+def test_format_user_message_for_llm_unclosed_bracket_is_unchanged():
+    content = "Hello [whispering"
+    assert _format_user_message_for_llm(content) == content
+
+
+def test_build_prompt_formats_user_roleplay_bracket_content():
+    from aubergeRP.models.conversation import Message
+
+    char = _char()
+    user_msg = Message(
+        id="m1",
+        role="user",
+        content="I move forward. [quietly]",
+        images=[],
+        timestamp=_now(),
+    )
+    conv = _conv(char, messages=[user_msg])
+
+    msgs = build_prompt(conv, char)
+    llm_user = next(m for m in msgs if m["role"] == "user")
+    assert "Dialogue:" in llm_user["content"]
+    assert "I move forward." in llm_user["content"]
+    assert "Roleplay instructions (non-dialogue):" in llm_user["content"]
+    assert "- quietly" in llm_user["content"]
 
 
 # ---------------------------------------------------------------------------

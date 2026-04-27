@@ -377,6 +377,7 @@ function appendMessage(role, content, images = []) {
   const bubble = document.createElement('div');
   bubble.className = 'msg-bubble';
   bubble.innerHTML = renderMarkdown(content);
+  applyRoleplayHintStyling(bubble);
   wrapper.appendChild(bubble);
 
   if (images && images.length > 0) {
@@ -456,6 +457,7 @@ function createStreamingMessage() {
       typingEl.remove();
       wrapper.style.display = '';
       bubble.innerHTML = renderMarkdown(rawText);
+      applyRoleplayHintStyling(bubble);
       scrollToBottom();
     },
     onImageStart(genId, prompt) {
@@ -700,6 +702,70 @@ function renderMarkdown(text) {
   }
   // Fallback: escape HTML
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+}
+
+/**
+ * Highlight roleplay instruction segments wrapped in [ ... ] or { ... }
+ * without altering code blocks.
+ */
+function applyRoleplayHintStyling(rootEl) {
+  const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT);
+  const textNodes = [];
+  let node;
+  while ((node = walker.nextNode())) {
+    const parentTag = node.parentElement ? node.parentElement.tagName : '';
+    if (parentTag === 'CODE' || parentTag === 'PRE') continue;
+    textNodes.push(node);
+  }
+
+  for (const textNode of textNodes) {
+    const text = textNode.nodeValue || '';
+    if (!text.includes('[') && !text.includes('{')) continue;
+
+    const fragments = splitRoleplayFragments(text);
+    if (!fragments.some(f => f.type === 'hint')) continue;
+
+    const frag = document.createDocumentFragment();
+    for (const part of fragments) {
+      if (part.type === 'hint') {
+        const span = document.createElement('span');
+        span.className = 'rp-hint';
+        span.textContent = part.text;
+        frag.appendChild(span);
+      } else {
+        frag.appendChild(document.createTextNode(part.text));
+      }
+    }
+    textNode.parentNode.replaceChild(frag, textNode);
+  }
+}
+
+function splitRoleplayFragments(text) {
+  const out = [];
+  let i = 0;
+
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch !== '[' && ch !== '{') {
+      let j = i + 1;
+      while (j < text.length && text[j] !== '[' && text[j] !== '{') j += 1;
+      out.push({ type: 'text', text: text.slice(i, j) });
+      i = j;
+      continue;
+    }
+
+    const close = ch === '[' ? ']' : '}';
+    const end = text.indexOf(close, i + 1);
+    if (end === -1) {
+      out.push({ type: 'text', text: text.slice(i) });
+      break;
+    }
+
+    out.push({ type: 'hint', text: text.slice(i, end + 1) });
+    i = end + 1;
+  }
+
+  return out;
 }
 
 function scrollToBottom() {

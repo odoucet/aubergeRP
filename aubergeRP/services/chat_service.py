@@ -172,6 +172,70 @@ _IMAGE_TOOL_INSTRUCTION = (
     "user asked for one. Continue your narration normally."
 )
 
+_ROLEPLAY_BRACKET_INSTRUCTION = (
+    "User messages can include non-dialogue roleplay directions wrapped in "
+    "square brackets `[ ... ]` or curly braces `{ ... }`. Treat bracketed "
+    "segments as scene/action instructions (not spoken dialogue). Treat "
+    "unbracketed text as spoken dialogue."
+)
+
+
+def _split_roleplay_bracket_segments(text: str) -> tuple[list[str], list[str]]:
+    """Split user text into dialogue fragments and bracketed instructions."""
+    dialogue_parts: list[str] = []
+    instructions: list[str] = []
+
+    dialogue_buf: list[str] = []
+    instruction_buf: list[str] = []
+    opening = ""
+    closing = ""
+
+    for char in text:
+        if not opening:
+            if char in "[{":
+                if dialogue_buf:
+                    dialogue_parts.append("".join(dialogue_buf))
+                    dialogue_buf = []
+                opening = char
+                closing = "]" if char == "[" else "}"
+            else:
+                dialogue_buf.append(char)
+        else:
+            if char == closing:
+                segment = "".join(instruction_buf).strip()
+                if segment:
+                    instructions.append(segment)
+                instruction_buf = []
+                opening = ""
+                closing = ""
+            else:
+                instruction_buf.append(char)
+
+    if opening:
+        dialogue_buf.extend(opening)
+        dialogue_buf.extend(instruction_buf)
+
+    if dialogue_buf:
+        dialogue_parts.append("".join(dialogue_buf))
+
+    return dialogue_parts, instructions
+
+
+def _format_user_message_for_llm(content: str) -> str:
+    """Format user message so the LLM can distinguish dialogue and directions."""
+    dialogue_parts, instructions = _split_roleplay_bracket_segments(content)
+    if not instructions:
+        return content
+
+    dialogue = " ".join(part.strip() for part in dialogue_parts if part.strip())
+    blocks: list[str] = []
+    if dialogue:
+        blocks.append(f"Dialogue:\n{dialogue}")
+
+    instruction_lines = "\n".join(f"- {instruction}" for instruction in instructions)
+    blocks.append(f"Roleplay instructions (non-dialogue):\n{instruction_lines}")
+    return "\n\n".join(blocks)
+
 
 def build_prompt(
     conversation: Conversation,
@@ -187,6 +251,7 @@ def build_prompt(
     system_parts.append(resolve_macros(base_prompt, char.data.name, user_name))
     # Append the image instruction appropriate for the backend.
     system_parts.append(_IMAGE_TOOL_INSTRUCTION if use_tool_calling else _IMAGE_MARKER_INSTRUCTION)
+    system_parts.append(_ROLEPLAY_BRACKET_INSTRUCTION)
     if char.data.description:
         system_parts.append(
             f"{char.data.name}'s description: "
@@ -211,7 +276,10 @@ def build_prompt(
     messages.append({"role": "system", "content": "\n\n".join(system_parts)})
 
     for msg in conversation.messages:
-        messages.append({"role": msg.role, "content": msg.content})
+        content = msg.content
+        if msg.role == "user":
+            content = _format_user_message_for_llm(content)
+        messages.append({"role": msg.role, "content": content})
 
     if char.data.post_history_instructions:
         messages.append({

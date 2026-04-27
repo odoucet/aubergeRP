@@ -273,6 +273,24 @@ body {
 .msg-bubble pre code { background: none; }
 .msg-bubble :not(pre) > code { background: rgba(0,0,0,0.25); border-radius: 3px; padding: 0.1em 0.35em; }
 
+.msg-bubble .rp-hint {
+  display: inline-block;
+  padding: 0.05em 0.45em;
+  margin: 0 0.05em;
+  border-radius: 999px;
+  font-style: italic;
+  font-size: 0.93em;
+  line-height: 1.45;
+  border: 1px dashed rgba(233, 69, 96, 0.5);
+  background: rgba(233, 69, 96, 0.12);
+}
+
+.msg.user .msg-bubble .rp-hint {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
 /* images inside messages */
 .msg-images { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
 
