@@ -16,6 +16,7 @@ let _activeConversationId = null;
 let _activeCharacter = null;
 let _streaming = false;
 let _healthInterval = null;
+let _lastUserMessage = null;
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 
@@ -23,7 +24,7 @@ export function initChat() {
   const sendBtn = document.getElementById('send-btn');
   const input = document.getElementById('msg-input');
 
-  sendBtn.addEventListener('click', handleSend);
+  sendBtn.addEventListener('click', () => handleSend());
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -39,6 +40,51 @@ export function initChat() {
 
   // Health polling
   startHealthPolling();
+
+  // Lightbox
+  initLightbox();
+}
+
+// ── Lightbox ─────────────────────────────────────────────────────────────────
+
+function initLightbox() {
+  const lb = document.createElement('div');
+  lb.id = 'lightbox';
+  lb.setAttribute('role', 'dialog');
+  lb.setAttribute('aria-modal', 'true');
+  lb.setAttribute('aria-label', 'Image lightbox');
+
+  const img = document.createElement('img');
+  img.id = 'lightbox-img';
+  img.alt = 'Full-size image';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.id = 'lightbox-close';
+  closeBtn.setAttribute('aria-label', 'Close lightbox');
+  closeBtn.textContent = '✕';
+
+  lb.appendChild(img);
+  lb.appendChild(closeBtn);
+  document.body.appendChild(lb);
+
+  lb.addEventListener('click', e => {
+    if (e.target === lb || e.target.id === 'lightbox-close') closeLightbox();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeLightbox();
+  });
+}
+
+function openLightbox(src) {
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+  const lb = document.getElementById('lightbox');
+  if (lb) lb.classList.remove('open');
+  document.body.style.overflow = '';
 }
 
 // ── Character selection ───────────────────────────────────────────────────────
@@ -148,6 +194,11 @@ async function selectConversation(id) {
   highlightActiveConv(id);
   clearMessages();
 
+  // Close sidebar on small mobile screens after selecting a conversation
+  if (window.innerWidth < 768) {
+    document.dispatchEvent(new CustomEvent('closeSidebar'));
+  }
+
   let conv;
   try {
     conv = await fetchConversation(id);
@@ -190,6 +241,46 @@ function clearMessages() {
 }
 
 /**
+ * Create an image wrapper element with lightbox-click and copy-to-clipboard button.
+ */
+function createImageElement(url) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'img-wrapper';
+
+  const img = document.createElement('img');
+  img.className = 'msg-image';
+  img.src = url;
+  img.alt = 'Generated image';
+  img.addEventListener('click', () => openLightbox(url));
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'img-copy-btn';
+  copyBtn.setAttribute('aria-label', 'Copy image to clipboard');
+  copyBtn.textContent = '⧉';
+  copyBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    copyImageToClipboard(url);
+  });
+
+  wrapper.appendChild(img);
+  wrapper.appendChild(copyBtn);
+  return wrapper;
+}
+
+async function copyImageToClipboard(url) {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const supportedTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+    const type = supportedTypes.includes(blob.type) ? blob.type : 'image/png';
+    await navigator.clipboard.write([new ClipboardItem({ [type]: blob })]);
+    showToast('Image copied to clipboard');
+  } catch (err) {
+    showToast('Copy failed: ' + err.message);
+  }
+}
+
+/**
  * Append a fully-formed message and return the bubble element.
  */
 function appendMessage(role, content, images = []) {
@@ -207,11 +298,7 @@ function appendMessage(role, content, images = []) {
     const imgContainer = document.createElement('div');
     imgContainer.className = 'msg-images';
     for (const url of images) {
-      const img = document.createElement('img');
-      img.className = 'msg-image';
-      img.src = url;
-      img.alt = 'Generated image';
-      imgContainer.appendChild(img);
+      imgContainer.appendChild(createImageElement(url));
     }
     wrapper.appendChild(imgContainer);
   }
@@ -273,11 +360,7 @@ function createStreamingMessage() {
     onImageComplete(genId, imageUrl) {
       const ph = document.getElementById(`img-ph-${genId}`);
       if (ph) {
-        const img = document.createElement('img');
-        img.className = 'msg-image';
-        img.src = imageUrl;
-        img.alt = 'Generated image';
-        ph.replaceWith(img);
+        ph.replaceWith(createImageElement(imageUrl));
       }
       scrollToBottom();
     },
@@ -299,19 +382,25 @@ function createStreamingMessage() {
 
 // ── Sending ──────────────────────────────────────────────────────────────────
 
-async function handleSend() {
+async function handleSend(contentOverride) {
   if (_streaming || !_activeConversationId) return;
 
   const input = document.getElementById('msg-input');
-  const content = input.value.trim();
+  const content = contentOverride !== undefined ? contentOverride : input.value.trim();
   if (!content) return;
 
-  input.value = '';
-  input.style.height = 'auto';
+  if (contentOverride === undefined) {
+    input.value = '';
+    input.style.height = 'auto';
+  }
+
+  _lastUserMessage = content;
   setStreaming(true);
 
-  // Optimistic user message
-  appendMessage('user', content);
+  // Append user message only on initial send, not on retry
+  if (contentOverride === undefined) {
+    appendMessage('user', content);
+  }
 
   const streaming = createStreamingMessage();
 
@@ -320,7 +409,7 @@ async function handleSend() {
     res = await sendMessage(_activeConversationId, content);
   } catch (err) {
     streaming.finalize();
-    appendErrorMessage('Send failed: ' + err.message);
+    appendErrorMessage('Send failed: ' + err.message, () => handleSend(_lastUserMessage));
     setStreaming(false);
     return;
   }
@@ -329,7 +418,7 @@ async function handleSend() {
     await readSSE(res, streaming);
   } catch (err) {
     streaming.finalize();
-    appendErrorMessage('Stream error: ' + err.message);
+    appendErrorMessage('Stream error: ' + err.message, () => handleSend(_lastUserMessage));
   }
 
   setStreaming(false);
@@ -388,16 +477,31 @@ function dispatchSSEEvent(event, handlers) {
       break;
     case 'error':
       handlers.finalize();
-      appendErrorMessage(event.detail || 'Unknown error');
+      appendErrorMessage(event.detail || 'Unknown error', () => handleSend(_lastUserMessage));
       break;
   }
 }
 
-function appendErrorMessage(detail) {
+function appendErrorMessage(detail, onRetry) {
   const list = document.getElementById('message-list');
   const el = document.createElement('div');
   el.className = 'msg-error';
-  el.textContent = '⚠ ' + detail;
+
+  const text = document.createElement('span');
+  text.textContent = '⚠ ' + detail;
+  el.appendChild(text);
+
+  if (onRetry) {
+    const retryBtn = document.createElement('button');
+    retryBtn.className = 'msg-retry-btn';
+    retryBtn.textContent = 'Retry';
+    retryBtn.addEventListener('click', () => {
+      el.remove();
+      onRetry();
+    });
+    el.appendChild(retryBtn);
+  }
+
   list.appendChild(el);
   scrollToBottom();
 }

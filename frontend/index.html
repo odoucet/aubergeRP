@@ -119,6 +119,7 @@
 
   hamburgerBtn.addEventListener('click', () => toggleSidebar());
   overlay.addEventListener('click', () => toggleSidebar(false));
+  document.addEventListener('closeSidebar', () => toggleSidebar(false));
 
   // Close sidebar on mobile when a character is clicked
   function onCharSelected(character) {
