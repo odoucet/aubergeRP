@@ -1,0 +1,2 @@
+# FLUX.2-klein 9B Q4_K_M — unsloth/FLUX.2-klein-9B-GGUF (~5.91 GB VRAM)
+FROM /data/models/FLUX.2-klein-9B-Q4_K_M.gguf

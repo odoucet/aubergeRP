@@ -59,7 +59,8 @@ Adding a new backend = implementing a new connector class. The rest of the app d
 * All external backends accessed through connectors only.
 
 ### Deployment
-* Docker and docker-compose support.
+* **Local GPU stack** — single `make docker <profile>` command provisions Ollama + aubergeRP, downloads GGUF models, and registers them.
+* Docker and docker-compose support (hardware profiles for RTX 3090, …).
 * Environment-variable config overrides.
 * Optional Sentry error tracking.
 * Background media cleanup scheduler.
@@ -69,6 +70,24 @@ Adding a new backend = implementing a new connector class. The rest of the app d
 * GUI customization (custom CSS, header/footer HTML).
 * Plugin system for third-party extensions.
 * Interactive API reference at `/api-docs`.
+
+## Quick Start — Local GPU Stack
+
+```bash
+# Install the HuggingFace hf CLI (one-time)
+pip install 'huggingface_hub[cli]'
+
+# Start the stack for an RTX 3090
+# Downloads models automatically if missing, then starts Ollama + aubergeRP
+make docker rtx3090
+
+# Other commands
+make stop           # stop containers
+make clean          # stop + remove containers and networks
+make logs           # tail logs
+```
+
+See [docs/installation-guide.md](docs/installation-guide.md) for prerequisites, available profiles, and how to add your own GPU profile.
 
 ## Documentation
 

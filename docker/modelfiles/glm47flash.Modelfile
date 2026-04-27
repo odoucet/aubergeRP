@@ -1,0 +1,7 @@
+# GLM-4.7-Flash Q4_0 — unsloth/GLM-4.7-Flash-GGUF (~17.2 GB VRAM)
+FROM /data/models/GLM-4.7-Flash-Q4_0.gguf
+
+PARAMETER temperature 1.0
+PARAMETER top_p 0.95
+PARAMETER repeat_penalty 1.0
+PARAMETER repeat_last_n 0

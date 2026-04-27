@@ -1,0 +1,16 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: auberge-ai
+    volumes:
+      - ollama_storage:/root/.ollama
+      - ../data/models:/data/models:ro
+      - ./modelfiles:/modelfiles:ro
+    ports:
+      - "11434:11434"
+
+  # TODO: Ajouter auberge-app ici, avec les variables d'environnement pour pointer vers ollama et les modèles.
+  # cf "make run"
+
+volumes:
+  ollama_storage:

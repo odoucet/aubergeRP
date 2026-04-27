@@ -192,27 +192,78 @@ nssm start aubergeRP
 
 ## 5. Docker
 
-### Prerequisites
+Two usage modes are available:
 
-- Docker 24+ and Docker Compose v2+
+| Mode | When to use |
+|------|-------------|
+| **Managed stack** (`make docker <profile>`) | Local GPU, Ollama bundled, models auto-downloaded |
+| **Bare compose** (`docker compose up`) | Custom infra, remote LLM, CI |
 
-### Step-by-step
+---
+
+### 5a. Managed stack (GPU + Ollama)
+
+The Makefile wraps docker compose with hardware profiles. It downloads missing GGUF
+models via `huggingface-cli`, starts the containers, and registers the models in Ollama
+— all in one command.
+
+#### Prerequisites
+
+| Requirement | Version |
+|-------------|---------|
+| Docker + Docker Compose v2 | 24+ |
+| NVIDIA Container Toolkit | For GPU profiles |
+| Python + hf CLI | `pip install 'huggingface_hub[cli]'` |
+| `make` | Any GNU make |
+
+#### Commands
 
 ```bash
-# Clone
+make docker rtx3090    # start stack with RTX 3090 profile
+make stop              # stop containers (data preserved)
+make clean             # stop + remove containers and networks
+make logs              # tail all container logs
+```
+
+Listing or requesting an undefined profile shows a clear error:
+
+```
+Error: Profile 'idonotexist' does not exist.
+Profiles: rtx3090
+```
+
+#### How it works
+
+1. **Model download** — checks `data/models/` for each required `.gguf` file; downloads from HuggingFace if missing.
+2. **Stack start** — merges `docker/docker-compose.yml` with `docker/profiles/<profile>.yml` and runs `docker compose up -d`.
+3. **Model registration** — waits for Ollama to become ready, then runs `ollama create <name> -f /modelfiles/<file>` for each model (skipped if already loaded).
+
+#### Available profiles
+
+| Profile | GPU | LLM | Image model |
+|---------|-----|-----|-------------|
+| `rtx3090` | NVIDIA RTX 3090 (24 GB) | GLM-4.7-Flash Q4\_0 (~17.2 GB) | FLUX.2-klein 9B Q4\_K\_M (~5.91 GB) |
+
+#### Adding a new profile
+
+1. Create `docker/profiles/<name>.yml` — override GPU reservations and `LLM_MODEL` / `IMAGE_MODEL` env vars.
+2. Add the GGUF specs and a `_setup-<name>` target in the `Makefile` (follow the `_setup-rtx3090` block as a template).
+3. Create the corresponding `docker/modelfiles/<name>.Modelfile` files.
+
+---
+
+### 5b. Bare compose
+
+```bash
 git clone https://github.com/odoucet/aubergeRP.git
 cd aubergeRP
-
-# Copy config
 cp config.example.yaml config.yaml
-
-# Build and start
 docker compose up -d
 ```
 
 The server will be available at **http://localhost:8000**.
 
-Data is persisted in a `./data` volume mount defined in `docker-compose.yml`.
+---
 
 ### Environment variables
 
@@ -227,7 +278,7 @@ All configuration values can be overridden via environment variables without edi
 | `AUBERGE_USER_NAME` | `user.name` |
 | `AUBERGE_SENTRY_DSN` | `app.sentry_dsn` |
 
-Example `docker-compose.yml` override:
+Example override in a compose profile:
 
 ```yaml
 environment:

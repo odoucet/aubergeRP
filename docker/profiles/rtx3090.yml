@@ -1,0 +1,23 @@
+# RTX 3090 (24 GB VRAM)
+# LLM : GLM-4.7-Flash Q4_0  — unsloth/GLM-4.7-Flash-GGUF      (~17.2 GB)
+# IMG : FLUX.2-klein 9B Q4_K_M — unsloth/FLUX.2-klein-9B-GGUF  (~5.91 GB)
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - LLM_MODEL=glm47-flash:q4_0
+      - IMAGE_MODEL=flux-klein:9b-q4km
+      - OLLAMA_KEEP_ALIVE=-1
+      - OLLAMA_NUM_PARALLEL=2
+
+  auberge-app:
+    environment:
+      - AI_API_ENDPOINT=http://ollama:11434
+      - CURRENT_LLM=${LLM_MODEL}
+      - CURRENT_IMG=${IMAGE_MODEL}

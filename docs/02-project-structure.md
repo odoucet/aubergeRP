@@ -11,12 +11,19 @@ aubergeRP/
 ├── aubergeRP/                   # Python backend package
 ├── tests/                       # Backend tests
 ├── data/                        # Runtime data (gitignored)
+│   └── models/                  # Downloaded GGUF files (gitignored except .gitkeep)
+├── docker/                      # Docker stack
+│   ├── docker-compose.yml       # Base services (Ollama + auberge-app)
+│   ├── profiles/                # Hardware overrides (one file per GPU profile)
+│   │   └── rtx3090.yml
+│   └── modelfiles/              # Ollama Modelfile definitions
+│       ├── glm47flash.Modelfile
+│       └── flux-klein.Modelfile
 ├── config.example.yaml          # Example configuration file
 ├── requirements.txt             # Pinned Python dependencies
 ├── pyproject.toml               # Project metadata + tool configuration
-├── Makefile                     # Developer targets (lint, test, run)
+├── Makefile                     # Dev targets (lint, test, run) + Docker stack management
 ├── Dockerfile                   # Container image definition
-├── docker-compose.yml           # Docker Compose service definition
 ├── README.md
 └── LICENSE
 ```
@@ -144,13 +151,16 @@ data/
 ├── connectors/                  # {uuid}.json — one file per connector instance
 ├── avatars/                     # {character-uuid}.png
 ├── comfyui_workflows/           # User ComfyUI workflow templates (JSON)
+├── models/                      # Downloaded GGUF files (managed by Makefile)
+│   └── *.gguf
 └── images/
     └── {session-token}/         # One folder per session (currently: one constant folder)
         └── {uuid}.png
 ```
 
 - `data/` is created on first startup if missing.
-- `data/` is gitignored.
+- `data/` is gitignored; `data/models/` is tracked via `.gitkeep` so the directory exists in fresh clones.
+- GGUF files in `data/models/` are downloaded automatically by `make docker <profile>` if not present.
 - `images/{session-token}/` is the seam for future multi-user support. In the current single-user setup, `session-token` is the constant `00000000-0000-0000-0000-000000000000` (see [00 § 9](00-architecture-overview.md)).
 - `comfyui_workflows/` is seeded from `aubergeRP/comfyui_workflows/` (built-in templates) on first startup. User files are never overwritten.
 
@@ -163,6 +173,9 @@ data/
 | `pyproject.toml` | Project metadata, ruff/mypy/pytest config | Yes |
 | `requirements.txt` | Pinned Python dependencies | Yes |
 | `.gitignore` | Ignore patterns | Yes |
+| `docker/docker-compose.yml` | Base Docker services | Yes |
+| `docker/profiles/*.yml` | Hardware overrides | Yes |
+| `docker/modelfiles/*.Modelfile` | Ollama model definitions | Yes |
 
 ## 7. Module Responsibilities
 
