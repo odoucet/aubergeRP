@@ -1,0 +1,62 @@
+name: 🚀 Feature request
+description: Suggest a new feature or improvement
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your suggestion! Please describe your idea as clearly as possible.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: >
+        A clear description of the problem or limitation you are experiencing.
+        Example: "It is frustrating that I cannot do X because…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the feature or change you would like to see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: >
+        Any alternative solutions or workarounds you have considered.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the project does this relate to?
+      multiple: true
+      options:
+        - Frontend / UI
+        - Backend API
+        - Connector system
+        - Character management
+        - Conversation management
+        - Image generation
+        - Docker / deployment
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
+        - label: This feature fits within the project's goal of being a lightweight, self-hostable roleplay engine.
+          required: false
