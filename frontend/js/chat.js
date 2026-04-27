@@ -429,8 +429,27 @@ function createStreamingMessage() {
       const ph = document.createElement('div');
       ph.className = 'img-placeholder';
       ph.id = `img-ph-${genId}`;
-      ph.innerHTML = '<div class="spinner"></div><span>Generating image…</span>';
+      ph.innerHTML = `
+        <div class="spinner" id="img-spinner-${genId}"></div>
+        <span>Generating image…</span>
+        <div class="img-progress" id="img-progress-${genId}" style="display:none">
+          <div class="img-progress-bar" id="img-progress-bar-${genId}"></div>
+        </div>
+        <span class="img-progress-label" id="img-progress-label-${genId}" style="display:none"></span>
+      `;
       imagesContainer.appendChild(ph);
+      scrollToBottom();
+    },
+    onImageProgress(genId, step, total) {
+      const spinner = document.getElementById(`img-spinner-${genId}`);
+      const progressEl = document.getElementById(`img-progress-${genId}`);
+      const barEl = document.getElementById(`img-progress-bar-${genId}`);
+      const labelEl = document.getElementById(`img-progress-label-${genId}`);
+      if (spinner) spinner.style.display = 'none';
+      if (progressEl) progressEl.style.display = 'block';
+      const pct = total > 0 ? Math.round((step / total) * 100) : 0;
+      if (barEl) barEl.style.width = `${pct}%`;
+      if (labelEl) { labelEl.style.display = 'block'; labelEl.textContent = `${step} / ${total}`; }
       scrollToBottom();
     },
     onImageComplete(genId, imageUrl) {
@@ -541,6 +560,9 @@ function dispatchSSEEvent(event, handlers) {
       break;
     case 'image_start':
       handlers.onImageStart(event.generation_id, event.prompt);
+      break;
+    case 'image_progress':
+      handlers.onImageProgress(event.generation_id, event.step, event.total);
       break;
     case 'image_complete':
       handlers.onImageComplete(event.generation_id, event.image_url);

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 
 ConnectorType = Literal["text", "image", "video", "audio"]
-ConnectorBackend = Literal["openai_api"]
+ConnectorBackend = Literal["openai_api", "comfyui"]
 
 
 class OpenAITextConfig(BaseModel):
@@ -25,6 +25,12 @@ class OpenAIImageConfig(BaseModel):
     model: str = "google/gemini-2.0-flash-exp:free"
     size: str = "1024x1024"
     timeout: int = 120
+
+
+class ComfyUIConfig(BaseModel):
+    base_url: str = "http://localhost:8188"
+    workflow: str = "default"
+    timeout: int = 300
 
 
 class ConnectorInstance(BaseModel):

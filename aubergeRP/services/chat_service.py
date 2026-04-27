@@ -220,7 +220,20 @@ class ChatService:
             prefix = auberge.get("image_prompt_prefix", "")
             negative = auberge.get("negative_prompt", "")
             full_prompt = f"{prefix} {prompt}".strip() if prefix else prompt
-            img_bytes = await img_connector.generate_image(full_prompt, negative_prompt=negative)
+            img_bytes: bytes | None = None
+            async for event in img_connector.generate_image_with_progress(full_prompt, negative_prompt=negative):
+                if event["type"] == "progress":
+                    yield {
+                        "type": "image_progress",
+                        "generation_id": gen_id,
+                        "step": event["step"],
+                        "total": event["total"],
+                    }
+                elif event["type"] == "complete":
+                    img_bytes = event["bytes"]
+            if img_bytes is None:
+                yield {"type": "image_failed", "generation_id": gen_id, "detail": "No image returned"}
+                return
             self._images_dir.mkdir(parents=True, exist_ok=True)
             filename = f"{uuid.uuid4()}.png"
             (self._images_dir / filename).write_bytes(img_bytes)

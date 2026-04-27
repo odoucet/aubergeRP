@@ -372,6 +372,27 @@ body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* image generation progress bar */
+.img-progress {
+  width: 80%;
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+.img-progress-bar {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+.img-progress-label {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
 /* inline error */
 .msg-error {
   display: flex;
