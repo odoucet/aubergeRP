@@ -99,7 +99,7 @@ _compose-up:
 	@docker compose \
 		-f $(COMPOSE_BASE) \
 		-f $(PROFILES_DIR)/$(PROFILE).yml \
-		up -d --remove-orphans
+		up -d --remove-orphans --build
 
 # ─── Internal: download a single GGUF if missing ─────────────────────────────
 # Usage: $(MAKE) _download-gguf FILE=x.gguf REPO=org/repo
