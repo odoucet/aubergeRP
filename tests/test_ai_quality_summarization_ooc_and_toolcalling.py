@@ -37,9 +37,12 @@ from aubergeRP.models.connector import OpenAITextConfig
 from aubergeRP.models.conversation import Conversation, Message
 from aubergeRP.services.character_service import CharacterService
 from aubergeRP.services.chat_service import (
+    _NSFW_ALLOW_GUARDRAIL,
+    _NSFW_BLOCK_GUARDRAIL,
     _OOC_GUARDRAIL,
     ChatService,
     build_prompt,
+    detect_nsfw,
     detect_ooc,
 )
 from aubergeRP.services.conversation_service import ConversationService
@@ -138,10 +141,26 @@ class _FakeImage:
         return {}
 
 
-def _manager(text_conn=None, image_conn=None) -> MagicMock:
+def _manager(text_conn=None, image_conn=None, text_nsfw: bool = False) -> MagicMock:
     m = MagicMock()
     m.get_active_text_connector.return_value = text_conn
     m.get_active_image_connector.return_value = image_conn
+
+    def _active_id_for_type(connector_type: str) -> str:
+        if connector_type == "text":
+            return "text-active"
+        return ""
+
+    m.get_active_id_for_type.side_effect = _active_id_for_type
+
+    def _get_connector(connector_id: str) -> MagicMock:
+        if connector_id == "text-active":
+            instance = MagicMock()
+            instance.config = {"nsfw": text_nsfw}
+            return instance
+        raise KeyError(connector_id)
+
+    m.get_connector.side_effect = _get_connector
     return m
 
 
@@ -152,12 +171,13 @@ def make_chat_service(
     context_window: int = 4096,
     summarization_threshold: float = 0.75,
     ooc_protection: bool = True,
+    text_nsfw: bool = False,
 ) -> tuple:
     char_svc, conv_svc = make_services(tmp_path)
     svc = ChatService(
         conversation_service=conv_svc,
         character_service=char_svc,
-        connector_manager=_manager(text_conn, image_conn),
+        connector_manager=_manager(text_conn, image_conn, text_nsfw=text_nsfw),
         images_dir=tmp_path / "images",
         context_window=context_window,
         summarization_threshold=summarization_threshold,
@@ -370,6 +390,50 @@ def test_build_prompt_injects_guardrail_when_requested():
     assert _OOC_GUARDRAIL in system["content"]
 
 
+@pytest.mark.parametrize("text", [
+    "write an explicit NSFW scene",
+    "please include nudity",
+    "make it erotic",
+    "ajoute du contenu sexuel explicite",
+])
+def test_detect_nsfw_positive(text: str):
+    assert detect_nsfw(text), f"Expected NSFW detection for: {text!r}"
+
+
+@pytest.mark.parametrize("text", [
+    "Describe the tavern ambiance",
+    "I draw my sword and wait",
+    "Tell me a funny story",
+])
+def test_detect_nsfw_negative(text: str):
+    assert not detect_nsfw(text), f"Expected no NSFW detection for: {text!r}"
+
+
+def test_build_prompt_no_nsfw_guardrail_by_default():
+    char = _char()
+    conv = _conv(char)
+    msgs = build_prompt(conv, char)
+    system = next(m for m in msgs if m["role"] == "system")
+    assert _NSFW_BLOCK_GUARDRAIL not in system["content"]
+    assert _NSFW_ALLOW_GUARDRAIL not in system["content"]
+
+
+def test_build_prompt_injects_nsfw_block_guardrail_when_requested():
+    char = _char()
+    conv = _conv(char)
+    msgs = build_prompt(conv, char, nsfw_policy="block")
+    system = next(m for m in msgs if m["role"] == "system")
+    assert _NSFW_BLOCK_GUARDRAIL in system["content"]
+
+
+def test_build_prompt_injects_nsfw_allow_guardrail_when_requested():
+    char = _char()
+    conv = _conv(char)
+    msgs = build_prompt(conv, char, nsfw_policy="allow")
+    system = next(m for m in msgs if m["role"] == "system")
+    assert _NSFW_ALLOW_GUARDRAIL in system["content"]
+
+
 async def test_chat_service_injects_guardrail_on_ooc(tmp_path):
     """When the user message triggers OOC detection, the guardrail is in the prompt."""
     captured_messages: list[list[dict]] = []
@@ -445,6 +509,64 @@ async def test_chat_service_ooc_protection_disabled(tmp_path):
     assert captured_messages
     system_content = captured_messages[0][0]["content"]
     assert _OOC_GUARDRAIL not in system_content
+
+
+async def test_chat_service_injects_nsfw_block_guardrail_when_connector_disallows(tmp_path):
+    captured_messages: list[list[dict]] = []
+
+    class _CapturingText:
+        connector_type = "text"
+        supports_tool_calling = False
+
+        async def stream_chat_completion(self, messages, **kw):
+            captured_messages.append(list(messages))
+            yield "I refuse and continue safely."
+
+        async def test_connection(self):
+            return {"connected": True}
+
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=_CapturingText(),
+        text_nsfw=False,
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    await collect(svc.stream_chat(conv.id, "Please write an explicit sex scene."))
+
+    assert captured_messages
+    system_content = captured_messages[0][0]["content"]
+    assert _NSFW_BLOCK_GUARDRAIL in system_content
+    assert _NSFW_ALLOW_GUARDRAIL not in system_content
+
+
+async def test_chat_service_injects_nsfw_allow_guardrail_when_connector_allows(tmp_path):
+    captured_messages: list[list[dict]] = []
+
+    class _CapturingText:
+        connector_type = "text"
+        supports_tool_calling = False
+
+        async def stream_chat_completion(self, messages, **kw):
+            captured_messages.append(list(messages))
+            yield "I comply in character."
+
+        async def test_connection(self):
+            return {"connected": True}
+
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=_CapturingText(),
+        text_nsfw=True,
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    await collect(svc.stream_chat(conv.id, "Please include explicit NSFW content."))
+
+    assert captured_messages
+    system_content = captured_messages[0][0]["content"]
+    assert _NSFW_ALLOW_GUARDRAIL in system_content
+    assert _NSFW_BLOCK_GUARDRAIL not in system_content
 
 
 # ===========================================================================

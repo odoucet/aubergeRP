@@ -334,6 +334,7 @@ function renderConfigFields(backendId, existingConfig) {
       ['api_key', { type: 'string', required: false }],
       ['model', { type: 'string', required: true }],
       ['timeout', { type: 'number', required: false }],
+      ['nsfw', { type: 'boolean', required: false }],
     ];
     const typeEntries = selectedType === 'text'
       ? [
@@ -381,10 +382,10 @@ function renderSchemaEntries(entries, existingConfig) {
     .filter(([key]) => key !== 'api_key_set')
     .map(([key, schema]) => {
       const isApiKey = key === 'api_key';
-      const value = isApiKey ? '' : (existingConfig[key] !== undefined ? String(existingConfig[key]) : '');
+      const value = isApiKey ? '' : (existingConfig[key] !== undefined ? existingConfig[key] : '');
       const placeholder = isApiKey && existingApiKeySet ? '(set — leave blank to keep)' : '';
       if (schema.type === 'workflow_select') {
-        return renderWorkflowSelect(key, schemaLabel(key), value);
+        return renderWorkflowSelect(key, schemaLabel(key), String(value || ''));
       }
       return renderField(
         key,
@@ -437,7 +438,7 @@ function splitSchemaByCommonAndType(configSchema, connectorType) {
     delete merged.size;
   }
 
-  const commonKeys = new Set(['base_url', 'api_key', 'model', 'timeout']);
+  const commonKeys = new Set(['base_url', 'api_key', 'model', 'timeout', 'nsfw']);
   for (const [key, schema] of Object.entries(merged)) {
     if (commonKeys.has(key)) {
       result.commonEntries.push([key, schema]);
@@ -454,7 +455,7 @@ function schemaLabel(key) {
   const map = {
     base_url: 'Base URL', api_key: 'API Key', model: 'Model',
     max_tokens: 'Max Tokens', temperature: 'Temperature', timeout: 'Timeout (s)',
-    workflow: 'Workflow',
+    workflow: 'Workflow', nsfw: 'NSFW',
   };
   return map[key] || key.replace(/_/g, ' ');
 }
@@ -469,11 +470,24 @@ function schemaTooltip(key) {
     timeout: 'Request timeout in seconds before considering the connector unavailable.',
     size: 'Image size (example: 1024x1024).',
     workflow: 'ComfyUI workflow template used for image generation.',
+    nsfw: 'Allow NSFW behavior for this connector. Disabled by default.',
   };
   return map[key] || '';
 }
 
 function renderField(key, label, type, required, value, placeholder = '', inputType = null) {
+  if (type === 'boolean') {
+    const tooltip = schemaTooltip(key);
+    const tooltipAttr = tooltip ? ` title="${escHtml(tooltip)}"` : '';
+    const checked = !!value ? ' checked' : '';
+    return `
+      <div class="field-row">
+        <label for="cfg-${key}"${tooltipAttr}>${escHtml(label)}</label>
+        <input type="checkbox" id="cfg-${key}" name="${key}"${checked}>
+      </div>
+    `;
+  }
+
   const itype = inputType || (type === 'number' ? 'number' : 'text');
   const req = required ? '<span class="required">*</span>' : '';
   const tooltip = schemaTooltip(key);
@@ -523,13 +537,15 @@ function collectConfig() {
   const cfg = {};
   configFields.querySelectorAll('input[name], select[name]').forEach(inp => {
     const key = inp.name;
-    const val = inp.value.trim();
+    const val = inp.type === 'checkbox' ? '' : inp.value.trim();
     if (key === 'api_key') {
       // Include only if user typed something, or if clearKeyChk is checked (empty = clear)
       if (val !== '' || clearKeyChk.checked) {
         cfg[key] = val;
       }
       // else omit → server preserves existing key
+    } else if (inp.type === 'checkbox') {
+      cfg[key] = inp.checked;
     } else {
       cfg[key] = inp.type === 'number' ? (val === '' ? undefined : Number(val)) : val;
     }

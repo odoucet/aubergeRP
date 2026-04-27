@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from contextlib import suppress
 from pathlib import Path
 from time import perf_counter
-from typing import Any
+from typing import Any, Literal
 
 from ..connectors.manager import ConnectorManager
 from ..models.character import CharacterCard
@@ -52,10 +52,35 @@ _OOC_GUARDRAIL = (
     "the request."
 )
 
+_NSFW_PATTERNS: list[re.Pattern[str]] = [
+    # Lightweight lexical heuristic similar to OOC detection.
+    re.compile(r"\b(nsfw|explicit|porn|pornographic|erotic|sexual|sex scene)\b", re.IGNORECASE),
+    re.compile(r"\b(nude|nudity|naked|topless|bottomless)\b", re.IGNORECASE),
+    re.compile(r"\b(fetish|bdsm|domination|submission|kink)\b", re.IGNORECASE),
+    re.compile(r"\b(contenu sexuel|contenu explicite|nu intégral|pornographique)\b", re.IGNORECASE),
+]
+
+_NSFW_BLOCK_GUARDRAIL = (
+    "SAFETY REMINDER: If the user requests NSFW or sexually explicit content, "
+    "you must refuse politely and continue with a non-explicit alternative that "
+    "stays in-character. Never produce explicit sexual content."
+)
+
+_NSFW_ALLOW_GUARDRAIL = (
+    "PERMISSION REMINDER: NSFW content is allowed for this session. If the user "
+    "explicitly requests sexual or explicit content, you may comply while staying "
+    "in-character and respecting all other system instructions."
+)
+
 
 def detect_ooc(text: str) -> bool:
     """Return True if *text* looks like an out-of-character attempt."""
     return any(p.search(text) for p in _OOC_PATTERNS)
+
+
+def detect_nsfw(text: str) -> bool:
+    """Return True if *text* looks like an NSFW request."""
+    return any(p.search(text) for p in _NSFW_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
@@ -254,6 +279,7 @@ def build_prompt(
     user_name: str = "User",
     use_tool_calling: bool = False,
     ooc_guardrail: bool = False,
+    nsfw_policy: Literal["none", "block", "allow"] = "none",
 ) -> list[dict[str, str]]:
     messages: list[dict[str, str]] = []
 
@@ -284,6 +310,10 @@ def build_prompt(
         )
     if ooc_guardrail:
         system_parts.append(_OOC_GUARDRAIL)
+    if nsfw_policy == "block":
+        system_parts.append(_NSFW_BLOCK_GUARDRAIL)
+    elif nsfw_policy == "allow":
+        system_parts.append(_NSFW_ALLOW_GUARDRAIL)
     messages.append({"role": "system", "content": "\n\n".join(system_parts)})
 
     for msg in conversation.messages:
@@ -358,6 +388,34 @@ class ChatService:
 
         return connector_id, connector_name, connector_backend
 
+    def _resolve_active_connector_nsfw(self, connector_type: Literal["text", "image"]) -> bool:
+        """Read nsfw flag from the active connector instance config (defaults to False)."""
+        get_active = getattr(self._connector_manager, "get_active_id_for_type", None)
+        if not callable(get_active):
+            return False
+
+        try:
+            active_id = get_active(connector_type)
+        except Exception:
+            return False
+
+        if not isinstance(active_id, str) or not active_id:
+            return False
+
+        get_connector = getattr(self._connector_manager, "get_connector", None)
+        if not callable(get_connector):
+            return False
+
+        try:
+            instance = get_connector(active_id)
+        except Exception:
+            return False
+
+        config = getattr(instance, "config", {})
+        if not isinstance(config, dict):
+            return False
+        return bool(config.get("nsfw", False))
+
     async def stream_chat(
         self,
         conversation_id: str,
@@ -386,11 +444,20 @@ class ChatService:
         # inject a guardrail into the system prompt.
         ooc_detected = self._ooc_protection and detect_ooc(content)
 
+        # NSFW detection follows the same pattern as OOC: detect from user input,
+        # then inject a targeted guardrail based on the active text connector policy.
+        nsfw_detected = detect_nsfw(content)
+        text_nsfw_enabled = self._resolve_active_connector_nsfw("text")
+        nsfw_policy: Literal["none", "block", "allow"] = "none"
+        if nsfw_detected:
+            nsfw_policy = "allow" if text_nsfw_enabled else "block"
+
         use_tools = getattr(text_connector, "supports_tool_calling", False)
         messages = build_prompt(
             conv, char, user_name,
             use_tool_calling=use_tools,
             ooc_guardrail=ooc_detected,
+            nsfw_policy=nsfw_policy,
         )
 
         # Summarize history if the prompt is approaching the token budget.

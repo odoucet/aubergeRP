@@ -117,6 +117,12 @@ def test_create_connector_no_api_key(client):
     assert resp.json()["config"]["api_key_set"] is False
 
 
+def test_create_connector_nsfw_defaults_to_false(client):
+    resp = client.post("/api/connectors/", json=TEXT_PAYLOAD)
+    assert resp.status_code == 201
+    assert resp.json()["config"]["nsfw"] is False
+
+
 def test_create_connector_unknown_backend(client):
     bad = {**TEXT_PAYLOAD, "backend": "unknown_backend"}
     resp = client.post("/api/connectors/", json=bad)
@@ -184,6 +190,23 @@ def test_update_preserves_api_key_if_omitted(client):
     assert resp.status_code == 200
     # api_key was set originally, so api_key_set must still be True
     assert resp.json()["config"]["api_key_set"] is True
+
+
+def test_update_connector_nsfw_true(client):
+    created = client.post("/api/connectors/", json=TEXT_PAYLOAD).json()
+    update = {
+        "name": "My Ollama",
+        "type": "text",
+        "backend": "openai_api",
+        "config": {
+            "base_url": "http://localhost:11434/v1",
+            "model": "llama3",
+            "nsfw": True,
+        },
+    }
+    resp = client.put(f"/api/connectors/{created['id']}", json=update)
+    assert resp.status_code == 200
+    assert resp.json()["config"]["nsfw"] is True
 
 
 def test_update_clears_api_key_if_empty_string(client):
@@ -283,6 +306,7 @@ def test_openai_backend_schema_has_common_and_per_type_fields(client):
     assert "common" in schema
     assert "by_type" in schema
     assert "timeout" in schema["common"]
+    assert "nsfw" in schema["common"]
     assert "max_tokens" in schema["by_type"]["text"]
     assert "temperature" in schema["by_type"]["text"]
     assert "size" in schema["by_type"]["image"]
@@ -298,6 +322,7 @@ def test_comfyui_backend_schema_has_common_and_per_type_fields(client):
     assert "by_type" in schema
     assert "base_url" in schema["common"]
     assert "timeout" in schema["common"]
+    assert "nsfw" in schema["common"]
     assert "workflow" in schema["by_type"]["image"]
 
 

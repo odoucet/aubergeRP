@@ -83,6 +83,14 @@ def _redact(instance: ConnectorInstance, is_active: bool) -> ConnectorResponse:
     """Return ConnectorResponse with api_key replaced by api_key_set bool."""
     config = dict(instance.config)
     api_key_set = bool(config.pop("api_key", ""))
+    nsfw_raw = config.get("nsfw", False)
+    if isinstance(nsfw_raw, bool):
+        nsfw = nsfw_raw
+    elif isinstance(nsfw_raw, str):
+        nsfw = nsfw_raw.strip().lower() in ("1", "true", "yes", "on")
+    else:
+        nsfw = bool(nsfw_raw)
+    config["nsfw"] = nsfw
     config["api_key_set"] = api_key_set
     return ConnectorResponse(
         id=instance.id,
@@ -115,6 +123,7 @@ def list_backends() -> list[dict[str, Any]]:
                     "api_key": {"type": "string", "required": False},
                     "model": {"type": "string", "required": True},
                     "timeout": {"type": "number", "required": False},
+                    "nsfw": {"type": "boolean", "required": False},
                 },
                 "by_type": {
                     "text": {
@@ -135,6 +144,7 @@ def list_backends() -> list[dict[str, Any]]:
                 "common": {
                     "base_url": {"type": "string", "required": True},
                     "timeout": {"type": "number", "required": False},
+                    "nsfw": {"type": "boolean", "required": False},
                 },
                 "by_type": {
                     "image": {
