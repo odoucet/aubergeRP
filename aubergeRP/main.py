@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import shutil
 from urllib.parse import urlparse
 from collections.abc import AsyncGenerator
@@ -20,8 +21,10 @@ from .routers import conversations as conversations_router
 from .routers import health as health_router
 from .routers import images as images_router
 from .routers import marketplace as marketplace_router
+from .services.example_seed_service import seed_example_characters
 
 _BUILTIN_WORKFLOWS_DIR = Path(__file__).parent / "comfyui_workflows"
+logger = logging.getLogger(__name__)
 
 
 def _init_data_dirs(data_dir: str) -> None:
@@ -86,6 +89,11 @@ def create_app() -> FastAPI:
     # Initialise SQLite database and run migrations
     from .database import init_db
     init_db(config.app.data_dir)
+
+    try:
+        seed_example_characters(config.app.data_dir)
+    except Exception:
+        logger.exception("Example character seeding failed at startup")
 
     from .scheduler import Scheduler
     scheduler = Scheduler(config)
