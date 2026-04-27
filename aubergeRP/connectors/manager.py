@@ -8,8 +8,6 @@ from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
-logger = logging.getLogger(__name__)
-
 from ..config import Config
 from ..models.connector import (
     ComfyUIConfig,
@@ -24,6 +22,8 @@ from .base import BaseConnector, ImageConnector, TextConnector
 from .comfyui import ComfyUIConnector
 from .openai_image import OpenAIImageConnector
 from .openai_text import OpenAITextConnector
+
+logger = logging.getLogger(__name__)
 
 
 class ConnectorManager:

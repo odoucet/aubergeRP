@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from .config import get_config
+from .config import Config, get_config
 from .routers import characters as characters_router
 from .routers import chat as chat_router
 from .routers import config as config_router
@@ -81,7 +81,7 @@ _REDOC_HTML = """<!DOCTYPE html>
 """
 
 
-def _autoprovision_connectors(config: "Config", data_dir: str) -> None:  # noqa: F821
+def _autoprovision_connectors(config: Config, data_dir: str) -> None:
     """Create and activate connectors from env vars if not already present.
 
     Env vars (all optional):
@@ -95,12 +95,12 @@ def _autoprovision_connectors(config: "Config", data_dir: str) -> None:  # noqa:
     import os
 
     from .connectors.manager import ConnectorManager
-    from .models.connector import ConnectorCreate
+    from .models.connector import ConnectorCreate, ConnectorType
 
     llm_context_window = int(os.environ.get("AUBERGE_LLM_CONTEXT_WINDOW", "4096").strip())
     llm_max_tokens = int(os.environ.get("AUBERGE_LLM_MAX_TOKENS", "1024").strip())
 
-    specs = [
+    specs: list[tuple[ConnectorType, str, str]] = [
         ("text",  os.environ.get("AUBERGE_LLM_API_URL", "").strip(), os.environ.get("AUBERGE_LLM_MODEL", "").strip()),
         ("image", os.environ.get("AUBERGE_IMG_API_URL", "").strip(), os.environ.get("AUBERGE_IMG_MODEL", "").strip()),
     ]
