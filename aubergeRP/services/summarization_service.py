@@ -25,7 +25,12 @@ _MIN_RECENT_MESSAGES = 4
 
 
 def _count_tokens(text: str) -> int:
-    """Approximate token count: ~4 characters per token."""
+    """Approximate token count: ~4 characters per token.
+
+    This heuristic is intentionally model-agnostic and avoids external
+    dependencies.  It may be less accurate for non-English text or
+    code-heavy content; when in doubt, use a lower summarization_threshold.
+    """
     return max(1, len(text) // 4)
 
 

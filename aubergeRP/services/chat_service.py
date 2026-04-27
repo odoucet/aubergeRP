@@ -20,6 +20,12 @@ _MAX_IMAGE_MARKERS = 3
 # ---------------------------------------------------------------------------
 
 _OOC_PATTERNS: list[re.Pattern[str]] = [
+    # These patterns cover the most common jailbreak/break-character attempts.
+    # They favour low false-negative rate over false-positive rate: a few
+    # legitimate roleplay messages may occasionally match (e.g. a character
+    # saying "you are an AI in this story"), but the guardrail injection is
+    # lightweight (a single system message) so the cost of a false positive
+    # is low.
     re.compile(r"\b(ignore (all |your )?(previous )?instructions?)\b", re.IGNORECASE),
     re.compile(
         r"\b(break character|out of character|stop (role)?playing|stop being)\b",
