@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -15,14 +16,25 @@ from .routers import conversations as conversations_router
 from .routers import health as health_router
 from .routers import images as images_router
 
+_BUILTIN_WORKFLOWS_DIR = Path(__file__).parent / "comfyui_workflows"
+
 
 def _init_data_dirs(data_dir: str) -> None:
     base = Path(data_dir)
     for subdir in [
         "characters", "conversations", "connectors", "avatars",
         f"images/{SESSION_TOKEN}",
+        "comfyui_workflows",
     ]:
         (base / subdir).mkdir(parents=True, exist_ok=True)
+
+    # Seed built-in workflow templates into the user data dir (never overwrite)
+    user_wf_dir = base / "comfyui_workflows"
+    if _BUILTIN_WORKFLOWS_DIR.exists():
+        for src in _BUILTIN_WORKFLOWS_DIR.glob("*.json"):
+            dst = user_wf_dir / src.name
+            if not dst.exists():
+                shutil.copy2(src, dst)
 
 
 def create_app() -> FastAPI:

@@ -89,6 +89,9 @@ class _FakeImage:
     async def generate_image(self, prompt, **kw) -> bytes:
         return self._img
 
+    async def generate_image_with_progress(self, prompt, **kw):
+        yield {"type": "complete", "bytes": self._img}
+
     async def test_connection(self) -> dict:
         return {}
 
@@ -98,6 +101,10 @@ class _FailImage:
 
     async def generate_image(self, prompt, **kw) -> bytes:
         raise RuntimeError("image gen failed")
+
+    async def generate_image_with_progress(self, prompt, **kw):
+        raise RuntimeError("image gen failed")
+        yield  # make it an async generator
 
     async def test_connection(self) -> dict:
         return {}

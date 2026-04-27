@@ -113,8 +113,26 @@ def list_backends():
                 "api_key": {"type": "string", "required": False},
                 "model": {"type": "string", "required": True},
             },
-        }
+        },
+        {
+            "id": "comfyui",
+            "name": "ComfyUI",
+            "supported_types": ["image"],
+            "config_schema": {
+                "base_url": {"type": "string", "required": True},
+                "workflow": {"type": "workflow_select", "required": False},
+                "timeout": {"type": "number", "required": False},
+            },
+        },
     ]
+
+
+@router.get("/comfyui-workflows")
+def list_comfyui_workflows(
+    manager: ConnectorManager = Depends(get_connector_manager),
+) -> list[str]:
+    """List available ComfyUI workflow template names."""
+    return manager.list_workflows()
 
 
 @router.get("/")
@@ -131,7 +149,7 @@ def create_connector(
     data: ConnectorCreate,
     manager: ConnectorManager = Depends(get_connector_manager),
 ):
-    if data.backend not in ("openai_api",):
+    if data.backend not in ("openai_api", "comfyui"):
         raise HTTPException(status_code=400, detail=f"Unknown backend '{data.backend}'")
     instance = manager.create_connector(data)
     # Auto-activate if no active connector of this type exists yet.

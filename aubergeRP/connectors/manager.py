@@ -8,6 +8,7 @@ import yaml
 
 from ..config import Config
 from ..models.connector import (
+    ComfyUIConfig,
     ConnectorCreate,
     ConnectorInstance,
     ConnectorUpdate,
@@ -16,6 +17,7 @@ from ..models.connector import (
 )
 from ..utils.file_storage import read_json, write_json
 from .base import BaseConnector, ImageConnector, TextConnector
+from .comfyui import ComfyUIConnector
 from .openai_image import OpenAIImageConnector
 from .openai_text import OpenAITextConnector
 
@@ -27,7 +29,8 @@ class ConnectorManager:
         config: Config,
         config_path: Path | str = "config.yaml",
     ) -> None:
-        self._dir = Path(data_dir) / "connectors"
+        self._data_dir = Path(data_dir)
+        self._dir = self._data_dir / "connectors"
         self._config = config
         self._config_path = Path(config_path)
         self._connectors: dict[str, ConnectorInstance] = {}
@@ -67,6 +70,9 @@ class ConnectorManager:
                 return OpenAITextConnector(OpenAITextConfig(**instance.config))
             if instance.type == "image":
                 return OpenAIImageConnector(OpenAIImageConfig(**instance.config))
+        if instance.backend == "comfyui" and instance.type == "image":
+            workflows_dir = self._data_dir / "comfyui_workflows"
+            return ComfyUIConnector(ComfyUIConfig(**instance.config), workflows_dir)
         raise ValueError(f"Unsupported backend '{instance.backend}' for type '{instance.type}'")
 
     # ------------------------------------------------------------------
@@ -198,3 +204,13 @@ class ConnectorManager:
         instance = self.get_connector(connector_id)
         conn = self._build_connector(instance)
         return await conn.test_connection()
+
+    # ------------------------------------------------------------------
+    # ComfyUI workflows
+    # ------------------------------------------------------------------
+
+    def list_workflows(self) -> list[str]:
+        """List all available ComfyUI workflow template names."""
+        workflows_dir = self._data_dir / "comfyui_workflows"
+        dummy = ComfyUIConnector(ComfyUIConfig(), workflows_dir)
+        return dummy.list_all_workflows()

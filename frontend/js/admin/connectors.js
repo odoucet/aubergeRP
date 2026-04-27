@@ -325,14 +325,23 @@ function renderConfigFields(backendId, existingConfig) {
       const isApiKey = key === 'api_key';
       let val = isApiKey ? '' : (existingConfig[key] !== undefined ? String(existingConfig[key]) : '');
       let placeholder = isApiKey && existingApiKeySet ? '(set — leave blank to keep)' : '';
+      if (schema.type === 'workflow_select') {
+        return renderWorkflowSelect(key, schemaLabel(key), val);
+      }
       return renderField(key, schemaLabel(key), schema.type || 'string', schema.required || false, val, placeholder, isApiKey ? 'password' : null);
     }).join('');
+
+  // Populate workflow select if present
+  if (backend.config_schema.workflow?.type === 'workflow_select') {
+    populateWorkflowSelect(existingConfig.workflow || 'default');
+  }
 }
 
 function schemaLabel(key) {
   const map = {
     base_url: 'Base URL', api_key: 'API Key', model: 'Model',
     max_tokens: 'Max Tokens', temperature: 'Temperature', timeout: 'Timeout (s)',
+    workflow: 'Workflow',
   };
   return map[key] || key.replace(/_/g, ' ');
 }
@@ -348,9 +357,40 @@ function renderField(key, label, type, required, value, placeholder = '', inputT
   `;
 }
 
+function renderWorkflowSelect(key, label, currentValue) {
+  return `
+    <div class="field-row">
+      <label for="cfg-${key}">${escHtml(label)}</label>
+      <select id="cfg-${key}" name="${key}">
+        <option value="${escHtml(currentValue || 'default')}">${escHtml(currentValue || 'default')}</option>
+      </select>
+    </div>
+  `;
+}
+
+async function populateWorkflowSelect(selectedValue) {
+  const sel = document.getElementById('cfg-workflow');
+  if (!sel) return;
+  try {
+    const workflows = await apiFetch('/api/connectors/comfyui-workflows');
+    sel.innerHTML = workflows.map(w =>
+      `<option value="${escHtml(w)}"${w === selectedValue ? ' selected' : ''}>${escHtml(w)}</option>`
+    ).join('');
+    if (!workflows.includes(selectedValue) && selectedValue) {
+      const opt = document.createElement('option');
+      opt.value = selectedValue;
+      opt.textContent = selectedValue;
+      opt.selected = true;
+      sel.prepend(opt);
+    }
+  } catch (_) {
+    // Keep the placeholder option if the endpoint is unavailable
+  }
+}
+
 function collectConfig() {
   const cfg = {};
-  configFields.querySelectorAll('input[name]').forEach(inp => {
+  configFields.querySelectorAll('input[name], select[name]').forEach(inp => {
     const key = inp.name;
     const val = inp.value.trim();
     if (key === 'api_key') {
