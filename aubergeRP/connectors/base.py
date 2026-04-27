@@ -17,6 +17,10 @@ class BaseConnector(ABC):
 class TextConnector(BaseConnector):
     connector_type = "text"
 
+    #: Subclasses override this to True when the backend supports OpenAI-style
+    #: function / tool calling.
+    supports_tool_calling: bool = False
+
     @abstractmethod
     async def stream_chat_completion(
         self,
@@ -26,6 +30,26 @@ class TextConnector(BaseConnector):
         max_tokens: int | None = None,
     ) -> AsyncIterator[str]:
         """Yield text tokens from a streaming chat completion."""
+
+    async def stream_chat_completion_with_tools(
+        self,
+        messages: list[dict],
+        tools: list[dict],
+        model: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Yield events from a streaming chat completion that may include tool calls.
+
+        Events:
+          {"type": "token", "content": str}          — a text delta
+          {"type": "tool_call", "name": str, "arguments": dict}  — a completed tool call
+
+        The default implementation falls back to plain streaming (no tool calls).
+        Connectors that support tool calling override this method.
+        """
+        async for chunk in self.stream_chat_completion(messages, model, temperature, max_tokens):
+            yield {"type": "token", "content": chunk}
 
 
 class ImageConnector(BaseConnector):

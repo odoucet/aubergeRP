@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 import httpx
 
@@ -11,6 +11,7 @@ from .base import TextConnector
 
 class OpenAITextConnector(TextConnector):
     backend_id = "openai_api"
+    supports_tool_calling = True
 
     def __init__(self, config: OpenAITextConfig) -> None:
         self.config = config
@@ -67,3 +68,78 @@ class OpenAITextConnector(TextConnector):
                             yield content
                     except (json.JSONDecodeError, KeyError, IndexError):
                         continue
+
+    async def stream_chat_completion_with_tools(  # type: ignore[override]
+        self,
+        messages: list[dict],
+        tools: list[dict],
+        model: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Stream a chat completion that may produce text tokens and/or tool calls.
+
+        Yields:
+          {"type": "token", "content": str}
+          {"type": "tool_call", "name": str, "arguments": dict}
+        """
+        payload: dict[str, Any] = {
+            "model": model or self.config.model,
+            "messages": messages,
+            "stream": True,
+            "max_tokens": max_tokens if max_tokens is not None else self.config.max_tokens,
+            "temperature": temperature if temperature is not None else self.config.temperature,
+            "tools": tools,
+            "tool_choice": "auto",
+        }
+        # Accumulate tool-call argument fragments keyed by call index.
+        tool_calls: dict[int, dict[str, Any]] = {}
+
+        async with httpx.AsyncClient(timeout=self.config.timeout) as client:
+            async with client.stream(
+                "POST",
+                f"{self.config.base_url}/chat/completions",
+                headers=self._headers(),
+                json=payload,
+            ) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    payload_str = line[6:]
+                    if payload_str == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(payload_str)
+                        delta = chunk["choices"][0]["delta"]
+
+                        # Text content
+                        content = delta.get("content")
+                        if content:
+                            yield {"type": "token", "content": content}
+
+                        # Tool call fragments
+                        for tc_delta in delta.get("tool_calls") or []:
+                            idx: int = tc_delta["index"]
+                            if idx not in tool_calls:
+                                tool_calls[idx] = {
+                                    "id": tc_delta.get("id", ""),
+                                    "name": tc_delta.get("function", {}).get("name", ""),
+                                    "arguments_raw": "",
+                                }
+                            fn = tc_delta.get("function", {})
+                            if fn.get("name"):
+                                tool_calls[idx]["name"] = fn["name"]
+                            if fn.get("arguments"):
+                                tool_calls[idx]["arguments_raw"] += fn["arguments"]
+                    except (json.JSONDecodeError, KeyError, IndexError):
+                        continue
+
+        # Emit completed tool calls in order.
+        for idx in sorted(tool_calls):
+            tc = tool_calls[idx]
+            try:
+                arguments = json.loads(tc["arguments_raw"]) if tc["arguments_raw"] else {}
+            except json.JSONDecodeError:
+                arguments = {"raw": tc["arguments_raw"]}
+            yield {"type": "tool_call", "name": tc["name"], "arguments": arguments}

@@ -23,10 +23,22 @@ class UserConfig(BaseModel):
     name: str = "User"
 
 
+class ChatConfig(BaseModel):
+    """Global settings that influence AI quality behaviour."""
+
+    # Estimated size of the model's context window in tokens.
+    context_window: int = 4096
+    # Summarize conversation history when this fraction of the context window is consumed.
+    summarization_threshold: float = 0.75
+    # Enable out-of-character (OOC) detection and guardrail injection.
+    ooc_protection: bool = True
+
+
 class Config(BaseModel):
     app: AppConfig = AppConfig()
     active_connectors: ActiveConnectorsConfig = ActiveConnectorsConfig()
     user: UserConfig = UserConfig()
+    chat: ChatConfig = ChatConfig()
 
     @field_validator("app", mode="before")
     @classmethod
@@ -41,6 +53,11 @@ class Config(BaseModel):
     @field_validator("user", mode="before")
     @classmethod
     def validate_user(cls, v: object) -> object:
+        return v or {}
+
+    @field_validator("chat", mode="before")
+    @classmethod
+    def validate_chat(cls, v: object) -> object:
         return v or {}
 
 
