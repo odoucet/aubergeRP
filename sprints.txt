@@ -1,52 +1,5 @@
 AubergeRP — Post-MVP Sprint Backlog
 =====================================
-Generated after project audit. All core MVP features are implemented and tests pass.
-Items below are organized by priority. Each sprint is estimated at ~1 week.
-
---------------------------------------------------------------------------------
-SPRINT 10 — Admin UI: Configuration Panel
-Priority: HIGH (completes the admin interface described in docs/08-admin-interface.md)
---------------------------------------------------------------------------------
-[ ] Admin UI: Add a "Configuration" tab/section (GET/PUT /api/config)
-    - Display current config in a form (API base URL, API key field masked, model names)
-    - Save button calls PUT /api/config
-    - Show success/error toast
-[ ] Admin UI: Show connector "connected" status badge using health endpoint
-    - Poll GET /api/health and display connected/disconnected icon per connector
-    - Auto-refresh every 30s
-
---------------------------------------------------------------------------------
-SPRINT 11 — UX: Chat Polish
-Priority: HIGH (front-end UX gaps identified in docs/07-frontend-chat-ui.md)
---------------------------------------------------------------------------------
-[ ] Retry button after LLM/image error events
-    - Show "Retry" button when an error event is received during streaming
-    - Resends the last user message
-[ ] Lightbox / image expand on click
-    - Clicking an image in the chat should show it full-screen (lightbox overlay)
-    - Close with Escape or click outside
-[ ] Mobile sidebar: close sidebar when selecting a conversation (< 768px)
-    - The hamburger toggle exists; add close-on-select to conversation click handler
-[ ] Image copy-to-clipboard button on hover
-    - Small copy icon appears on hover over generated images
-
---------------------------------------------------------------------------------
-SPRINT 12 — Backend: Robustness & API Spec Compliance
-Priority: MEDIUM
---------------------------------------------------------------------------------
-[ ] Config PUT partial update semantics
-    - doc §9 implies per-field PATCH semantics for sub-objects (connectors, paths)
-    - Currently PUT replaces entire config; add PATCH /api/config with partial merge
-[ ] Health endpoint: "connected" field should default to null before first test
-    - Currently may return False before any test_connection call is made
-    - Should be null/undefined/omitted until a test is performed
-[ ] _last_test_results reset on restart
-    - Connector health results are lost on server restart
-    - Persist last-known status to disk (lightweight JSON sidecar in data/)
-[ ] POST /api/connectors/{id}/activate: auto-activate first connector of type
-    - doc §9 "First-Time Setup" step 4 implies this behaviour
-    - If no active connector of a type exists, activating any connector of that type
-      should automatically make it the active one
 
 --------------------------------------------------------------------------------
 SPRINT 13 — Multi-User Foundation
@@ -58,6 +11,9 @@ Priority: MEDIUM (from POST-MVP.md §1)
 [ ] Per-user conversation ownership
     - Add owner field to Conversation model
     - Filter GET /api/conversations by caller's session token
+[ ] ability to share a session token on GUI (button "Share session") to 
+    copy/paste url to another browser and install the same session-token on it.
+[ ] handle multi-browser for SSE (if multiple browser are opened, they should all receive updates)
 
 --------------------------------------------------------------------------------
 SPRINT 14 — ComfyUI Connector
@@ -87,6 +43,8 @@ Priority: LOW-MEDIUM (from POST-MVP.md §3)
 [ ] Database storage
     - Replace JSON flat-file storage with SQLite via SQLModel or similar
     - Migration path from JSON files
+    - handle future migrations when the SQLModel is updated. Allow to plug custom python code to handle some updates.
+
 
 --------------------------------------------------------------------------------
 SPRINT 16 — AI Quality
@@ -97,8 +55,6 @@ Priority: LOW (from POST-MVP.md §4 & §5)
     - Configurable threshold (default: 75% of model context window)
 [ ] OOC (out-of-character) protection
     - Detect attempts to break character and add system-level guardrails
-[ ] Manual "Generate Image" button
-    - UI button to explicitly trigger image generation without LLM marker
 [ ] Tool-calling / structured output for image triggers
     - Replace [IMG: …] marker with native structured outputs on supporting backends
 
