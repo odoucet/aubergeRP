@@ -54,10 +54,12 @@ def test_create_returns_card_with_id(tmp_path):
     assert card.spec == "chara_card_v2"
 
 
-def test_create_persists_to_disk(tmp_path):
+def test_create_persists_to_db(tmp_path):
     svc = make_service(tmp_path)
     card = svc.create_character(valid_data())
-    assert (tmp_path / "characters" / f"{card.id}.json").exists()
+    # verify it can be retrieved from the DB
+    found = svc.get_character(card.id)
+    assert found.id == card.id
 
 
 def test_create_ensures_auberge_extension(tmp_path):
@@ -154,7 +156,6 @@ def test_delete_character(tmp_path):
     svc.delete_character(card.id)
     with pytest.raises(CharacterNotFoundError):
         svc.get_character(card.id)
-    assert not (tmp_path / "characters" / f"{card.id}.json").exists()
 
 
 def test_delete_removes_avatar(tmp_path):

@@ -21,8 +21,10 @@ async function apiFetch(path, options = {}) {
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
 
-const feedbackEl = document.getElementById('config-feedback');
-const saveBtn    = document.getElementById('config-save-btn');
+const feedbackEl      = document.getElementById('config-feedback');
+const saveBtn         = document.getElementById('config-save-btn');
+const cleanupBtn      = document.getElementById('cleanup-images-btn');
+const cleanupFeedback = document.getElementById('cleanup-feedback');
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -33,6 +35,7 @@ let showToastFn = () => {};
 export function initConfig({ showToast }) {
   showToastFn = showToast;
   saveBtn.addEventListener('click', handleSave);
+  cleanupBtn.addEventListener('click', handleCleanup);
   return { refresh };
 }
 
@@ -110,6 +113,28 @@ async function handleSave() {
   } finally {
     saveBtn.disabled    = false;
     saveBtn.textContent = 'Save';
+  }
+}
+
+// ── Cleanup ───────────────────────────────────────────────────────────────────
+
+async function handleCleanup() {
+  cleanupFeedback.textContent = '';
+  cleanupBtn.disabled = true;
+  const days = parseInt(document.getElementById('cfg-cleanup-days').value, 10) || 30;
+  try {
+    const result = await apiFetch('/api/images/cleanup', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ older_than_days: days }),
+    });
+    cleanupFeedback.style.color = 'var(--color-success, green)';
+    cleanupFeedback.textContent = `Cleanup complete: ${result.deleted} image(s) deleted.`;
+  } catch (err) {
+    cleanupFeedback.style.color = 'var(--color-error, red)';
+    cleanupFeedback.textContent = `Cleanup failed: ${escHtml(err.message)}`;
+  } finally {
+    cleanupBtn.disabled = false;
   }
 }
 

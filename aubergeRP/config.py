@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Literal
 
@@ -23,6 +24,15 @@ class UserConfig(BaseModel):
     name: str = "User"
 
 
+class SchedulerConfig(BaseModel):
+    """Background media-cleanup scheduler settings."""
+
+    enabled: bool = False
+    # How often to run the cleanup (in seconds). Default: 24 h.
+    interval_seconds: int = 86400
+    # Delete images older than this many days. Default: 30.
+    cleanup_older_than_days: int = 30
+
 class ChatConfig(BaseModel):
     """Global settings that influence AI quality behaviour."""
 
@@ -38,6 +48,7 @@ class Config(BaseModel):
     app: AppConfig = AppConfig()
     active_connectors: ActiveConnectorsConfig = ActiveConnectorsConfig()
     user: UserConfig = UserConfig()
+    scheduler: SchedulerConfig = SchedulerConfig()
     chat: ChatConfig = ChatConfig()
 
     @field_validator("app", mode="before")
@@ -55,19 +66,45 @@ class Config(BaseModel):
     def validate_user(cls, v: object) -> object:
         return v or {}
 
+    @field_validator("scheduler", mode="before")
+    @classmethod
+    def validate_scheduler(cls, v: object) -> object:
+        return v or {}
+
     @field_validator("chat", mode="before")
     @classmethod
     def validate_chat(cls, v: object) -> object:
         return v or {}
 
+def _apply_env_overrides(config: Config) -> Config:
+    """Override config values with environment variables if set.
+
+    Supported variables:
+        AUBERGE_DATA_DIR      → config.app.data_dir
+        AUBERGE_HOST          → config.app.host
+        AUBERGE_PORT          → config.app.port  (integer)
+        AUBERGE_LOG_LEVEL     → config.app.log_level
+        AUBERGE_USER_NAME     → config.user.name
+    """
+    if val := os.environ.get("AUBERGE_DATA_DIR"):
+        config.app.data_dir = val
+    if val := os.environ.get("AUBERGE_HOST"):
+        config.app.host = val
+    if val := os.environ.get("AUBERGE_PORT"):
+        config.app.port = int(val)
+    if val := os.environ.get("AUBERGE_LOG_LEVEL"):
+        config.app.log_level = val  # type: ignore[assignment]
+    if val := os.environ.get("AUBERGE_USER_NAME"):
+        config.user.name = val
+    return config
 
 def load_config(path: str | Path = "config.yaml") -> Config:
     config_path = Path(path)
     if not config_path.exists():
-        return Config()
+        return _apply_env_overrides(Config())
     with config_path.open() as f:
         raw = yaml.safe_load(f) or {}
-    return Config(**raw)
+    return _apply_env_overrides(Config(**raw))
 
 
 _config: Config | None = None

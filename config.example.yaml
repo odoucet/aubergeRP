@@ -10,6 +10,13 @@ app:
   # Data directory (relative to project root or absolute path)
   data_dir: "data"
 
+# Environment-variable overrides (take precedence over this file):
+#   AUBERGE_DATA_DIR  → app.data_dir
+#   AUBERGE_HOST      → app.host
+#   AUBERGE_PORT      → app.port
+#   AUBERGE_LOG_LEVEL → app.log_level
+#   AUBERGE_USER_NAME → user.name
+
 # Active connector IDs. The Admin UI writes these.
 # Leave empty on first start.
 active_connectors:
@@ -21,3 +28,11 @@ active_connectors:
 user:
   # Display name for the user in chat (used for {{user}} macro)
   name: "User"
+
+# Background media-cleanup scheduler (default: disabled)
+scheduler:
+  enabled: false
+  # How often to run cleanup (seconds). Default: 24 hours.
+  interval_seconds: 86400
+  # Delete images older than this many days.
+  cleanup_older_than_days: 30

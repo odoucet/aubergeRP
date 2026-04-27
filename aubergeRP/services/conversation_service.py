@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
+from sqlmodel import Session, select
+
+from ..db_models import ConversationRow, MessageRow
 from ..models.conversation import Conversation, ConversationSummary, Message
 from ..services.character_service import CharacterService
-from ..utils.file_storage import read_json, write_json
 
 _MACRO_RE = re.compile(r"\{\{(\w+)\}\}")
 
@@ -22,27 +23,52 @@ def resolve_macros(text: str, char_name: str, user_name: str = "User", **extra: 
     return _MACRO_RE.sub(lambda m: mapping.get(m.group(1), m.group(0)), text)
 
 
+def _ensure_utc(dt: datetime) -> datetime:
+    """Ensure a datetime is timezone-aware (UTC). SQLite strips tzinfo."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt
+
+
+def _build_messages(msg_rows: list[MessageRow]) -> list[Message]:
+    """Build Message objects from DB rows (call while session is still open)."""
+    return [
+        Message(
+            id=m.id,
+            role=m.role,  # type: ignore[arg-type]
+            content=m.content,
+            images=m.get_images(),
+            timestamp=_ensure_utc(m.timestamp),
+        )
+        for m in msg_rows
+    ]
+
+
+def _build_conv(conv_row: ConversationRow, messages: list[Message]) -> Conversation:
+    return Conversation(
+        id=conv_row.id,
+        character_id=conv_row.character_id,
+        character_name=conv_row.character_name,
+        title=conv_row.title,
+        owner=conv_row.owner,
+        messages=messages,
+        created_at=_ensure_utc(conv_row.created_at),
+        updated_at=_ensure_utc(conv_row.updated_at),
+    )
+
+
 class ConversationService:
     def __init__(
         self,
-        data_dir: "Path | str",
+        data_dir: Path | str,
         character_service: CharacterService,
     ) -> None:
-        self._convs_dir = Path(data_dir) / "conversations"
+        self._data_dir = Path(data_dir)
         self._character_service = character_service
 
-    def _conv_path(self, conversation_id: str) -> Path:
-        return self._convs_dir / f"{conversation_id}.json"
-
-    def _load(self, conversation_id: str) -> Conversation:
-        path = self._conv_path(conversation_id)
-        if not path.exists():
-            raise ConversationNotFoundError(f"Conversation '{conversation_id}' not found")
-        return Conversation(**read_json(path))
-
-    def _save(self, conv: Conversation) -> None:
-        self._convs_dir.mkdir(parents=True, exist_ok=True)
-        write_json(self._conv_path(conv.id), conv.model_dump(mode="json"))
+    def _get_session(self) -> Session:
+        from ..database import get_engine
+        return Session(get_engine(self._data_dir))
 
     @staticmethod
     def _summary(conv: Conversation) -> ConversationSummary:
@@ -57,93 +83,139 @@ class ConversationService:
             updated_at=conv.updated_at,
         )
 
+    def _load(self, conversation_id: str) -> Conversation:
+        with self._get_session() as session:
+            conv_row = session.get(ConversationRow, conversation_id)
+            if conv_row is None:
+                raise ConversationNotFoundError(
+                    f"Conversation '{conversation_id}' not found"
+                )
+            msg_rows = list(session.exec(
+                select(MessageRow)
+                .where(MessageRow.conversation_id == conversation_id)
+                .order_by(MessageRow.timestamp)  # type: ignore[arg-type]
+            ).all())
+            messages = _build_messages(msg_rows)
+            return _build_conv(conv_row, messages)
+
+    @staticmethod
+    def _should_include(
+        conv_row: ConversationRow,
+        character_id: str | None,
+        owner: str | None,
+    ) -> bool:
+        if character_id is not None and conv_row.character_id != character_id:
+            return False
+        return not (owner and conv_row.owner and conv_row.owner != owner)
+
     def create_conversation(
         self, character_id: str, user_name: str = "User", owner: str = ""
     ) -> Conversation:
         char = self._character_service.get_character(character_id)
-        now = datetime.now(timezone.utc)
-        messages: list[Message] = []
-        if char.data.first_mes:
-            content = resolve_macros(char.data.first_mes, char.data.name, user_name)
-            messages.append(Message(
-                id=str(uuid.uuid4()),
-                role="assistant",
-                content=content,
-                timestamp=now,
-            ))
+        now = datetime.now(UTC)
+        conv_id = str(uuid.uuid4())
+
         title = f"{char.data.name} — {now.strftime('%Y-%m-%d %H:%M')}"
-        conv = Conversation(
-            id=str(uuid.uuid4()),
+        conv_row = ConversationRow(
+            id=conv_id,
             character_id=character_id,
             character_name=char.data.name,
             title=title,
             owner=owner,
-            messages=messages,
             created_at=now,
             updated_at=now,
         )
-        self._save(conv)
-        return conv
+
+        msg_rows: list[MessageRow] = []
+        if char.data.first_mes:
+            content = resolve_macros(char.data.first_mes, char.data.name, user_name)
+            msg_rows.append(MessageRow(
+                id=str(uuid.uuid4()),
+                conversation_id=conv_id,
+                role="assistant",
+                content=content,
+                images_json="[]",
+                timestamp=now,
+            ))
+
+        with self._get_session() as session:
+            session.add(conv_row)
+            for m in msg_rows:
+                session.add(m)
+            session.commit()
+            # Reload from session to get fresh data
+            session.refresh(conv_row)
+            for m in msg_rows:
+                session.refresh(m)
+            messages = _build_messages(msg_rows)
+            return _build_conv(conv_row, messages)
 
     def get_conversation(self, conversation_id: str) -> Conversation:
         return self._load(conversation_id)
 
-    @staticmethod
-    def _should_include(
-        conv: Conversation,
-        character_id: "Optional[str]",
-        owner: "Optional[str]",
-    ) -> bool:
-        """Return True if *conv* matches the given filters.
-
-        A conversation owned by a different user is excluded only when both the
-        conversation and the caller have a non-empty owner/token; ownerless
-        (legacy) conversations are always included so that pre-sprint-13 data
-        remains accessible.
-        """
-        if character_id is not None and conv.character_id != character_id:
-            return False
-        if owner and conv.owner and conv.owner != owner:
-            return False
-        return True
-
     def list_conversations(
-        self, character_id: "Optional[str]" = None, owner: "Optional[str]" = None
+        self, character_id: str | None = None, owner: str | None = None
     ) -> list[ConversationSummary]:
-        if not self._convs_dir.exists():
-            return []
         result = []
-        for path in sorted(self._convs_dir.glob("*.json")):
-            try:
-                conv = Conversation(**read_json(path))
-                if self._should_include(conv, character_id, owner):
-                    result.append(self._summary(conv))
-            except Exception:
-                pass
+        with self._get_session() as session:
+            conv_rows = list(session.exec(select(ConversationRow)).all())
+            for conv_row in conv_rows:
+                if not self._should_include(conv_row, character_id, owner):
+                    continue
+                msg_rows = list(session.exec(
+                    select(MessageRow)
+                    .where(MessageRow.conversation_id == conv_row.id)
+                    .order_by(MessageRow.timestamp)  # type: ignore[arg-type]
+                ).all())
+                messages = _build_messages(msg_rows)
+                conv = _build_conv(conv_row, messages)
+                result.append(self._summary(conv))
         return result
 
     def delete_conversation(self, conversation_id: str) -> None:
-        self._load(conversation_id)
-        self._conv_path(conversation_id).unlink()
+        self._load(conversation_id)  # raises if not found
+        with self._get_session() as session:
+            msg_rows = list(session.exec(
+                select(MessageRow).where(MessageRow.conversation_id == conversation_id)
+            ).all())
+            for m in msg_rows:
+                session.delete(m)
+            conv_row = session.get(ConversationRow, conversation_id)
+            if conv_row is not None:
+                session.delete(conv_row)
+            session.commit()
 
     def append_message(
         self,
         conversation_id: str,
         role: str,
         content: str,
-        images: "Optional[list[str]]" = None,
+        images: list[str] | None = None,
     ) -> Message:
-        conv = self._load(conversation_id)
-        now = datetime.now(timezone.utc)
-        msg = Message(
-            id=str(uuid.uuid4()),
+        self._load(conversation_id)  # validates existence
+        now = datetime.now(UTC)
+        msg_id = str(uuid.uuid4())
+        msg_row = MessageRow(
+            id=msg_id,
+            conversation_id=conversation_id,
             role=role,
+            content=content,
+            images_json=MessageRow.images_to_json(images or []),
+            timestamp=now,
+        )
+        with self._get_session() as session:
+            session.add(msg_row)
+            conv_row = session.get(ConversationRow, conversation_id)
+            if conv_row is not None:
+                conv_row.updated_at = now
+                session.add(conv_row)
+            session.commit()
+
+        # Build Message from pre-captured values (msg_row is detached after session closes)
+        return Message(
+            id=msg_id,
+            role=role,  # type: ignore[arg-type]
             content=content,
             images=images or [],
             timestamp=now,
         )
-        self._save(conv.model_copy(update={
-            "messages": conv.messages + [msg],
-            "updated_at": now,
-        }))
-        return msg

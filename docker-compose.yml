@@ -1,0 +1,19 @@
+services:
+  auberge:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persistent data (characters, conversations, images, DB)
+      - ./data:/data
+      # Optional: mount a custom config.yaml
+      - ./config.yaml:/app/config.yaml:ro
+    environment:
+      # Override individual settings via environment variables.
+      # These take precedence over config.yaml values.
+      # AUBERGE_DATA_DIR: /data    # already set in Dockerfile
+      # AUBERGE_HOST: "0.0.0.0"
+      # AUBERGE_PORT: "8000"
+      # AUBERGE_LOG_LEVEL: "INFO"
+      # AUBERGE_USER_NAME: "User"
+    restart: unless-stopped
