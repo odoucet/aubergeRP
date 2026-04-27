@@ -22,6 +22,7 @@
   <nav id="admin-nav" aria-label="Admin sections">
     <button class="nav-btn active" data-section="connectors" aria-current="page">Connectors</button>
     <button class="nav-btn" data-section="characters">Characters</button>
+    <button class="nav-btn" data-section="medias">Medias</button>
     <button class="nav-btn" data-section="health">Health</button>
     <button class="nav-btn" data-section="statistics">Statistics</button>
     <button class="nav-btn" data-section="config">Configuration</button>
@@ -52,6 +53,18 @@
         </div>
       </div>
       <div id="character-list" class="character-list" aria-live="polite">
+        <div class="loading-row">Loading…</div>
+      </div>
+    </section>
+
+    <!-- ── Medias ── -->
+    <section id="section-medias" class="admin-section" style="display:none" aria-label="Generated medias">
+      <div class="section-header">
+        <h1>Medias</h1>
+        <button class="btn btn-secondary" id="refresh-medias-btn">Refresh</button>
+      </div>
+      <div id="medias-feedback"></div>
+      <div id="medias-list" class="medias-list" aria-live="polite">
         <div class="loading-row">Loading…</div>
       </div>
     </section>
@@ -384,6 +397,7 @@
 <script type="module">
   import { initConnectors } from '/js/admin/connectors.js';
   import { initCharacters } from '/js/admin/characters.js';
+  import { initMedias }    from '/js/admin/medias.js';
   import { initConfig }     from '/js/admin/config.js';
   import { initStatistics } from '/js/admin/statistics.js';
   import { applyHealthBadges } from '/js/admin/connectors.js';
@@ -392,7 +406,7 @@
   applyGuiCustomization();
 
   // ── Section routing (hash-based) ────────────────────────────────────────
-  const SECTIONS = ['connectors', 'characters', 'health', 'statistics', 'config', 'customize'];
+  const SECTIONS = ['connectors', 'characters', 'medias', 'health', 'statistics', 'config', 'customize'];
   const sectionEls = {};
   const navBtns = {};
 
@@ -411,6 +425,7 @@
     window.location.hash = name;
     if (name === 'connectors') connectorCtrl.refresh();
     else if (name === 'characters') charCtrl.refresh();
+    else if (name === 'medias') mediaCtrl.refresh();
     else if (name === 'health') loadHealth();
     else if (name === 'statistics') statsCtrl.refresh();
     else if (name === 'config') configCtrl.refresh();
@@ -540,6 +555,7 @@
   // ── Init modules ──────────────────────────────────────────────────────
   const connectorCtrl  = initConnectors({ showToast, showConfirm });
   const charCtrl       = initCharacters({ showToast, showConfirm });
+  const mediaCtrl      = initMedias({ showToast, showConfirm });
   const statsCtrl      = initStatistics({ showToast });
   const configCtrl     = initConfig({ showToast });
 

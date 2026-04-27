@@ -66,6 +66,22 @@ class MessageRow(SQLModel, table=True):
         return json.dumps(images)
 
 
+class MediaRow(SQLModel, table=True):
+    """One row per generated media entry shown in the admin media library."""
+
+    __tablename__ = "media_library"
+
+    id: str = Field(primary_key=True)
+    conversation_id: str = Field(index=True)
+    message_id: str = Field(index=True)
+    owner: str = Field(default="", index=True)
+    media_type: str = Field(default="image")
+    media_url: str
+    prompt: str = ""
+    generated_via_connector: bool = True
+    created_at: datetime
+
+
 class LLMCallStatRow(SQLModel, table=True):
     """One row per remote text-LLM call used by chat generation."""
 

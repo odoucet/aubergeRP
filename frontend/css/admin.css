@@ -585,6 +585,105 @@
   letter-spacing: 0.05em;
 }
 
+/* ─── Media library section ─────────────────────────────────────────────── */
+.medias-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 0.9rem;
+}
+
+.media-card {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+
+.media-preview-wrap {
+  background: var(--color-surface2);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+}
+
+.media-thumb,
+.media-player {
+  width: 100%;
+  max-height: 260px;
+  display: block;
+  object-fit: cover;
+}
+
+.media-meta {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.84rem;
+}
+
+.media-row {
+  color: var(--color-text-muted);
+  word-break: break-word;
+}
+
+.media-row strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.media-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.15rem;
+}
+
+.media-type-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface2);
+  color: var(--color-text);
+  padding: 0.15rem 0.55rem;
+}
+
+.media-prompt {
+  border-top: 1px solid var(--color-border);
+  margin-top: 0.25rem;
+  padding-top: 0.45rem;
+}
+
+.media-prompt-label {
+  color: var(--color-text);
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+
+.media-prompt pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 0.5rem;
+  color: var(--color-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.78rem;
+}
+
+.media-prompt-empty {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
 /* ─── Status bar override ────────────────────────────────────────────────── */
 #statusbar {
   height: var(--statusbar-h);
@@ -624,4 +723,5 @@
   #admin-nav { width: 120px; }
   #admin-content { padding: 1rem; }
   .dialog { max-width: 100%; }
+  .medias-list { grid-template-columns: 1fr; }
 }

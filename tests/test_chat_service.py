@@ -17,6 +17,7 @@ from aubergeRP.services.chat_service import (
     build_prompt,
 )
 from aubergeRP.services.conversation_service import ConversationService
+from aubergeRP.services.media_service import MediaService
 from aubergeRP.services.statistics_service import StatisticsService
 
 # ---------------------------------------------------------------------------
@@ -539,3 +540,29 @@ async def test_stream_image_saves_to_disk(tmp_path):
     complete = next(e for e in events if e["type"] == "image_complete")
     filename = complete["image_url"].split("/")[-1]
     assert (tmp_path / "images" / filename).read_bytes() == b"PNGDATA"
+
+
+async def test_stream_image_persists_prompt_in_media_library(tmp_path):
+    char_svc = CharacterService(data_dir=tmp_path)
+    conv_svc = ConversationService(data_dir=tmp_path, character_service=char_svc)
+    media_svc = MediaService(data_dir=tmp_path)
+
+    svc = ChatService(
+        conversation_service=conv_svc,
+        character_service=char_svc,
+        connector_manager=_manager(_FakeText(["[IMG:a cinematic tavern scene]"]), _FakeImage()),
+        images_dir=tmp_path / "images",
+        media_service=media_svc,
+    )
+
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+
+    events = await collect(svc.stream_chat(conv.id, "Hi"))
+    done = next(e for e in events if e["type"] == "done")
+    assert len(done["images"]) == 1
+
+    medias = media_svc.list_media()
+    assert len(medias) == 1
+    assert medias[0].prompt == "a cinematic tavern scene"
+    assert medias[0].media_url == done["images"][0]

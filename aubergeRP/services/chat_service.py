@@ -13,6 +13,7 @@ from ..models.character import CharacterCard
 from ..models.conversation import Conversation
 from ..services.character_service import CharacterService
 from ..services.conversation_service import ConversationService, resolve_macros
+from ..services.media_service import MediaService
 from ..services.statistics_service import StatisticsService
 from ..services.summarization_service import count_prompt_tokens, maybe_summarize
 
@@ -314,6 +315,7 @@ class ChatService:
         summarization_threshold: float = 0.75,
         ooc_protection: bool = True,
         statistics_service: StatisticsService | None = None,
+        media_service: MediaService | None = None,
     ) -> None:
         self._conversation_service = conversation_service
         self._character_service = character_service
@@ -324,6 +326,7 @@ class ChatService:
         self._summarization_threshold = summarization_threshold
         self._ooc_protection = ooc_protection
         self._statistics_service = statistics_service
+        self._media_service = media_service
 
     def _resolve_text_connector_metadata(self, text_connector: Any) -> tuple[str, str, str]:
         connector_id = ""
@@ -400,6 +403,8 @@ class ChatService:
 
         full_text = ""
         image_urls: list[str] = []
+        image_prompts_by_generation: dict[str, str] = {}
+        generated_media: list[tuple[str, str]] = []
         request_tokens = count_prompt_tokens(messages)
         call_started = perf_counter()
         call_success = False
@@ -416,8 +421,18 @@ class ChatService:
                     if event["type"] == "token":
                         full_text += event["content"]
                         yield {"type": "token", "content": event["content"]}
+                    elif event["type"] == "image_start":
+                        gen_id = str(event.get("generation_id", ""))
+                        prompt = str(event.get("prompt", ""))
+                        if gen_id:
+                            image_prompts_by_generation[gen_id] = prompt
+                        yield event
                     elif event["type"] == "image_complete":
                         image_urls.append(event["image_url"])
+                        gen_id = str(event.get("generation_id", ""))
+                        generated_media.append(
+                            (event["image_url"], image_prompts_by_generation.get(gen_id, ""))
+                        )
                         yield event
                     else:
                         yield event
@@ -436,9 +451,16 @@ class ChatService:
                                 "generation_id": gen_id,
                                 "prompt": prompt,
                             }
+                            image_prompts_by_generation[gen_id] = prompt
                             async for img_event in self._handle_image(char, gen_id, prompt):
                                 if img_event["type"] == "image_complete":
                                     image_urls.append(img_event["image_url"])
+                                    generated_media.append(
+                                        (
+                                            img_event["image_url"],
+                                            image_prompts_by_generation.get(gen_id, ""),
+                                        )
+                                    )
                                 yield img_event
 
                 for ev in parser.flush():
@@ -449,6 +471,12 @@ class ChatService:
             msg = self._conversation_service.append_message(
                 conversation_id, "assistant", full_text, images=image_urls
             )
+            if self._media_service is not None and generated_media:
+                self._media_service.record_generated_media(
+                    conversation_id=conversation_id,
+                    message_id=msg.id,
+                    media_items=generated_media,
+                )
             call_success = True
             yield {
                 "type": "done",
