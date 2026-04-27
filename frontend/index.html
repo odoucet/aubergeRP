@@ -133,6 +133,7 @@
   function onCharSelected(character) {
     if (window.innerWidth < 1024) toggleSidebar(false);
     setSelectedCharacter(character.id);
+    localStorage.setItem('auberge_last_character_id', character.id);
     onCharacterSelected(character).catch(err => showToast(err.message));
   }
 
@@ -156,7 +157,12 @@
   initCharacters(onCharSelected);
   initChat();
 
-  loadCharacters().catch(err => showToast('Failed to load characters: ' + err.message));
+  loadCharacters().then(characters => {
+    if (!characters || characters.length === 0) return;
+    const lastId = localStorage.getItem('auberge_last_character_id');
+    const toSelect = (lastId && characters.find(c => c.id === lastId)) || characters[0];
+    onCharSelected(toSelect);
+  }).catch(err => showToast('Failed to load characters: ' + err.message));
 </script>
 
 </body>
