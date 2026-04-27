@@ -85,15 +85,20 @@ def _autoprovision_connectors(config: "Config", data_dir: str) -> None:  # noqa:
     """Create and activate connectors from env vars if not already present.
 
     Env vars (all optional):
-        AUBERGE_LLM_API_URL   OpenAI-compatible base URL  (e.g. http://ollama:11434/v1)
-        AUBERGE_LLM_MODEL     Model name                  (e.g. glm47-flash:q4_0)
-        AUBERGE_IMG_API_URL   Image API base URL
-        AUBERGE_IMG_MODEL     Image model name
+        AUBERGE_LLM_API_URL        OpenAI-compatible base URL  (e.g. http://ollama:11434/v1)
+        AUBERGE_LLM_MODEL          Model name                  (e.g. qwen3.6-27b:q4km)
+        AUBERGE_LLM_CONTEXT_WINDOW Model context window in tokens (default: 4096)
+        AUBERGE_LLM_MAX_TOKENS     Max tokens to generate per reply (default: 1024)
+        AUBERGE_IMG_API_URL        Image API base URL
+        AUBERGE_IMG_MODEL          Image model name
     """
     import os
 
     from .connectors.manager import ConnectorManager
     from .models.connector import ConnectorCreate
+
+    llm_context_window = int(os.environ.get("AUBERGE_LLM_CONTEXT_WINDOW", "4096").strip())
+    llm_max_tokens = int(os.environ.get("AUBERGE_LLM_MAX_TOKENS", "1024").strip())
 
     specs = [
         ("text",  os.environ.get("AUBERGE_LLM_API_URL", "").strip(), os.environ.get("AUBERGE_LLM_MODEL", "").strip()),
@@ -123,11 +128,12 @@ def _autoprovision_connectors(config: "Config", data_dir: str) -> None:  # noqa:
                 logger.info("Auto-provision: %s connector '%s' already active", conn_type, model)
             continue
         logger.info("Auto-provision: creating %s connector '%s' @ %s", conn_type, model, url)
+        extra = {"context_window": llm_context_window, "max_tokens": llm_max_tokens} if conn_type == "text" else {}
         inst = manager.create_connector(ConnectorCreate(
             name=model,
             type=conn_type,
             backend="openai_api",
-            config={"base_url": url, "model": model, "api_key": ""},
+            config={"base_url": url, "model": model, "api_key": "", **extra},
         ))
         try:
             manager.set_active(inst.id)

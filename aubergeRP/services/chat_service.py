@@ -461,10 +461,12 @@ class ChatService:
         )
 
         # Summarize history if the prompt is approaching the token budget.
+        conn_ctx = getattr(getattr(text_connector, "config", None), "context_window", None)
+        effective_ctx = conn_ctx if isinstance(conn_ctx, int) and conn_ctx > 0 else self._context_window
         messages = await maybe_summarize(
             messages,
             text_connector,
-            self._context_window,
+            effective_ctx,
             self._summarization_threshold,
         )
 

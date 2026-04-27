@@ -128,7 +128,9 @@ def list_backends() -> list[dict[str, Any]]:
                 "by_type": {
                     "text": {
                         "max_tokens": {"type": "number", "required": False},
+                        "context_window": {"type": "number", "required": False},
                         "temperature": {"type": "number", "required": False},
+                        "supports_tool_calling": {"type": "boolean", "required": False},
                     },
                     "image": {
                         "size": {"type": "string", "required": False},

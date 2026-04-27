@@ -182,6 +182,8 @@ function renderConnectorCard(c) {
   const meta = c.config ? [
     c.config.base_url ? `URL: ${c.config.base_url}` : '',
     c.config.model    ? `Model: ${c.config.model}` : '',
+    c.type === 'text' && c.config.context_window ? `ctx: ${c.config.context_window}` : '',
+    c.type === 'text' && c.config.max_tokens     ? `max: ${c.config.max_tokens} tok` : '',
   ].filter(Boolean).join(' &nbsp;·&nbsp; ') : '';
   const testFeedback = testFeedbackById.get(c.id);
   const feedbackHtml = testFeedback
@@ -339,7 +341,9 @@ function renderConfigFields(backendId, existingConfig) {
     const typeEntries = selectedType === 'text'
       ? [
           ['max_tokens', { type: 'number', required: false }],
+          ['context_window', { type: 'number', required: false }],
           ['temperature', { type: 'number', required: false }],
+          ['supports_tool_calling', { type: 'boolean', required: false }],
         ]
       : selectedType === 'image'
         ? [['size', { type: 'string', required: false }]]
@@ -454,8 +458,9 @@ function splitSchemaByCommonAndType(configSchema, connectorType) {
 function schemaLabel(key) {
   const map = {
     base_url: 'Base URL', api_key: 'API Key', model: 'Model',
-    max_tokens: 'Max Tokens', temperature: 'Temperature', timeout: 'Timeout (s)',
-    workflow: 'Workflow', nsfw: 'NSFW',
+    max_tokens: 'Max Tokens', context_window: 'Context Window (tokens)',
+    temperature: 'Temperature', timeout: 'Timeout (s)',
+    supports_tool_calling: 'Tool Calling', workflow: 'Workflow', nsfw: 'NSFW',
   };
   return map[key] || key.replace(/_/g, ' ');
 }
@@ -465,8 +470,10 @@ function schemaTooltip(key) {
     base_url: 'Base URL of the connector API endpoint.',
     api_key: 'API key used for authentication by this connector.',
     model: 'Default model identifier used by this connector.',
-    max_tokens: 'Maximum number of output tokens for text responses.',
+    max_tokens: 'Maximum number of tokens to generate per reply.',
+    context_window: 'Total context window of the model in tokens. Controls when conversation summarization kicks in.',
     temperature: 'Sampling temperature: lower is deterministic, higher is more creative.',
+    supports_tool_calling: 'Enable OpenAI-style function/tool calling. Only enable for models that support it.',
     timeout: 'Request timeout in seconds before considering the connector unavailable.',
     size: 'Image size (example: 1024x1024).',
     workflow: 'ComfyUI workflow template used for image generation.',

@@ -6,6 +6,8 @@ x-gguf:
   llm_size: ~16.8 GB
   llm_name: &llm_name qwen3.6-27b:q4km
   llm_modelfile: qwen3.6-27b.Modelfile
+  llm_ctx: &llm_ctx 4096
+  llm_max_tokens: &llm_max_tokens 1024
   img_repo: unsloth/FLUX.2-klein-9B-GGUF
   img_file: flux-2-klein-9b-Q4_K_M.gguf
   img_size: ~5.91 GB
@@ -31,5 +33,7 @@ services:
     environment:
       AUBERGE_LLM_API_URL: http://ollama:11434/v1
       AUBERGE_LLM_MODEL: *llm_name
+      AUBERGE_LLM_CONTEXT_WINDOW: *llm_ctx
+      AUBERGE_LLM_MAX_TOKENS: *llm_max_tokens
       AUBERGE_IMG_API_URL: http://ollama:11434/v1
       AUBERGE_IMG_MODEL: *img_name
