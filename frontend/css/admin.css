@@ -4,6 +4,8 @@
   flex: 1;
   display: flex;
   overflow: hidden;
+  width: min(1200px, 100%);
+  margin: 0 auto;
 }
 
 /* ─── Nav menu ──────────────────────────────────────────────────────────── */
@@ -179,6 +181,28 @@
 .conn-status.ok { color: #27ae60; }
 .conn-status.fail { color: var(--color-accent); }
 .conn-status.unknown { color: var(--color-text-muted); }
+
+.conn-test-feedback {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  border-radius: 6px;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid transparent;
+  word-break: break-word;
+}
+
+.conn-test-feedback.ok {
+  color: #27ae60;
+  background: rgba(39,174,96,0.12);
+  border-color: rgba(39,174,96,0.35);
+}
+
+.conn-test-feedback.fail {
+  color: var(--color-accent);
+  background: rgba(233,69,96,0.12);
+  border-color: rgba(233,69,96,0.35);
+}
 
 .conn-actions { display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0; }
 

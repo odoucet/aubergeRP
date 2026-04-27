@@ -56,6 +56,7 @@ const nameError     = document.getElementById('conn-name-error');
 let backends = [];         // from GET /api/connectors/backends
 let editingId = null;      // null = new, string = existing id
 let existingApiKeySet = false;
+const testFeedbackById = new Map();
 let showToastFn = () => {};
 let showConfirmFn = () => Promise.resolve(false);
 
@@ -182,6 +183,10 @@ function renderConnectorCard(c) {
     c.config.base_url ? `URL: ${c.config.base_url}` : '',
     c.config.model    ? `Model: ${c.config.model}` : '',
   ].filter(Boolean).join(' &nbsp;·&nbsp; ') : '';
+  const testFeedback = testFeedbackById.get(c.id);
+  const feedbackHtml = testFeedback
+    ? `<div class="conn-test-feedback ${testFeedback.level}">${testFeedback.message}</div>`
+    : '';
 
   return `
     <div class="conn-card" data-id="${c.id}">
@@ -193,6 +198,7 @@ function renderConnectorCard(c) {
         </div>
         ${meta ? `<div class="conn-meta">${meta}</div>` : ''}
         <div class="conn-status ${statusClass}" id="conn-status-${c.id}">${statusText}</div>
+        ${feedbackHtml}
       </div>
       <div class="conn-actions">
         <button class="btn btn-secondary btn-sm" data-action="test" data-id="${c.id}">Test</button>
@@ -220,14 +226,13 @@ async function handleCardAction(e) {
     btn.textContent = '…';
     try {
       const result = await api.testConnector(id);
-      if (result.connected) {
-        const detail = result.details ? JSON.stringify(result.details) : '';
-        showToastFn(`Connected.${detail ? ' ' + detail : ''}`, false);
-      } else {
-        showToastFn(result.detail || 'Connection failed.', true);
-      }
+      const feedback = formatTestFeedback(result);
+      testFeedbackById.set(id, feedback);
     } catch (err) {
-      showToastFn(`Test failed: ${err.message}`, true);
+      testFeedbackById.set(id, {
+        level: 'fail',
+        message: `Test failed: ${escHtml(err.message)}`,
+      });
     } finally {
       await refresh();
     }
@@ -248,6 +253,7 @@ async function handleCardAction(e) {
     if (!ok) return;
     try {
       await api.deleteConnector(id);
+      testFeedbackById.delete(id);
       showToastFn('Connector deleted.', false);
       await refresh();
     } catch (err) {
@@ -523,18 +529,45 @@ async function handleTest() {
   dialogFeedback.innerHTML = '';
   try {
     const result = await api.testConnector(editingId);
-    if (result.connected) {
-      const detail = result.details ? ` Available: ${JSON.stringify(result.details)}` : '';
-      dialogFeedback.innerHTML = `<div class="success-banner">Connected.${escHtml(detail)}</div>`;
-    } else {
-      dialogFeedback.innerHTML = `<div class="error-banner">${escHtml(result.detail || 'Connection failed.')}</div>`;
-    }
+    const feedback = formatTestFeedback(result);
+    testFeedbackById.set(editingId, feedback);
+    dialogFeedback.innerHTML = `<div class="${feedback.level === 'ok' ? 'success-banner' : 'error-banner'}">${feedback.message}</div>`;
+    await refresh();
   } catch (err) {
-    dialogFeedback.innerHTML = `<div class="error-banner">${escHtml(err.message)}</div>`;
+    const message = `Test failed: ${escHtml(err.message)}`;
+    testFeedbackById.set(editingId, { level: 'fail', message });
+    dialogFeedback.innerHTML = `<div class="error-banner">${message}</div>`;
+    await refresh();
   } finally {
     testBtn.disabled = false;
     testBtn.textContent = 'Test';
   }
+}
+
+function formatTestFeedback(result) {
+  const details = result?.details || {};
+
+  if (result?.connected) {
+    const models = Array.isArray(details.models_available) ? details.models_available : [];
+    if (models.length > 0) {
+      const preview = models.slice(0, 3).map(m => escHtml(String(m))).join(', ');
+      const extra = models.length > 3 ? ` (+${models.length - 3} more)` : '';
+      return {
+        level: 'ok',
+        message: `Last test: Connected. ${models.length} model(s) available (${preview}${extra}).`,
+      };
+    }
+    return {
+      level: 'ok',
+      message: 'Last test: Connected.',
+    };
+  }
+
+  const errorText = details.error || result?.detail || 'Connection failed.';
+  return {
+    level: 'fail',
+    message: `Last test: ${escHtml(String(errorText))}`,
+  };
 }
 
 async function handleSave() {
