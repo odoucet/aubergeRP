@@ -16,7 +16,10 @@ class OpenAIImageConnector(ImageConnector):
         self.config = config
 
     def _headers(self) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self.config.api_key}", "Content-Type": "application/json"}
+        headers: dict[str, str] = {"Content-Type": "application/json"}
+        if self.config.api_key:
+            headers["Authorization"] = f"Bearer {self.config.api_key}"
+        return headers
 
     def _is_openrouter(self) -> bool:
         return "openrouter.ai" in self.config.base_url.lower()

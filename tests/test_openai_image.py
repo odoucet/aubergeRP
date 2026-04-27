@@ -201,6 +201,16 @@ async def test_generate_image_openrouter_sends_auth_header():
 
 # ---------------------------------------------------------------------------
 # generate_image (OpenAI-compatible) — /images/generations path
+def test_headers_omits_authorization_when_api_key_empty():
+    headers = make_connector(api_key="")._headers()
+    assert "Authorization" not in headers
+
+
+def test_headers_includes_authorization_when_api_key_set():
+    headers = make_connector(api_key="sk-test")._headers()
+    assert headers["Authorization"] == "Bearer sk-test"
+
+
 # ---------------------------------------------------------------------------
 
 

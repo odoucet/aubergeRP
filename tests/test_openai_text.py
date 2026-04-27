@@ -151,3 +151,13 @@ async def test_stream_sends_authorization_header():
     async for _ in make_connector(api_key="sk-secret").stream_chat_completion([]):
         pass
     assert route.calls[0].request.headers["authorization"] == "Bearer sk-secret"
+
+
+def test_headers_omits_authorization_when_api_key_empty():
+    headers = make_connector(api_key="")._headers()
+    assert "Authorization" not in headers
+
+
+def test_headers_includes_authorization_when_api_key_set():
+    headers = make_connector(api_key="sk-test")._headers()
+    assert headers["Authorization"] == "Bearer sk-test"
