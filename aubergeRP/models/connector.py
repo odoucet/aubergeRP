@@ -16,6 +16,7 @@ class OpenAITextConfig(BaseModel):
     max_tokens: int = 1024
     temperature: float = 0.8
     timeout: int = 120
+    supports_tool_calling: bool = False
 
 
 class OpenAIImageConfig(BaseModel):

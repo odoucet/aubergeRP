@@ -12,10 +12,13 @@ from .base import TextConnector
 
 class OpenAITextConnector(TextConnector):
     backend_id = "openai_api"
-    supports_tool_calling = True
 
     def __init__(self, config: OpenAITextConfig) -> None:
         self.config = config
+
+    @property
+    def supports_tool_calling(self) -> bool:
+        return self.config.supports_tool_calling
 
     def _headers(self) -> dict[str, str]:
         headers: dict[str, str] = {"Content-Type": "application/json"}
