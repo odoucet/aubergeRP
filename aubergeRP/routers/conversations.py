@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 
 from ..models.conversation import Conversation, ConversationCreate, ConversationSummary
 from ..services.character_service import CharacterNotFoundError, CharacterService
@@ -18,6 +18,10 @@ def get_conversation_service() -> ConversationService:
     return ConversationService(data_dir=config.app.data_dir, character_service=char_svc)
 
 
+def get_session_token(x_session_token: str = Header(default="")) -> str:
+    return x_session_token
+
+
 def _not_found(conversation_id: str) -> HTTPException:
     return HTTPException(status_code=404, detail=f"Conversation '{conversation_id}' not found")
 
@@ -26,17 +30,19 @@ def _not_found(conversation_id: str) -> HTTPException:
 def list_conversations(
     character_id: Optional[str] = None,
     service: ConversationService = Depends(get_conversation_service),
+    session_token: str = Depends(get_session_token),
 ):
-    return service.list_conversations(character_id)
+    return service.list_conversations(character_id, owner=session_token)
 
 
 @router.post("/", status_code=201)
 def create_conversation(
     body: ConversationCreate,
     service: ConversationService = Depends(get_conversation_service),
+    session_token: str = Depends(get_session_token),
 ):
     try:
-        return service.create_conversation(body.character_id)
+        return service.create_conversation(body.character_id, owner=session_token)
     except CharacterNotFoundError:
         raise HTTPException(status_code=404, detail=f"Character '{body.character_id}' not found")
 
