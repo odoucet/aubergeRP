@@ -1,4 +1,9 @@
-Examples doc to write
+Doc
+---
+- [ ] Document in README + /docs/ the Docker implementation with GPU cards pre-configured with optimal model to run (see /docker/)
+
+
+Examples to write
 --------
 - How to use a local LLM with the OpenAI-compatible connector interface
 - How to use the ComfyUI connector for image generation
