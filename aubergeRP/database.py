@@ -14,6 +14,7 @@ from sqlmodel import Session, SQLModel, create_engine
 
 _engine: Engine | None = None
 _engine_data_dir: Path | None = None
+_initialized_dirs: set[Path] = set()
 
 
 def get_engine(data_dir: str | Path | None = None) -> Engine:
@@ -43,23 +44,29 @@ def get_engine(data_dir: str | Path | None = None) -> Engine:
 
 def reset_engine() -> None:
     """Reset the singleton engine (used in tests)."""
-    global _engine, _engine_data_dir
+    global _engine, _engine_data_dir, _initialized_dirs
     if _engine is not None:
         _engine.dispose()
         _engine = None
     _engine_data_dir = None
+    _initialized_dirs = set()
 
 
 def init_db(data_dir: str | Path) -> None:
     """Initialise the database and run pending migrations.
 
-    This is idempotent — it is safe to call multiple times.
+    This is idempotent — subsequent calls for the same *data_dir* are
+    fast no-ops after the first successful initialisation.
     """
     from aubergeRP.migrations import run_migrations  # local import to avoid cycles
 
-    engine = get_engine(data_dir)
+    resolved = Path(data_dir)
+    engine = get_engine(resolved)
+    if resolved in _initialized_dirs:
+        return
     SQLModel.metadata.create_all(engine)
-    run_migrations(engine, data_dir)
+    run_migrations(engine, resolved)
+    _initialized_dirs.add(resolved)
 
 
 def get_session() -> Generator[Session, None, None]:

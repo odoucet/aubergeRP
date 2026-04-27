@@ -30,10 +30,6 @@ class CharacterRow(SQLModel, table=True):
     def get_data(self) -> dict[str, Any]:
         return json.loads(self.data_json)  # type: ignore[no-any-return]
 
-    @staticmethod
-    def from_data(data: dict[str, Any]) -> str:
-        return json.dumps(data, ensure_ascii=False)
-
 
 class ConversationRow(SQLModel, table=True):
     """One row per conversation (without its messages)."""
