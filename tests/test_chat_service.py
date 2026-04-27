@@ -103,8 +103,9 @@ class _FailImage:
         raise RuntimeError("image gen failed")
 
     async def generate_image_with_progress(self, prompt, **kw):
+        if False:  # make this an async generator while always raising
+            yield {}
         raise RuntimeError("image gen failed")
-        yield  # make it an async generator
 
     async def test_connection(self) -> dict:
         return {}
