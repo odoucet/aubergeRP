@@ -25,7 +25,7 @@ def _init_data_dirs(data_dir: str) -> None:
     base = Path(data_dir)
     for subdir in [
         "characters", "conversations", "connectors", "avatars",
-        f"images/{SESSION_TOKEN}",
+        "images",
         "comfyui_workflows",
     ]:
         (base / subdir).mkdir(parents=True, exist_ok=True)

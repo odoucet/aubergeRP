@@ -39,6 +39,9 @@ def get_chat_service(
         connector_manager=manager,
         images_dir=images_dir,
         session_token=session_token or "anonymous",
+        context_window=config.chat.context_window,
+        summarization_threshold=config.chat.summarization_threshold,
+        ooc_protection=config.chat.ooc_protection,
     )
 
 

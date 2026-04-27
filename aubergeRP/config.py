@@ -33,12 +33,23 @@ class SchedulerConfig(BaseModel):
     # Delete images older than this many days. Default: 30.
     cleanup_older_than_days: int = 30
 
+class ChatConfig(BaseModel):
+    """Global settings that influence AI quality behaviour."""
+
+    # Estimated size of the model's context window in tokens.
+    context_window: int = 4096
+    # Summarize conversation history when this fraction of the context window is consumed.
+    summarization_threshold: float = 0.75
+    # Enable out-of-character (OOC) detection and guardrail injection.
+    ooc_protection: bool = True
+
 
 class Config(BaseModel):
     app: AppConfig = AppConfig()
     active_connectors: ActiveConnectorsConfig = ActiveConnectorsConfig()
     user: UserConfig = UserConfig()
     scheduler: SchedulerConfig = SchedulerConfig()
+    chat: ChatConfig = ChatConfig()
 
     @field_validator("app", mode="before")
     @classmethod
@@ -60,6 +71,10 @@ class Config(BaseModel):
     def validate_scheduler(cls, v: object) -> object:
         return v or {}
 
+    @field_validator("chat", mode="before")
+    @classmethod
+    def validate_chat(cls, v: object) -> object:
+        return v or {}
 
 def _apply_env_overrides(config: Config) -> Config:
     """Override config values with environment variables if set.
@@ -82,7 +97,6 @@ def _apply_env_overrides(config: Config) -> Config:
     if val := os.environ.get("AUBERGE_USER_NAME"):
         config.user.name = val
     return config
-
 
 def load_config(path: str | Path = "config.yaml") -> Config:
     config_path = Path(path)

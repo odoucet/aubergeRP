@@ -50,12 +50,12 @@ Priority: LOW-MEDIUM (from POST-MVP.md §3)
 SPRINT 16 — AI Quality
 Priority: LOW (from POST-MVP.md §4 & §5)
 --------------------------------------------------------------------------------
-[ ] Automatic conversation summarization
+[x] Automatic conversation summarization
     - Compress history when approaching token limit
     - Configurable threshold (default: 75% of model context window)
-[ ] OOC (out-of-character) protection
+[x] OOC (out-of-character) protection
     - Detect attempts to break character and add system-level guardrails
-[ ] Tool-calling / structured output for image triggers
+[x] Tool-calling / structured output for image triggers
     - Replace [IMG: …] marker with native structured outputs on supporting backends
 
 --------------------------------------------------------------------------------
