@@ -53,7 +53,18 @@ function initLightbox() {
   lb.setAttribute('role', 'dialog');
   lb.setAttribute('aria-modal', 'true');
   lb.setAttribute('aria-label', 'Image lightbox');
-  lb.innerHTML = '<img id="lightbox-img" alt="Full-size image"><button id="lightbox-close" aria-label="Close lightbox">✕</button>';
+
+  const img = document.createElement('img');
+  img.id = 'lightbox-img';
+  img.alt = 'Full-size image';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.id = 'lightbox-close';
+  closeBtn.setAttribute('aria-label', 'Close lightbox');
+  closeBtn.textContent = '✕';
+
+  lb.appendChild(img);
+  lb.appendChild(closeBtn);
   document.body.appendChild(lb);
 
   lb.addEventListener('click', e => {
@@ -260,7 +271,9 @@ async function copyImageToClipboard(url) {
   try {
     const res = await fetch(url);
     const blob = await res.blob();
-    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+    const supportedTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+    const type = supportedTypes.includes(blob.type) ? blob.type : 'image/png';
+    await navigator.clipboard.write([new ClipboardItem({ [type]: blob })]);
     showToast('Image copied to clipboard');
   } catch (err) {
     showToast('Copy failed: ' + err.message);

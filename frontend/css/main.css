@@ -269,7 +269,8 @@ body {
   position: relative;
   display: inline-block;
 }
-.img-wrapper:hover .img-copy-btn { opacity: 1; }
+.img-wrapper:hover .img-copy-btn,
+.img-copy-btn:focus { opacity: 1; }
 
 .msg-image { max-width: 260px; max-height: 260px; border-radius: 8px; object-fit: contain; cursor: pointer; border: 1px solid var(--color-border); display: block; }
 
