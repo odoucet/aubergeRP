@@ -45,7 +45,7 @@ async function refresh() {
 }
 
 async function handleSearch() {
-  const q = (searchInput?.value || '').trim();
+  const q = (searchInput !== null ? searchInput.value : '').trim();
   resultsEl.innerHTML = '<div class="loading-row">Searching…</div>';
   try {
     const data = await apiFetch(`/api/marketplace/search?q=${encodeURIComponent(q)}`);

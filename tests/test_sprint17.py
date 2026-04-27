@@ -141,6 +141,16 @@ def test_marketplace_search_index_unavailable(client):
     assert resp.status_code == 502
 
 
+def test_marketplace_rejects_file_url(client, monkeypatch):
+    """A file:// index URL must be rejected (SSRF protection)."""
+    from aubergeRP.config import get_config
+    get_config().marketplace.index_url = "file:///etc/passwd"
+    resp = client.get("/api/marketplace/search")
+    assert resp.status_code == 400
+    # restore default
+    get_config().marketplace.index_url = "https://raw.githubusercontent.com/odoucet/aubergeRP/main/marketplace/index.json"
+
+
 # ===========================================================================
 # 2. GUI customization
 # ===========================================================================

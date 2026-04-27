@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+from urllib.parse import urlparse
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -113,11 +114,18 @@ def create_app() -> FastAPI:
         response = await call_next(request)
         host = request.headers.get("host", "")
         origin = request.headers.get("origin", "")
-        if origin and host and (host in origin or origin.endswith(host)):
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "*"
+        if origin and host:
+            try:
+                # Compare the origin's netloc (host+port) against the Host header
+                # to avoid substring-match false positives (e.g. evil.host.com vs host.com).
+                origin_netloc = urlparse(origin).netloc
+                if origin_netloc == host:
+                    response.headers["Access-Control-Allow-Origin"] = origin
+                    response.headers["Access-Control-Allow-Credentials"] = "true"
+                    response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+                    response.headers["Access-Control-Allow-Headers"] = "*"
+            except Exception:
+                pass
         return response
 
     app.include_router(characters_router.router, prefix="/api")
