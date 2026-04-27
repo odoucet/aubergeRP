@@ -70,21 +70,21 @@
     <section id="section-config" class="admin-section" style="display:none" aria-label="Configuration">
       <div class="section-header">
         <h1>Configuration</h1>
-        <button class="btn btn-primary" id="config-save-btn">Save</button>
+        <button class="btn btn-primary" id="config-save-btn" title="Save app, user, and active connector settings.">Save</button>
       </div>
       <div id="config-feedback"></div>
 
       <div class="field-divider">App Settings</div>
       <div class="field-row">
-        <label for="cfg-host">Host</label>
+        <label for="cfg-host" title="Network interface to bind the API server to.">Host</label>
         <input type="text" id="cfg-host" autocomplete="off" placeholder="0.0.0.0">
       </div>
       <div class="field-row">
-        <label for="cfg-port">Port</label>
+        <label for="cfg-port" title="TCP port used by the API server.">Port</label>
         <input type="number" id="cfg-port" min="1" max="65535" placeholder="8000">
       </div>
       <div class="field-row">
-        <label for="cfg-log-level">Log Level</label>
+        <label for="cfg-log-level" title="Controls how verbose server logs are.">Log Level</label>
         <select id="cfg-log-level">
           <option value="DEBUG">DEBUG</option>
           <option value="INFO">INFO</option>
@@ -95,19 +95,19 @@
 
       <div class="field-divider">User Settings</div>
       <div class="field-row">
-        <label for="cfg-user-name">Display Name</label>
+        <label for="cfg-user-name" title="Name used for the {{user}} macro in prompts.">Display Name</label>
         <input type="text" id="cfg-user-name" autocomplete="off" placeholder="User">
       </div>
 
       <div class="field-divider">Active Connectors</div>
       <div class="field-row">
-        <label for="cfg-active-text">Active Text Connector</label>
+        <label for="cfg-active-text" title="Text connector used for chat generation.">Active Text Connector</label>
         <select id="cfg-active-text">
           <option value="">(none)</option>
         </select>
       </div>
       <div class="field-row">
-        <label for="cfg-active-image">Active Image Connector</label>
+        <label for="cfg-active-image" title="Image connector used when image generation is requested.">Active Image Connector</label>
         <select id="cfg-active-image">
           <option value="">(none)</option>
         </select>
@@ -115,12 +115,12 @@
 
       <div class="field-divider">Media Cleanup</div>
       <div class="field-row">
-        <label for="cfg-cleanup-days">Delete images older than (days)</label>
+        <label for="cfg-cleanup-days" title="Delete generated images older than this number of days.">Delete images older than (days)</label>
         <input type="number" id="cfg-cleanup-days" min="1" value="30">
       </div>
       <div class="field-row">
         <label></label>
-        <button class="btn btn-secondary" id="cleanup-images-btn">Clean up images</button>
+        <button class="btn btn-secondary" id="cleanup-images-btn" title="Run cleanup now using the threshold above.">Clean up images</button>
       </div>
       <div id="cleanup-feedback" style="margin-top:0.5rem;font-size:0.875rem;"></div>
     </section>
@@ -129,26 +129,38 @@
     <section id="section-customize" class="admin-section" style="display:none" aria-label="GUI Customization">
       <div class="section-header">
         <h1>Customization</h1>
-        <button class="btn btn-primary" id="customize-save-btn">Save</button>
+        <button class="btn btn-primary" id="customize-save-btn" title="Save custom CSS and HTML snippets for the UI.">Save</button>
       </div>
       <div id="customize-feedback"></div>
 
       <div class="field-divider">Custom CSS</div>
       <div class="field-row" style="align-items:flex-start">
-        <label for="customize-css">CSS</label>
-        <textarea id="customize-css" rows="8" placeholder="/* your custom CSS */" style="font-family:monospace;font-size:0.85rem;"></textarea>
+        <label for="customize-css" title="Custom CSS injected on app pages.">CSS</label>
+        <textarea id="customize-css" class="code-input" rows="18" placeholder="/* your custom CSS */" title="Write custom CSS rules here."></textarea>
+        <div class="code-preview-wrap">
+          <div class="code-preview-title">Syntax Preview</div>
+          <pre id="customize-css-preview" class="code-preview" aria-hidden="true"></pre>
+        </div>
       </div>
 
       <div class="field-divider">Custom Header HTML</div>
       <div class="field-row" style="align-items:flex-start">
-        <label for="customize-header-html">Header HTML</label>
-        <textarea id="customize-header-html" rows="4" placeholder="<!-- injected inside <header> -->" style="font-family:monospace;font-size:0.85rem;"></textarea>
+        <label for="customize-header-html" title="HTML inserted inside the page header.">Header HTML</label>
+        <textarea id="customize-header-html" class="code-input" rows="10" placeholder="<!-- injected inside <header> -->" title="Write custom HTML inserted in the header."></textarea>
+        <div class="code-preview-wrap">
+          <div class="code-preview-title">Syntax Preview</div>
+          <pre id="customize-header-html-preview" class="code-preview" aria-hidden="true"></pre>
+        </div>
       </div>
 
       <div class="field-divider">Custom Footer HTML</div>
       <div class="field-row" style="align-items:flex-start">
-        <label for="customize-footer-html">Footer HTML</label>
-        <textarea id="customize-footer-html" rows="4" placeholder="<!-- injected inside <footer> -->" style="font-family:monospace;font-size:0.85rem;"></textarea>
+        <label for="customize-footer-html" title="HTML inserted inside the page footer.">Footer HTML</label>
+        <textarea id="customize-footer-html" class="code-input" rows="10" placeholder="<!-- injected inside <footer> -->" title="Write custom HTML inserted in the footer."></textarea>
+        <div class="code-preview-wrap">
+          <div class="code-preview-title">Syntax Preview</div>
+          <pre id="customize-footer-html-preview" class="code-preview" aria-hidden="true"></pre>
+        </div>
       </div>
     </section>
 
@@ -175,12 +187,12 @@
     </div>
     <div class="dialog-body">
       <div class="field-row">
-        <label for="conn-name">Name</label>
+        <label for="conn-name" title="Display name shown in the connectors list.">Name</label>
         <input type="text" id="conn-name" placeholder="My Ollama" autocomplete="off">
         <span class="field-error" id="conn-name-error"></span>
       </div>
       <div class="field-row">
-        <label for="conn-type">Type</label>
+        <label for="conn-type" title="Connector capability category.">Type</label>
         <select id="conn-type">
           <option value="text">text</option>
           <option value="image">image</option>
@@ -189,7 +201,7 @@
         </select>
       </div>
       <div class="field-row">
-        <label for="conn-backend">Backend</label>
+        <label for="conn-backend" title="Implementation/provider used by this connector.">Backend</label>
         <select id="conn-backend">
           <option value="openai_api">openai_api</option>
         </select>
@@ -199,7 +211,7 @@
         <!-- Rendered dynamically -->
       </div>
       <div class="field-row" id="conn-clear-key-row" style="display:none">
-        <label>
+        <label title="If enabled, removes the stored API key on save.">
           <input type="checkbox" id="conn-clear-key"> Clear API key
         </label>
       </div>
@@ -488,6 +500,61 @@
   const connectorCtrl  = initConnectors({ showToast, showConfirm });
   const charCtrl       = initCharacters({ showToast, showConfirm });
   const configCtrl     = initConfig({ showToast });
+
+  const _customizeEditors = [
+    { inputId: 'customize-css', previewId: 'customize-css-preview', language: 'css' },
+    { inputId: 'customize-header-html', previewId: 'customize-header-html-preview', language: 'html' },
+    { inputId: 'customize-footer-html', previewId: 'customize-footer-html-preview', language: 'html' },
+  ];
+
+  function initCustomizeSyntaxPreview() {
+    _customizeEditors.forEach(({ inputId, previewId, language }) => {
+      const input = document.getElementById(inputId);
+      const preview = document.getElementById(previewId);
+      if (!input || !preview) return;
+      input.addEventListener('input', () => renderSyntaxPreview(input, preview, language));
+      renderSyntaxPreview(input, preview, language);
+    });
+  }
+
+  function renderSyntaxPreview(input, preview, language) {
+    const raw = input.value || '';
+    if (!raw.trim()) {
+      preview.innerHTML = '<span class="tok-muted">(empty)</span>';
+      return;
+    }
+    preview.innerHTML = language === 'css' ? highlightCss(raw) : highlightHtml(raw);
+  }
+
+  function escCode(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function highlightCss(code) {
+    let out = escCode(code);
+    out = out.replace(/\/\*[\s\S]*?\*\//g, '<span class="tok-comment">$&</span>');
+    out = out.replace(/([.#]?[a-zA-Z_][\w-]*)(\s*\{)/g, '<span class="tok-selector">$1</span>$2');
+    out = out.replace(/([a-z-]+)(\s*:)/gi, '<span class="tok-attr">$1</span>$2');
+    out = out.replace(/(:\s*)([^;}{\n]+)/g, '$1<span class="tok-value">$2</span>');
+    out = out.replace(/([0-9]+(?:\.[0-9]+)?(?:px|em|rem|%|vh|vw|s|ms)?)/g, '<span class="tok-number">$1</span>');
+    return out;
+  }
+
+  function highlightHtml(code) {
+    let out = escCode(code);
+    out = out.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="tok-comment">$1</span>');
+    out = out.replace(/(&lt;\/?)([a-zA-Z][\w:-]*)([^&]*?)(\/?&gt;)/g, (_, p1, p2, p3, p4) => {
+      let attrs = p3.replace(/(\s)([a-zA-Z_:][\w:.-]*)(=)(&quot;.*?&quot;|&#39;.*?&#39;)/g,
+        '$1<span class="tok-attr">$2</span>$3<span class="tok-string">$4</span>');
+      return `${p1}<span class="tok-tag">${p2}</span>${attrs}${p4}`;
+    });
+    return out;
+  }
+
+  initCustomizeSyntaxPreview();
 
   // ── Health polling (every 30s) — updates connector status badges ──────────
   async function pollHealth() {

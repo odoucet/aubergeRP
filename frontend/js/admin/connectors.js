@@ -459,21 +459,39 @@ function schemaLabel(key) {
   return map[key] || key.replace(/_/g, ' ');
 }
 
+function schemaTooltip(key) {
+  const map = {
+    base_url: 'Base URL of the connector API endpoint.',
+    api_key: 'API key used for authentication by this connector.',
+    model: 'Default model identifier used by this connector.',
+    max_tokens: 'Maximum number of output tokens for text responses.',
+    temperature: 'Sampling temperature: lower is deterministic, higher is more creative.',
+    timeout: 'Request timeout in seconds before considering the connector unavailable.',
+    size: 'Image size (example: 1024x1024).',
+    workflow: 'ComfyUI workflow template used for image generation.',
+  };
+  return map[key] || '';
+}
+
 function renderField(key, label, type, required, value, placeholder = '', inputType = null) {
   const itype = inputType || (type === 'number' ? 'number' : 'text');
   const req = required ? '<span class="required">*</span>' : '';
+  const tooltip = schemaTooltip(key);
+  const tooltipAttr = tooltip ? ` title="${escHtml(tooltip)}"` : '';
   return `
     <div class="field-row">
-      <label for="cfg-${key}">${escHtml(label)} ${req}</label>
+      <label for="cfg-${key}"${tooltipAttr}>${escHtml(label)} ${req}</label>
       <input type="${itype}" id="cfg-${key}" name="${key}" value="${escHtml(String(value))}" placeholder="${escHtml(placeholder)}">
     </div>
   `;
 }
 
 function renderWorkflowSelect(key, label, currentValue) {
+  const tooltip = schemaTooltip(key);
+  const tooltipAttr = tooltip ? ` title="${escHtml(tooltip)}"` : '';
   return `
     <div class="field-row">
-      <label for="cfg-${key}">${escHtml(label)}</label>
+      <label for="cfg-${key}"${tooltipAttr}>${escHtml(label)}</label>
       <select id="cfg-${key}" name="${key}">
         <option value="${escHtml(currentValue || 'default')}">${escHtml(currentValue || 'default')}</option>
       </select>
