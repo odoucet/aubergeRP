@@ -14,6 +14,7 @@ from ..models.chat import ChatMessageRequest
 from ..services.character_service import CharacterService
 from ..services.chat_service import ChatService
 from ..services.conversation_service import ConversationService
+from ..services.statistics_service import StatisticsService
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -32,6 +33,7 @@ def get_chat_service(
     data_dir = config.app.data_dir
     char_svc = CharacterService(data_dir=data_dir)
     conv_svc = ConversationService(data_dir=data_dir, character_service=char_svc)
+    stats_svc = StatisticsService(data_dir=data_dir)
     manager = ConnectorManager(data_dir=data_dir, config=config)
     images_dir = Path(data_dir) / "images" / (session_token or "anonymous")
     return ChatService(
@@ -43,6 +45,7 @@ def get_chat_service(
         context_window=config.chat.context_window,
         summarization_threshold=config.chat.summarization_threshold,
         ooc_protection=config.chat.ooc_protection,
+        statistics_service=stats_svc,
     )
 
 

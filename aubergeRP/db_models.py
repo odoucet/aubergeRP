@@ -66,6 +66,25 @@ class MessageRow(SQLModel, table=True):
         return json.dumps(images)
 
 
+class LLMCallStatRow(SQLModel, table=True):
+    """One row per remote text-LLM call used by chat generation."""
+
+    __tablename__ = "llm_call_stats"
+
+    id: str = Field(primary_key=True)
+    conversation_id: str = Field(index=True)
+    connector_id: str = ""
+    connector_name: str = ""
+    connector_backend: str = ""
+    request_tokens: int = 0
+    response_tokens: int = 0
+    total_tokens: int = 0
+    response_time_ms: int = 0
+    success: bool = True
+    error_detail: str = ""
+    created_at: datetime
+
+
 class SchemaMigration(SQLModel, table=True):
     """Tracks which migrations have been applied."""
 

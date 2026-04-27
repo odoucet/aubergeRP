@@ -11,6 +11,7 @@ The chat system is the central user-facing feature. It handles:
 - Prompt construction from character data + conversation history.
 - **Automatic conversation summarization** — when the prompt approaches the configured context-window limit, older messages are compressed into a summary (configurable via `chat.context_window` and `chat.summarization_threshold`).
 - **OOC (out-of-character) protection** — detects attempts to break character and injects system-level guardrails when `chat.ooc_protection` is enabled.
+- **Usage telemetry** — each remote text-LLM call records approximate tokens and latency for the admin statistics page.
 
 ## 2. Conversation Model
 
@@ -65,6 +66,7 @@ See § 6 for prompt construction and § 7 for image triggering. Summary:
 5. When a complete marker is detected, the backend calls the **active image connector** in-process, emitting `image_start` → `image_complete`/`image_failed` events on the same SSE stream.
 6. When the LLM finishes, the backend persists the user message and the assistant message (with `images` populated) atomically, and emits `done`.
 7. On fatal error, `error` is emitted; **no partial content is saved**.
+8. Whether success or failure, the backend records one telemetry row (`llm_call_stats`) with connector metadata, token estimates, latency, and outcome.
 
 ### 3.3 Delete
 

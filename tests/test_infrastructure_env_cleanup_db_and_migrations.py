@@ -251,7 +251,8 @@ def test_migration_table_created(tmp_path):
     with Session(get_engine(tmp_path)) as session:
         rows = session.exec(select(SchemaMigration)).all()
     assert len(rows) >= 1
-    assert rows[0].version == 1
+    versions = [r.version for r in rows]
+    assert 1 in versions
 
 
 def test_migration_idempotent(tmp_path):

@@ -17,6 +17,7 @@ from aubergeRP.services.chat_service import (
     build_prompt,
 )
 from aubergeRP.services.conversation_service import ConversationService
+from aubergeRP.services.statistics_service import StatisticsService
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -421,7 +422,33 @@ async def test_stream_ends_with_done(tmp_path):
     conv = conv_svc.create_conversation(char.id)
     events = await collect(svc.stream_chat(conv.id, "Hello"))
     assert events[-1]["type"] == "done"
-    assert events[-1]["full_content"] == "Hi"
+
+
+async def test_stream_records_llm_call_statistics(tmp_path):
+    char_svc = CharacterService(data_dir=tmp_path)
+    conv_svc = ConversationService(data_dir=tmp_path, character_service=char_svc)
+    stats_svc = StatisticsService(data_dir=tmp_path)
+
+    manager = _manager(_FakeText(["Hello", " world"]), None)
+    manager.get_active_id_for_type.return_value = ""
+
+    svc = ChatService(
+        conversation_service=conv_svc,
+        character_service=char_svc,
+        connector_manager=manager,
+        images_dir=tmp_path / "images",
+        statistics_service=stats_svc,
+    )
+
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+
+    events = await collect(svc.stream_chat(conv.id, "Hi"))
+    assert events[-1]["type"] == "done"
+
+    dashboard = stats_svc.get_dashboard_data(days=7, top=5)
+    assert dashboard["summary"]["llm_calls"] == 1
+    assert events[-1]["full_content"] == "Hello world"
 
 
 async def test_stream_saves_assistant_message(tmp_path):

@@ -33,8 +33,10 @@ MigrateFunc = Callable[[Session], None]
 def _builtin_migrations() -> dict[int, tuple[str, MigrateFunc]]:
     """Return {version: (description, migrate_fn)} for all built-in migrations."""
     from aubergeRP.migrations import m001_initial  # noqa: PLC0415
+    from aubergeRP.migrations import m002_add_llm_call_stats  # noqa: PLC0415
     return {
         1: ("Initial schema and JSON import", m001_initial.migrate),
+        2: ("Add LLM call statistics table", m002_add_llm_call_stats.migrate),
     }
 
 

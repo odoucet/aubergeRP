@@ -3,7 +3,9 @@ from __future__ import annotations
 import re
 import uuid
 from collections.abc import AsyncIterator
+from contextlib import suppress
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 from ..connectors.manager import ConnectorManager
@@ -11,7 +13,8 @@ from ..models.character import CharacterCard
 from ..models.conversation import Conversation
 from ..services.character_service import CharacterService
 from ..services.conversation_service import ConversationService, resolve_macros
-from ..services.summarization_service import maybe_summarize
+from ..services.statistics_service import StatisticsService
+from ..services.summarization_service import count_prompt_tokens, maybe_summarize
 
 _PREFIX = "[IMG:"
 _MAX_IMAGE_MARKERS = 3
@@ -238,6 +241,12 @@ def _format_user_message_for_llm(content: str) -> str:
     return "\n\n".join(blocks)
 
 
+def _estimate_text_tokens(text: str) -> int:
+    if not text:
+        return 0
+    return max(1, len(text) // 4)
+
+
 def build_prompt(
     conversation: Conversation,
     char: CharacterCard,
@@ -304,6 +313,7 @@ class ChatService:
         context_window: int = 4096,
         summarization_threshold: float = 0.75,
         ooc_protection: bool = True,
+        statistics_service: StatisticsService | None = None,
     ) -> None:
         self._conversation_service = conversation_service
         self._character_service = character_service
@@ -313,6 +323,37 @@ class ChatService:
         self._context_window = context_window
         self._summarization_threshold = summarization_threshold
         self._ooc_protection = ooc_protection
+        self._statistics_service = statistics_service
+
+    def _resolve_text_connector_metadata(self, text_connector: Any) -> tuple[str, str, str]:
+        connector_id = ""
+        connector_name = type(text_connector).__name__
+        connector_backend = str(getattr(text_connector, "backend_id", ""))
+
+        get_active = getattr(self._connector_manager, "get_active_id_for_type", None)
+        if callable(get_active):
+            try:
+                active_id = get_active("text")
+                if isinstance(active_id, str):
+                    connector_id = active_id
+            except Exception:
+                pass
+
+        if connector_id:
+            get_connector = getattr(self._connector_manager, "get_connector", None)
+            if callable(get_connector):
+                try:
+                    instance = get_connector(connector_id)
+                    name = getattr(instance, "name", "")
+                    backend = getattr(instance, "backend", "")
+                    if isinstance(name, str) and name:
+                        connector_name = name
+                    if isinstance(backend, str) and backend:
+                        connector_backend = backend
+                except Exception:
+                    pass
+
+        return connector_id, connector_name, connector_backend
 
     async def stream_chat(
         self,
@@ -359,6 +400,13 @@ class ChatService:
 
         full_text = ""
         image_urls: list[str] = []
+        request_tokens = count_prompt_tokens(messages)
+        call_started = perf_counter()
+        call_success = False
+        call_error = ""
+        connector_id, connector_name, connector_backend = self._resolve_text_connector_metadata(
+            text_connector
+        )
 
         try:
             if use_tools:
@@ -401,6 +449,7 @@ class ChatService:
             msg = self._conversation_service.append_message(
                 conversation_id, "assistant", full_text, images=image_urls
             )
+            call_success = True
             yield {
                 "type": "done",
                 "message_id": msg.id,
@@ -409,7 +458,22 @@ class ChatService:
             }
 
         except Exception as exc:
+            call_error = str(exc)
             yield {"type": "error", "detail": str(exc)}
+        finally:
+            if self._statistics_service is not None:
+                with suppress(Exception):
+                    self._statistics_service.record_text_call(
+                        conversation_id=conversation_id,
+                        connector_id=connector_id,
+                        connector_name=connector_name,
+                        connector_backend=connector_backend,
+                        request_tokens=request_tokens,
+                        response_tokens=_estimate_text_tokens(full_text),
+                        response_time_ms=int((perf_counter() - call_started) * 1000),
+                        success=call_success,
+                        error_detail=call_error,
+                    )
 
     async def _stream_with_tools(
         self,

@@ -9,6 +9,7 @@ A separate page within aubergeRP that provides:
 - **Marketplace** — browse and import community character cards.
 - **GUI customization** — inject custom CSS and HTML into every page.
 - **System health overview.**
+- **Usage statistics** — inspect message volume, token usage, and connector latency.
 
 ## 2. Technology
 
@@ -217,7 +218,34 @@ Browse and import community character cards from the configured marketplace inde
 - Import fetches the card's `download_url` and posts it to `POST /api/characters/import`.
 - The marketplace index URL is configurable via `marketplace.index_url` in `config.yaml`.
 
-### 4.5 Customization
+### 4.5 Statistics
+
+Usage analytics dashboard for chat and connector consumption.
+
+```
+┌──────────────────────────────────────────────────────┐
+│  Usage Statistics                [14 days ▼] [Refresh]│
+├──────────────────────────────────────────────────────┤
+│  Messages     Conversations     LLM Calls            │
+│  248          12                97                   │
+│  Tokens In    Tokens Out        Avg Latency          │
+│  184,220      79,210            812 ms               │
+├──────────────────────────────────────────────────────┤
+│  Daily Tokens (bar chart)                            │
+├──────────────────────────────────────────────────────┤
+│  Top Connectors (bar chart)                          │
+├──────────────────────────────────────────────────────┤
+│  By Connector (table)                                │
+│  By Conversation (table)                             │
+└──────────────────────────────────────────────────────┘
+```
+
+- Time range selector: `7`, `14`, `30`, `90` days.
+- Refresh button re-fetches server aggregates.
+- Charts are rendered with a local vendored script (`frontend/vendor/simple-charts.js`) — no remote JS resource.
+- The section consumes `GET /api/statistics` (see [03 § 11](03-backend-api.md)).
+
+### 4.6 Customization
 
 Inject custom CSS and HTML into every aubergeRP page.
 
@@ -244,9 +272,10 @@ Inject custom CSS and HTML into every aubergeRP page.
 4. Enter the LLM backend URL (e.g., `http://localhost:11434/v1` for Ollama). Click Test, then Save. The connector is automatically activated (first of its type).
 5. Click `+ Add New` again → select type `image`. Choose `openai_api` for a remote API or `comfyui` for a local Stable Diffusion instance. Enter the required fields. Test + Save.
 6. Go to **Characters** and import or create a character card, or browse the **Marketplace** to import a community card.
-7. Optionally, open **Customization** to inject custom CSS or header/footer HTML.
-8. Click `← Chat` to start roleplaying.
-9. The interactive API reference is available at `http://localhost:8000/api-docs`.
+7. Send a few chat turns, then open **Statistics** to verify usage metrics (calls, tokens, latency).
+8. Optionally, open **Customization** to inject custom CSS or header/footer HTML.
+9. Click `← Chat` to start roleplaying.
+10. The interactive API reference is available at `http://localhost:8000/api-docs`.
 
 ## 6. API Endpoints
 

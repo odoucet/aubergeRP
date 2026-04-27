@@ -204,6 +204,10 @@ SSE events:
 | `done` | `{"message_id": "...", "full_content": "...", "images": ["..."]}` | Assistant message complete and saved |
 | `error` | `{"detail": "..."}` | Fatal error during streaming; partial response is **not** saved |
 
+For each remote text-LLM call, the backend also stores usage telemetry in SQLite
+(`llm_call_stats`): prompt token estimate, completion token estimate, latency,
+connector metadata, success/failure, and optional error detail.
+
 Image events are emitted inline as the backend parses image markers from the LLM output. See [05 § 7](05-chat-and-conversations.md) for the marker format and trigger mechanism.
 
 ---
@@ -406,7 +410,71 @@ The index URL is configured via `marketplace.index_url` in `config.yaml`. Only `
 
 ---
 
-## 11. Error Response Format
+## 11. Statistics
+
+### `GET /api/statistics`
+
+Return aggregated usage analytics for the admin dashboard.
+
+**Query parameters:**
+
+- `days` (optional, default `14`, range `1..90`) — rolling window for timeline points.
+- `top` (optional, default `15`, range `1..100`) — max rows returned for connector and conversation ranking tables.
+
+**Response: 200 OK**
+```json
+{
+  "summary": {
+    "total_conversations": 12,
+    "total_messages": 248,
+    "llm_calls": 97,
+    "successful_calls": 95,
+    "failed_calls": 2,
+    "success_rate": 97.9,
+    "tokens_in": 184220,
+    "tokens_out": 79210,
+    "total_tokens": 263430,
+    "avg_latency_ms": 812.4
+  },
+  "timeline": [
+    {"date": "2026-04-20", "llm_calls": 11, "tokens_in": 22100, "tokens_out": 9400}
+  ],
+  "by_connector": [
+    {
+      "connector_id": "uuid-string",
+      "name": "OpenAI Main",
+      "backend": "openai_api",
+      "llm_calls": 54,
+      "success": 53,
+      "failed": 1,
+      "tokens_in": 103300,
+      "tokens_out": 42100,
+      "total_tokens": 145400,
+      "avg_latency_ms": 745.2
+    }
+  ],
+  "by_conversation": [
+    {
+      "conversation_id": "uuid-string",
+      "title": "Elara — 2026-04-27 10:43",
+      "message_count": 28,
+      "llm_calls": 14,
+      "tokens_in": 24220,
+      "tokens_out": 11450,
+      "total_tokens": 35670,
+      "avg_latency_ms": 689.7
+    }
+  ],
+  "generated_at": "2026-04-27T14:23:00+00:00",
+  "range_days": 14
+}
+```
+
+This endpoint is read-only. It does not trigger generation calls.
+
+---
+
+## 12. Error Response Format
 
 All error responses:
 

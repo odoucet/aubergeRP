@@ -30,7 +30,7 @@ aubergeRP/
 ├── config.py                    # Configuration loading and validation
 ├── constants.py                 # SESSION_TOKEN constant (see 00 § 9)
 ├── database.py                  # SQLite engine + session management
-├── db_models.py                 # SQLModel table definitions (CharacterRow, ConversationRow, …)
+├── db_models.py                 # SQLModel table definitions (CharacterRow, ConversationRow, MessageRow, LLMCallStatRow, …)
 ├── event_bus.py                 # In-process async event bus
 ├── scheduler.py                 # Background media-cleanup scheduler
 ├── models/                      # Pydantic data models
@@ -55,7 +55,8 @@ aubergeRP/
 │   ├── character_service.py
 │   ├── conversation_service.py
 │   ├── chat_service.py          # Prompt building, streaming, image trigger
-│   └── summarization_service.py # Automatic conversation summarization
+│   ├── summarization_service.py # Automatic conversation summarization
+│   └── statistics_service.py    # Usage telemetry persistence + aggregation
 ├── routers/                     # FastAPI route handlers (thin)
 │   ├── __init__.py
 │   ├── chat.py
@@ -65,6 +66,7 @@ aubergeRP/
 │   ├── images.py                # GET /api/images/…, POST /api/images/cleanup
 │   ├── config.py
 │   ├── health.py
+│   ├── statistics.py            # GET /api/statistics
 │   └── marketplace.py           # GET /api/marketplace/search
 ├── plugins/                     # Plugin system
 │   ├── __init__.py
@@ -92,9 +94,13 @@ frontend/
 │   ├── characters.js            # Character selection sidebar
 │   ├── admin/
 │   │   ├── characters.js
-│   │   └── connectors.js
-│   └── vendor/
-│       └── marked.min.js        # Vendored markdown renderer
+│   │   ├── connectors.js
+│   │   ├── config.js
+│   │   └── statistics.js
+│   └── vendor/                  # Optional legacy vendored scripts
+├── vendor/
+│   ├── marked.min.js            # Vendored markdown renderer
+│   └── simple-charts.js         # Vendored chart helper for admin statistics
 └── assets/
     ├── logo.svg
     └── default-avatar.png
@@ -134,7 +140,7 @@ SillyTavern compatibility: a dedicated unit test **must** verify that both V1 an
 
 ```
 data/
-├── auberge.db                   # SQLite database (characters, conversations, messages)
+├── auberge.db                   # SQLite database (characters, conversations, messages, llm_call_stats)
 ├── connectors/                  # {uuid}.json — one file per connector instance
 ├── avatars/                     # {character-uuid}.png
 ├── comfyui_workflows/           # User ComfyUI workflow templates (JSON)
@@ -173,7 +179,7 @@ data/
 - Exposes `init_db()` (creates tables + runs migrations) and `get_session()` (FastAPI dependency).
 
 ### `db_models.py`
-- SQLModel table definitions: `CharacterRow`, `ConversationRow`, `MessageRow`, `SchemaMigration`.
+- SQLModel table definitions: `CharacterRow`, `ConversationRow`, `MessageRow`, `LLMCallStatRow`, `SchemaMigration`.
 
 ### `scheduler.py`
 - Background asyncio task for periodic media cleanup (image files older than a configurable threshold).

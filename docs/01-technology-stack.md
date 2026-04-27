@@ -35,7 +35,7 @@ aubergeRP targets minimal dependencies, zero-build-step frontend, and a **connec
 
 | Component | Choice | Rationale |
 |---|---|---|
-| Characters, Conversations, Messages | SQLite (`data/auberge.db`) via **SQLModel** | Structured queries, migrations, no separate DB server |
+| Characters, Conversations, Messages, LLM call stats | SQLite (`data/auberge.db`) via **SQLModel** | Structured queries, migrations, no separate DB server |
 | Configuration | YAML file (`config.yaml`) | Human-readable, supports comments |
 | Connector instances | JSON files | One file per connector |
 | Generated images | Files on disk | Organized per session (see [02 § 5](02-project-structure.md)) |

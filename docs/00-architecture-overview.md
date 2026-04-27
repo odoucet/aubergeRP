@@ -99,7 +99,8 @@ The Chat UI calls **one** generation-triggering endpoint: `POST /api/chat/{id}/m
    a. Strips the marker from the forwarded stream.
    b. Calls the **active image connector** as an in-process Python call.
    c. Sends image lifecycle events via the same SSE stream (`image_start`, `image_complete`).
-5. The completed conversation (including image URLs) is persisted atomically to a JSON file on disk.
+5. The completed conversation (including image URLs) is persisted in SQLite.
+6. The text-LLM call telemetry is persisted in SQLite (`llm_call_stats`) for admin analytics.
 
 ## 6. Key Architectural Decisions
 

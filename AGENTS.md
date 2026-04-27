@@ -27,13 +27,15 @@ The `data/` directory on disk no longer stores `characters/*.json` or
 `data/auberge.db`** (SQLite, managed by SQLModel).
 
 - DB models: `aubergeRP/db_models.py` (`CharacterRow`, `ConversationRow`,
-  `MessageRow`, `SchemaMigration`)
+  `MessageRow`, `LLMCallStatRow`, `SchemaMigration`)
 - Engine / session: `aubergeRP/database.py` (`get_engine()`, `get_session()`)
 - Migrations: `aubergeRP/migrations/` — numbered Python files; run
   automatically at startup via `init_db()`. Use this pattern for schema
   changes instead of touching `db_models.py` alone.
 - The `m001_initial.py` migration imports legacy JSON flat-files (if any)
   into SQLite on first boot — this is a one-time upgrade path.
+- The `m002_add_llm_call_stats.py` migration adds `llm_call_stats` for admin
+  usage analytics (tokens in/out, latency, connector metadata, success/failure).
 
 **Connector config files** (`data/connectors/*.json`) and **avatars/images**
 still live on disk as plain files.
@@ -102,13 +104,16 @@ mypy aubergeRP/
 | Chat flow + image markers | `aubergeRP/services/chat_service.py` |
 | OOC detection | `aubergeRP/services/chat_service.py` (top of file) |
 | Conversation summarization | `aubergeRP/services/summarization_service.py` |
+| Usage statistics aggregation | `aubergeRP/services/statistics_service.py` |
 | Character CRUD | `aubergeRP/services/character_service.py` |
 | Conversation CRUD | `aubergeRP/services/conversation_service.py` |
 | Multi-browser SSE bus | `aubergeRP/event_bus.py` |
 | Background scheduler | `aubergeRP/scheduler.py` |
 | Plugin system | `aubergeRP/plugins/` |
 | API routes | `aubergeRP/routers/` (one file per resource) |
+| Statistics API route | `aubergeRP/routers/statistics.py` |
 | REST+SSE API spec | `docs/03-backend-api.md` |
+| Admin statistics UI spec | `docs/08-admin-interface.md` |
 | Remaining work | `sprints.txt` |
 | Unimplemented features | `docs/POST-MVP.md` |
 
