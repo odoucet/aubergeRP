@@ -95,6 +95,7 @@ class OpenAITextConnector(TextConnector):
         logger.debug("LLM payload: %s", json.dumps(payload, ensure_ascii=False))
 
         total_chars = 0
+        total_ignored_chars = 0
         async with httpx.AsyncClient(timeout=self.config.timeout) as client, client.stream(
             "POST",
             f"{self.config.base_url}/chat/completions",
@@ -103,20 +104,26 @@ class OpenAITextConnector(TextConnector):
         ) as response:
             response.raise_for_status()
             async for line in response.aiter_lines():
+                if not line.strip(): # Ignorer les lignes vides (Keep-alive)
+                    continue
                 if not line.startswith("data: "):
                     continue
+
                 payload_str = line[6:]
                 if payload_str == "[DONE]":
                     break
+                
                 try:
                     chunk = json.loads(payload_str)
                     content = chunk["choices"][0]["delta"].get("content")
                     if content:
                         total_chars += len(content)
                         yield content
+                    else:
+                        total_ignored_chars += len(payload_str)
                 except (json.JSONDecodeError, KeyError, IndexError):
                     continue
-        logger.info("LLM response: model=%s resp=%d chars", model_name, total_chars)
+        logger.info("LLM response: model=%s resp=%d chars ignored=%d chars", model_name, total_chars, total_ignored_chars)
 
     async def stream_chat_completion_with_tools(
         self,
