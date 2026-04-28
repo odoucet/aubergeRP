@@ -14,7 +14,8 @@ Items not yet implemented. PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md
 
 - [ ] **Manual "Generate Image" button** — UI fallback to trigger image generation without relying on the LLM emitting a `[IMG: …]` marker.
 - [ ] **Hallucination mitigation** — detect clearly off-topic or repetitive responses; retry with a corrective system message. Config: `chat.hallucination_retry`.
-- [ ] **Configurable NSFW filter** — pre/post-processing layer. Config: `chat.nsfw_filter` (`off` | `warn` | `block`).
+- [ ] **Configurable NSFW filter** — pre/post-processing layer. Config: `chat.nsfw_filter` (`off` | `warn` | `block`). Actually the implementation is very incomplete, with just a declaration on connectors.
+- [ ] Improve media listing on admin : smaller image previews, pagination, search ...
 
 ---
 
@@ -26,7 +27,6 @@ Items not yet implemented. PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md
 - [ ] **Quota management** — per-conversation token or cost limit.
 - [ ] **Video generation connector** (`[VID: …]` marker, `VideoConnector` interface).
 - [ ] **Audio/TTS connector** — play synthesized speech after each assistant message.
-- [ ] **Cloud deployment / sync** — hosted SQLite (Turso/LiteFS), Postgres backend, or backup to object storage.
 - [ ] Handle storing version (used in GUI and API).
 ---
 

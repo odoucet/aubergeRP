@@ -1,6 +1,6 @@
 # aubergeRP
 
-A lightweight, self-hostable roleplay engine. Connect any LLM, import SillyTavern characters, and chat — with inline AI image generation.
+A lightweight, self-hostable roleplay engine. Connect any LLM (local or remote), import SillyTavern characters, and chat with inline AI image generation.
 
 **Get running in under 10 minutes** → see [Installation Guide](docs/installation-guide.md).
 
@@ -9,8 +9,8 @@ A lightweight, self-hostable roleplay engine. Connect any LLM, import SillyTaver
 - **Roleplay chat** with any OpenAI-compatible LLM (Ollama, OpenRouter, vLLM, …).
 - **SillyTavern-compatible** character cards (import/export JSON and PNG).
 - **LLM-triggered image generation** — the model writes `[IMG: …]` markers; the backend calls the image connector automatically.
-- **ComfyUI support** for local Stable Diffusion workflows.
-- **Admin panel** — manage connectors, characters, and usage stats. Password-protected; password is generated on first startup and printed to the console.
+- **ComfyUI support** for local Stable Diffusion workflows (EARLY DRAFT, NOT TESTED YET).
+- **Admin panel** — manage connectors, characters, and usage stats.
 - **No build step** — vanilla HTML/JS frontend, Python/FastAPI backend, SQLite storage.
 
 ## Quick Start
