@@ -28,11 +28,17 @@ def make_connector(**overrides) -> OpenAIImageConnector:
 @respx.mock
 async def test_connection_success():
     respx.get(f"{BASE_OPENROUTER}/models").respond(
-        200, json={"data": [{"id": "gemini-flash"}, {"id": "dall-e-3"}]}
+        200,
+        json={
+            "data": [
+                {"id": "google/gemini-2.0-flash-exp:free"},
+                {"id": "dall-e-3"},
+            ]
+        },
     )
     result = await make_connector().test_connection()
     assert result["connected"] is True
-    assert "gemini-flash" in result["details"]["models_available"]
+    assert "google/gemini-2.0-flash-exp:free" in result["details"]["models_available"]
     assert "model_warning" not in result["details"]
 
 
