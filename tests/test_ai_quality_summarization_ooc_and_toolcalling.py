@@ -42,16 +42,16 @@ from aubergeRP.services.chat_service import (
     detect_nsfw,
     detect_ooc,
 )
-from aubergeRP.services.prompt_service import get_prompt
-
-_OOC_GUARDRAIL = get_prompt("ooc_guardrail")
-_NSFW_BLOCK_GUARDRAIL = get_prompt("nsfw_block_guardrail")
-_NSFW_ALLOW_GUARDRAIL = get_prompt("nsfw_allow_guardrail")
 from aubergeRP.services.conversation_service import ConversationService
+from aubergeRP.services.prompt_service import get_prompt
 from aubergeRP.services.summarization_service import (
     count_prompt_tokens,
     maybe_summarize,
 )
+
+_OOC_GUARDRAIL = get_prompt("ooc_guardrail")
+_NSFW_BLOCK_GUARDRAIL = get_prompt("nsfw_block_guardrail")
+_NSFW_ALLOW_GUARDRAIL = get_prompt("nsfw_allow_guardrail")
 
 # ---------------------------------------------------------------------------
 # Shared helpers
