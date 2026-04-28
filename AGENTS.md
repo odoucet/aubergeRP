@@ -37,9 +37,6 @@ The `data/` directory on disk no longer stores `characters/*.json` or
 - The `m002_add_llm_call_stats.py` migration adds `llm_call_stats` for admin
   usage analytics (tokens in/out, latency, connector metadata, success/failure).
 
-**Connector config files** (`data/connectors/*.json`) and **avatars/images**
-still live on disk as plain files.
-
 ---
 
 ## Session tokens — fully implemented
@@ -58,8 +55,9 @@ Per-user isolation is fully implemented and requires no further work:
 | Backend | `EventBus` in `event_bus.py` scopes SSE queues to `(session_token, conversation_id)` |
 | Backend | `GET /api/chat/{id}/events` lets additional browser tabs subscribe without sending a new message |
 
-The constant `SESSION_TOKEN = "00000000-..."` in `constants.py` is a legacy
-artefact — it is imported but unused in `main.py`. Ignore it.
+The constant `SESSION_TOKEN = "00000000-..."` in `constants.py` no longer
+exists — the file has been deleted. Session tokens come from the
+`X-Session-Token` request header in the real request path.
 
 ---
 
@@ -112,10 +110,7 @@ mypy aubergeRP/
 | Plugin system | `aubergeRP/plugins/` |
 | API routes | `aubergeRP/routers/` (one file per resource) |
 | Statistics API route | `aubergeRP/routers/statistics.py` |
-| REST+SSE API spec | `docs/03-backend-api.md` |
-| Admin statistics UI spec | `docs/08-admin-interface.md` |
-| Remaining work | `sprints.txt` |
-| Unimplemented features | `docs/POST-MVP.md` |
+| Unimplemented features | `TODO.md` |
 
 ---
 
