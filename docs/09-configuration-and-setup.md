@@ -167,7 +167,7 @@ aiofiles>=23.0,<25.0
 websockets>=12.0,<14.0
 sentry-sdk[fastapi]>=2.0,<3.0
 pytest>=9.0.3,<10.0
-pytest-asyncio>=0.23,<1.0
+pytest-asyncio>=1.0,<2.0
 ruff>=0.4,<1.0
 mypy>=1.10,<2.0
 respx

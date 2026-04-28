@@ -566,3 +566,107 @@ async def test_stream_image_persists_prompt_in_media_library(tmp_path):
     assert len(medias) == 1
     assert medias[0].prompt == "a cinematic tavern scene"
     assert medias[0].media_url == done["images"][0]
+
+
+# ---------------------------------------------------------------------------
+# _generate_image_prompt
+# ---------------------------------------------------------------------------
+
+class _MultiCallFakeText:
+    """Text connector that yields different token lists on successive calls."""
+
+    connector_type = "text"
+
+    def __init__(self, *call_responses: list[str]) -> None:
+        self._responses = list(call_responses)
+        self._call_count = 0
+
+    async def stream_chat_completion(self, messages, **kw) -> AsyncIterator[str]:
+        idx = min(self._call_count, len(self._responses) - 1)
+        self._call_count += 1
+        for t in self._responses[idx]:
+            yield t
+
+
+class _RecordingImage:
+    """Image connector that records the last prompt it received."""
+
+    connector_type = "image"
+    last_prompt: str = ""
+
+    async def generate_image(self, prompt, **kw) -> bytes:
+        self.last_prompt = prompt
+        return b"PNG"
+
+    async def generate_image_with_progress(self, prompt, **kw):
+        self.last_prompt = prompt
+        yield {"type": "complete", "bytes": b"PNG"}
+
+    async def test_connection(self) -> dict:
+        return {}
+
+
+async def test_generate_image_prompt_returns_llm_output(tmp_path):
+    text_conn = _FakeText(["enhanced image prompt"])
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, text_conn)
+    char = char_svc.create_character(CharacterData(name="Elara", description="An elven ranger."))
+    result = await svc._generate_image_prompt(
+        text_conn,
+        char,
+        [{"role": "user", "content": "show me"}],
+        "elf ranger forest",
+    )
+    assert result == "enhanced image prompt"
+
+
+async def test_generate_image_prompt_fallback_on_error(tmp_path):
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, _FailText())
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    result = await svc._generate_image_prompt(
+        _FailText(),
+        char,
+        [],
+        "original keywords",
+    )
+    assert result == "original keywords"
+
+
+async def test_stream_image_uses_llm_enhanced_prompt(tmp_path):
+    img_conn = _RecordingImage()
+    text_conn = _MultiCallFakeText(
+        ["[IMG:elf ranger]"],          # first call: main narrative
+        ["detailed enhanced prompt"],  # second call: image prompt generation
+    )
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, text_conn, img_conn)
+    char = char_svc.create_character(CharacterData(name="Elara", description="An elven ranger."))
+    conv = conv_svc.create_conversation(char.id)
+
+    events = await collect(svc.stream_chat(conv.id, "Show me the scene"))
+    assert any(e["type"] == "image_complete" for e in events)
+    assert img_conn.last_prompt == "detailed enhanced prompt"
+
+
+async def test_stream_image_media_prompt_is_original_not_enhanced(tmp_path):
+    char_svc = CharacterService(data_dir=tmp_path)
+    conv_svc = ConversationService(data_dir=tmp_path, character_service=char_svc)
+    media_svc = MediaService(data_dir=tmp_path)
+
+    text_conn = _MultiCallFakeText(
+        ["[IMG:original keywords]"],
+        ["llm enhanced prompt"],
+    )
+    svc = ChatService(
+        conversation_service=conv_svc,
+        character_service=char_svc,
+        connector_manager=_manager(text_conn, _FakeImage()),
+        images_dir=tmp_path / "images",
+        media_service=media_svc,
+    )
+
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+
+    await collect(svc.stream_chat(conv.id, "Hi"))
+    medias = media_svc.list_media()
+    assert len(medias) == 1
+    assert medias[0].prompt == "original keywords"

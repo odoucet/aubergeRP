@@ -20,6 +20,9 @@ from ..services.summarization_service import count_prompt_tokens, maybe_summariz
 _PREFIX = "[IMG:"
 _MAX_IMAGE_MARKERS = 3
 
+_IMAGE_PROMPT_TEMPLATE = Path(__file__).parent.parent / "prompts" / "image_prompt.txt"
+_IMAGE_PROMPT_MAX_CONTEXT = 6
+
 # ---------------------------------------------------------------------------
 # OOC (out-of-character) protection
 # ---------------------------------------------------------------------------
@@ -553,7 +556,7 @@ class ChatService:
                                 "prompt": prompt,
                             }
                             image_prompts_by_generation[gen_id] = prompt
-                            async for img_event in self._handle_image(char, gen_id, prompt):
+                            async for img_event in self._handle_image(char, gen_id, prompt, text_connector, messages):
                                 if img_event["type"] == "image_complete":
                                     image_urls.append(img_event["image_url"])
                                     generated_media.append(
@@ -633,11 +636,58 @@ class ChatService:
                 prompt = event.get("arguments", {}).get("prompt", "")
                 gen_id = str(uuid.uuid4())
                 yield {"type": "image_start", "generation_id": gen_id, "prompt": prompt}
-                async for img_event in self._handle_image(char, gen_id, prompt):
+                async for img_event in self._handle_image(char, gen_id, prompt, text_connector, messages):
                     yield img_event
 
+    async def _generate_image_prompt(
+        self,
+        text_connector: Any,
+        char: CharacterCard,
+        messages: list[dict[str, Any]],
+        raw_prompt: str,
+    ) -> str:
+        """Use the LLM to build a detailed image generation prompt from scene context.
+
+        Falls back to *raw_prompt* on any error so image generation is never blocked.
+        """
+        try:
+            template = _IMAGE_PROMPT_TEMPLATE.read_text(encoding="utf-8")
+            convo_msgs = [m for m in messages if m.get("role") != "system"]
+            recent = convo_msgs[-_IMAGE_PROMPT_MAX_CONTEXT:]
+            recent_exchanges = "\n".join(
+                f"{m['role'].capitalize()}: {str(m.get('content', ''))[:400]}"
+                for m in recent
+            ) or "(no prior exchanges)"
+            char_desc = (char.data.description or "")[:600]
+            char_scenario = (
+                f"Scenario: {char.data.scenario[:400]}" if char.data.scenario else ""
+            )
+            user_content = template.format(
+                char_name=char.data.name,
+                char_description=char_desc,
+                char_scenario=char_scenario,
+                recent_exchanges=recent_exchanges,
+                raw_keywords=raw_prompt or "(none)",
+            )
+            tokens: list[str] = []
+            async for chunk in text_connector.stream_chat_completion(
+                [{"role": "user", "content": user_content}],
+                max_tokens=300,
+                temperature=0.7,
+            ):
+                tokens.append(chunk)
+            result = "".join(tokens).strip()
+            return result if result else raw_prompt
+        except Exception:
+            return raw_prompt
+
     async def _handle_image(
-        self, char: CharacterCard, gen_id: str, prompt: str
+        self,
+        char: CharacterCard,
+        gen_id: str,
+        prompt: str,
+        text_connector: Any | None = None,
+        messages: list[dict[str, Any]] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         img_connector = self._connector_manager.get_active_image_connector()
         if img_connector is None:
@@ -648,6 +698,10 @@ class ChatService:
             }
             return
         try:
+            if text_connector is not None and messages is not None:
+                prompt = await self._generate_image_prompt(
+                    text_connector, char, messages, prompt
+                )
             auberge = char.data.extensions.get("aubergeRP", {})
             prefix = auberge.get("image_prompt_prefix", "")
             negative = auberge.get("negative_prompt", "")
