@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import yaml  # type: ignore[import-untyped]
@@ -70,6 +71,7 @@ def update_config(
         config.app.host = update.app.host
         config.app.port = update.app.port
         config.app.log_level = update.app.log_level
+        logging.getLogger().setLevel(getattr(logging, update.app.log_level, logging.INFO))
 
     if update.user is not None:
         config.user.name = update.user.name
@@ -97,6 +99,7 @@ def patch_config(
             config.app.port = patch.app.port
         if patch.app.log_level is not None:
             config.app.log_level = patch.app.log_level
+            logging.getLogger().setLevel(getattr(logging, patch.app.log_level, logging.INFO))
 
     if patch.user is not None and patch.user.name is not None:
         config.user.name = patch.user.name
