@@ -24,7 +24,6 @@ from .routers import media as media_router
 from .routers import prompts as prompts_router
 from .routers import statistics as statistics_router
 from .services.example_seed_service import seed_example_characters
-from .utils.auth import get_or_create_admin_password_hash
 
 _BUILTIN_WORKFLOWS_DIR = Path(__file__).parent / "comfyui_workflows"
 logger = logging.getLogger(__name__)
@@ -144,18 +143,28 @@ def _autoprovision_connectors(config: Config, data_dir: str) -> None:
 
 
 def _init_admin_password(config: Config) -> None:
-    """Initialize admin password: generate if missing and log it."""
-    current_hash = config.app.admin_password_hash or ""
-    new_hash, plain_password = get_or_create_admin_password_hash(current_hash)
-    config.app.admin_password_hash = new_hash
+    """Initialize admin password.
 
-    if plain_password:
-        logger.info("=" * 70)
-        logger.info("ADMIN PASSWORD GENERATED (first startup)")
-        logger.info("Password: %s", plain_password)
-        logger.info("Store this securely. You can set AUBERGE_ADMIN_PASSWORD_HASH")
-        logger.info("in the environment to reuse the same password across restarts.")
-        logger.info("=" * 70)
+    If a hash is already set (via env var or config), use it as-is.
+    Otherwise generate a new random password on every startup and display it
+    in stdout — it is never persisted, so a new one appears at each restart.
+    To get a stable password across restarts, set AUBERGE_ADMIN_PASSWORD_HASH.
+    """
+    import os
+    from .utils.auth import hash_password, generate_random_password
+
+    env_hash = os.environ.get("AUBERGE_ADMIN_PASSWORD_HASH", "").strip()
+    if env_hash:
+        config.app.admin_password_hash = env_hash
+        return
+
+    plain_password = generate_random_password()
+    config.app.admin_password_hash = hash_password(plain_password)
+    logger.info("=" * 70)
+    logger.info("ADMIN PASSWORD (generated at startup, changes at each restart)")
+    logger.info("Password: %s", plain_password)
+    logger.info("Set AUBERGE_ADMIN_PASSWORD_HASH to make it permanent.")
+    logger.info("=" * 70)
 
 
 def create_app() -> FastAPI:

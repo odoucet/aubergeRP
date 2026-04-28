@@ -91,16 +91,23 @@ export async function adminLogout() {
 export async function adminFetch(url, options = {}) {
   const token = getAdminToken();
   if (!token) {
+    clearAdminToken();
+    renderLoginModal();
     throw new Error('Not authenticated');
   }
 
   const headers = new Headers(options.headers || {});
   headers.set('X-Admin-Token', token);
 
-  return fetch(url, {
-    ...options,
-    headers,
-  });
+  const res = await fetch(url, { ...options, headers });
+
+  if (res.status === 401) {
+    clearAdminToken();
+    renderLoginModal();
+    throw new Error('Session expirée, veuillez vous reconnecter.');
+  }
+
+  return res;
 }
 
 /**
