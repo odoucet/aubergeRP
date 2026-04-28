@@ -27,7 +27,7 @@ BLUE   := \033[1;34m
 RED    := \033[1;31m
 RESET  := \033[0m
 
-.PHONY: run test lint lint-fix doc help \
+.PHONY: run test test-e2e lint lint-fix doc help \
         docker stop clean logs \
 	_compose-up _download-gguf _ollama-create \
 	$(AVAILABLE_PROFILES)
@@ -37,7 +37,8 @@ help:
 	@printf "$(BLUE)aubergeRP$(RESET) — available commands\n\n"
 	@printf "  $(YELLOW)Development$(RESET)\n"
 	@printf "    make run              Start dev server (hot-reload, port 8123)\n"
-	@printf "    make test             Run test suite\n"
+	@printf "    make test             Run Python test suite\n"
+	@printf "    make test-e2e         Run browser e2e tests (requires node + playwright)\n"
 	@printf "    make lint             Run ruff + mypy\n"
 	@printf "    make lint-fix         Fix linting issues automatically (ruff --fix)\n"
 	@printf "    make doc              Regenerate docs/03-backend-api.md from source\n"
@@ -67,6 +68,9 @@ run:
 
 test:
 	python -m pytest tests/
+
+test-e2e:
+	cd tests/e2e && node --test chat-streaming.test.mjs
 
 lint:
 	python -m ruff check aubergeRP/ tests/
