@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 def _init_data_dirs(data_dir: str) -> None:
     base = Path(data_dir)
     for subdir in [
-        "characters", "conversations", "connectors", "avatars",
+        "connectors", "avatars",
         "images",
         "comfyui_workflows",
     ]:
@@ -73,12 +73,11 @@ _REDOC_HTML = """<!DOCTYPE html>
   <title>aubergeRP — API Reference</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
   <style>body { margin: 0; padding: 0; }</style>
 </head>
 <body>
   <redoc spec-url='/openapi.json'></redoc>
-  <script src="https://cdn.jsdelivr.net/npm/redoc/bundles/redoc.standalone.js"></script>
+  <script src="/vendor/redoc.standalone.js"></script>
 </body>
 </html>
 """
