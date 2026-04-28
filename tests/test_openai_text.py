@@ -31,6 +31,34 @@ async def test_connection_success():
     assert result["connected"] is True
     assert "llama3" in result["details"]["models_available"]
     assert "mistral" in result["details"]["models_available"]
+    assert "model_warning" not in result["details"]
+
+
+@respx.mock
+async def test_connection_model_not_found():
+    """Test when configured model is not in the available models list."""
+    respx.get(f"{BASE_URL}/models").respond(
+        200,
+        json={"data": [{"id": "llama3"}, {"id": "mistral"}]},
+    )
+    result = await make_connector(model="qwen-27b").test_connection()
+    assert result["connected"] is True
+    assert "llama3" in result["details"]["models_available"]
+    assert "model_warning" in result["details"]
+    assert "qwen-27b" in result["details"]["model_warning"]
+
+
+@respx.mock
+async def test_connection_no_models_available_is_ok():
+    """Test when no models are available - be kind and don't warn."""
+    respx.get(f"{BASE_URL}/models").respond(
+        200,
+        json={"data": []},
+    )
+    result = await make_connector(model="unknown-model").test_connection()
+    assert result["connected"] is True
+    assert result["details"]["models_available"] == []
+    assert "model_warning" not in result["details"]
 
 
 @respx.mock

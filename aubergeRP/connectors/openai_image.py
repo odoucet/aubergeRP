@@ -34,7 +34,14 @@ class OpenAIImageConnector(ImageConnector):
                 response.raise_for_status()
                 data = response.json()
                 models = [m["id"] for m in data.get("data", [])]
-                return {"connected": True, "details": {"models_available": models}}
+                
+                details: dict[str, Any] = {"models_available": models}
+                
+                # If models are available, check if the configured model is in the list
+                if models and self.config.model not in models:
+                    details["model_warning"] = f"Model '{self.config.model}' not found in available models"
+                
+                return {"connected": True, "details": details}
         except Exception as exc:
             return {"connected": False, "details": {"error": str(exc)}}
 

@@ -33,6 +33,32 @@ async def test_connection_success():
     result = await make_connector().test_connection()
     assert result["connected"] is True
     assert "gemini-flash" in result["details"]["models_available"]
+    assert "model_warning" not in result["details"]
+
+
+@respx.mock
+async def test_connection_model_not_found():
+    """Test when configured model is not in the available models list."""
+    respx.get(f"{BASE_OPENROUTER}/models").respond(
+        200, json={"data": [{"id": "gemini-flash"}, {"id": "dall-e-3"}]}
+    )
+    result = await make_connector(model="gpt-4").test_connection()
+    assert result["connected"] is True
+    assert "gemini-flash" in result["details"]["models_available"]
+    assert "model_warning" in result["details"]
+    assert "gpt-4" in result["details"]["model_warning"]
+
+
+@respx.mock
+async def test_connection_no_models_available_is_ok():
+    """Test when no models are available - be kind and don't warn."""
+    respx.get(f"{BASE_OPENROUTER}/models").respond(
+        200, json={"data": []}
+    )
+    result = await make_connector(model="unknown-model").test_connection()
+    assert result["connected"] is True
+    assert result["details"]["models_available"] == []
+    assert "model_warning" not in result["details"]
 
 
 @respx.mock

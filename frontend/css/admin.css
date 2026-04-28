@@ -198,6 +198,12 @@
   border-color: rgba(58,201,122,0.35);
 }
 
+.conn-test-feedback.warn {
+  color: #f39c12;
+  background: rgba(243,156,18,0.12);
+  border-color: rgba(243,156,18,0.35);
+}
+
 .conn-test-feedback.fail {
   color: var(--color-accent);
   background: rgba(233,69,96,0.12);

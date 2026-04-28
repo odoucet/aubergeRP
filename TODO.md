@@ -16,11 +16,6 @@ Print it in the logs on startup (generated randomly if not set in env) and prote
 
 - [ ] Ability to change text display speed (+ preview of what it looks like).
 
-- [ ] The "test" function of a connector in admin does not check if the model is listed.
-Example with URL: http://ollama:11434/v1  ·  Model: qwen3.6-27b:q4km
-Last test: Connected. 2 model(s) available (flux-klein:9b-q4km, glm47-flash:q4_0).
-=> model not listed, which gives a 404 if we try to use it later in the front.
-
 - [ ] hability to add parameters on model. Example with qwen that can expect an extra_body:
 "chat_template_kwargs": {"enable_thinking": False},
 
@@ -29,18 +24,9 @@ Last test: Connected. 2 model(s) available (flux-klein:9b-q4km, glm47-flash:q4_0
 Front
 -----
 
-- [x] if a chat failed, and we click on "retry", the original message is added again to the chat history, invisible first, but if we refresh the page, we can see that the message is duplicated.
-
 
 Bug fixes
 ---------
-- [x] remove any french in comments / source code and replace with english. DO NOT TOUCH aubergeRP/examples/
-  (No French developer comments found; French strings in `_NSFW_PATTERNS` are intentional multilingual detection patterns, added English comment to clarify.)
-
-- [x] OpenAITextConfig `supports_tool_calling` defaulted to `False` but OpenAI natively supports tool-calling; changed default to `True`. (Was causing a failing test.)
-
-- [x] if a chat failed, and we click on "retry", the original message is added again to the chat history, invisible first, but if we refresh the page, we can see that the message is duplicated.
-  (Fixed in `stream_chat()`: before appending the user message, check if the last message in the conversation is already this user message. If so, skip re-appending — this is a retry of a failed request.)
 
 
 Future

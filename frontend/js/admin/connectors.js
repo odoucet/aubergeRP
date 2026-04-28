@@ -590,18 +590,24 @@ function formatTestFeedback(result) {
 
   if (result?.connected) {
     const models = Array.isArray(details.models_available) ? details.models_available : [];
+    let message = '';
+    let level = 'ok';
+    
     if (models.length > 0) {
       const preview = models.slice(0, 3).map(m => escHtml(String(m))).join(', ');
       const extra = models.length > 3 ? ` (+${models.length - 3} more)` : '';
-      return {
-        level: 'ok',
-        message: `Last test: Connected. ${models.length} model(s) available (${preview}${extra}).`,
-      };
+      message = `Last test: Connected. ${models.length} model(s) available (${preview}${extra}).`;
+    } else {
+      message = 'Last test: Connected.';
     }
-    return {
-      level: 'ok',
-      message: 'Last test: Connected.',
-    };
+    
+    // Add warning if model is not in the available models list
+    if (details.model_warning) {
+      message += ` ⚠️ ${escHtml(String(details.model_warning))}`;
+      level = 'warn';
+    }
+    
+    return { level, message };
   }
 
   const errorText = details.error || result?.detail || 'Connection failed.';
