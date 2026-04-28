@@ -395,6 +395,7 @@
 
 <!-- App modules -->
 <script type="module">
+  import { initAdminAuth } from '/js/admin/auth.js';
   import { initConnectors } from '/js/admin/connectors.js';
   import { initCharacters } from '/js/admin/characters.js';
   import { initMedias }    from '/js/admin/medias.js';
@@ -403,6 +404,10 @@
   import { applyHealthBadges } from '/js/admin/connectors.js';
   import { applyGuiCustomization } from '/js/gui-customization.js';
 
+  const authenticated = await initAdminAuth();
+  if (!authenticated) {
+    return;
+  }
   applyGuiCustomization();
 
   // ── Section routing (hash-based) ────────────────────────────────────────

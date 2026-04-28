@@ -11,6 +11,7 @@ from ..services.character_service import (
     CharacterNotFoundError,
     CharacterService,
 )
+from .admin import get_admin_token
 
 router = APIRouter(prefix="/characters", tags=["characters"])
 
@@ -30,6 +31,7 @@ def _not_found(character_id: str) -> HTTPException:
 async def import_character(
     file: UploadFile = File(...),
     service: CharacterService = Depends(get_character_service),
+    admin_token: str = Depends(get_admin_token),
 ) -> CharacterCard:
     content = await file.read()
     filename = file.filename or ""
@@ -52,6 +54,7 @@ def list_characters(service: CharacterService = Depends(get_character_service)) 
 def create_character(
     data: CharacterData,
     service: CharacterService = Depends(get_character_service),
+    admin_token: str = Depends(get_admin_token),
 ) -> CharacterCard:
     return service.create_character(data)
 
@@ -72,6 +75,7 @@ def update_character(
     character_id: str,
     data: CharacterData,
     service: CharacterService = Depends(get_character_service),
+    admin_token: str = Depends(get_admin_token),
 ) -> CharacterCard:
     try:
         return service.update_character(character_id, data)
@@ -83,6 +87,7 @@ def update_character(
 def delete_character(
     character_id: str,
     service: CharacterService = Depends(get_character_service),
+    admin_token: str = Depends(get_admin_token),
 ) -> None:
     try:
         service.delete_character(character_id)
@@ -110,6 +115,7 @@ async def upload_avatar(
     character_id: str,
     file: UploadFile = File(...),
     service: CharacterService = Depends(get_character_service),
+    admin_token: str = Depends(get_admin_token),
 ) -> dict[str, str]:
     try:
         service.get_character(character_id)
@@ -159,6 +165,7 @@ def export_png(
 def duplicate_character(
     character_id: str,
     service: CharacterService = Depends(get_character_service),
+    admin_token: str = Depends(get_admin_token),
 ) -> CharacterCard:
     try:
         return service.duplicate_character(character_id)

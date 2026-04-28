@@ -33,10 +33,12 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("AUBERGE_DATA_DIR", str(tmp_path))
     reset_config()
     from aubergeRP.main import create_app
+    from aubergeRP.routers.admin import get_admin_token
     from aubergeRP.routers.config import get_config_save_path
     app = create_app()
     config_file = tmp_path / "config.yaml"
     app.dependency_overrides[get_config_save_path] = lambda: config_file
+    app.dependency_overrides[get_admin_token] = lambda: "test-admin-token"
     with TestClient(app) as c:
         yield c
     reset_config()

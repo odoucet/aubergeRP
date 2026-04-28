@@ -70,6 +70,7 @@ Adding a new backend = implementing a new connector class. The rest of the app d
 * GUI customization (custom CSS, header/footer HTML).
 * Plugin system for third-party extensions.
 * Interactive API reference at `/api-docs`.
+* **Admin authentication** — password-protected admin panel; password is generated on first startup and logged to the console.
 
 ## Quick Start — Local GPU Stack
 

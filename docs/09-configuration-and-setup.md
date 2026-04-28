@@ -102,6 +102,7 @@ Environment variables override the corresponding `config.yaml` values at startup
 | `AUBERGE_LOG_LEVEL` | `app.log_level` |
 | `AUBERGE_USER_NAME` | `user.name` |
 | `AUBERGE_SENTRY_DSN` | `app.sentry_dsn` |
+| `AUBERGE_ADMIN_PASSWORD_HASH` | `app.admin_password_hash` |
 
 ## 2. Configuration Loading
 
@@ -205,14 +206,14 @@ When `main.py` runs:
 1. Load configuration from `config.yaml` (defaults applied where missing; environment-variable overrides applied).
 2. Initialize Sentry if `app.sentry_dsn` is configured.
 3. Initialize the data directory structure (§ 3).
-4. Initialize SQLite database (`data/auberge.db`) and run pending migrations.
-5. Create the FastAPI app (title, version, description).
-6. Apply CORS auto-detection middleware.
-7. Load connectors from `data/connectors/` and initialize the ConnectorManager; active connectors are read from `config.yaml:active_connectors`.
-8. Mount all routers under `/api/`.
-9. Mount `frontend/` as static files at `/`.
-10. Mount Redoc API reference at `/api-docs`.
-11. Start the background scheduler (if `scheduler.enabled`).
-12. Log startup info (listening address, active connectors, data directory).
-
-No tokens are generated or logged. No auth middleware is installed.
+4. Initialize the admin password (generate if missing and log to console).
+5. Initialize SQLite database (`data/auberge.db`) and run pending migrations.
+6. Create the FastAPI app (title, version, description).
+7. Apply CORS auto-detection middleware.
+8. Load connectors from `data/connectors/` and initialize the ConnectorManager; active connectors are read from `config.yaml:active_connectors`.
+9. Mount all routers under `/api/`.
+10. Mount `frontend/` as static files at `/`.
+11. Mount Redoc API reference at `/api-docs`.
+12. Start the background scheduler (if `scheduler.enabled`).
+13. Log startup info (listening address, active connectors, data directory).
+**Admin authentication:** The admin password is initialized on step 4. If the password hash does not exist in the config or environment, a new random password is generated and logged to the console. All admin API routes require the `X-Admin-Token` header for write operations (POST, PUT, DELETE, PATCH).

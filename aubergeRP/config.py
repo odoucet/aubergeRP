@@ -14,6 +14,7 @@ class AppConfig(BaseModel):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     data_dir: str = "data"
     sentry_dsn: str = ""
+    admin_password_hash: str = ""
 
 
 class ActiveConnectorsConfig(BaseModel):
@@ -98,12 +99,13 @@ def _apply_env_overrides(config: Config) -> Config:
     """Override config values with environment variables if set.
 
     Supported variables:
-        AUBERGE_DATA_DIR      → config.app.data_dir
-        AUBERGE_HOST          → config.app.host
-        AUBERGE_PORT          → config.app.port  (integer)
-        AUBERGE_LOG_LEVEL     → config.app.log_level
-        AUBERGE_USER_NAME     → config.user.name
-        AUBERGE_SENTRY_DSN    → config.app.sentry_dsn
+        AUBERGE_DATA_DIR           → config.app.data_dir
+        AUBERGE_HOST               → config.app.host
+        AUBERGE_PORT               → config.app.port  (integer)
+        AUBERGE_LOG_LEVEL          → config.app.log_level
+        AUBERGE_USER_NAME          → config.user.name
+        AUBERGE_SENTRY_DSN         → config.app.sentry_dsn
+        AUBERGE_ADMIN_PASSWORD_HASH → config.app.admin_password_hash
     """
     if val := os.environ.get("AUBERGE_DATA_DIR"):
         config.app.data_dir = val
@@ -117,6 +119,8 @@ def _apply_env_overrides(config: Config) -> Config:
         config.user.name = val
     if val := os.environ.get("AUBERGE_SENTRY_DSN"):
         config.app.sentry_dsn = val
+    if val := os.environ.get("AUBERGE_ADMIN_PASSWORD_HASH"):
+        config.app.admin_password_hash = val
     return config
 
 def load_config(path: str | Path = "config.yaml") -> Config:

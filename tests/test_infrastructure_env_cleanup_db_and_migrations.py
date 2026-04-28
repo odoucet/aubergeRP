@@ -48,11 +48,11 @@ def test_dockerfile_non_root_user():
 
 
 def test_docker_compose_exists():
-    assert (_REPO_ROOT / "docker-compose.yml").exists()
+    assert (_REPO_ROOT / "docker/docker-compose.yml").exists()
 
 
 def test_docker_compose_has_volume_for_data():
-    content = (_REPO_ROOT / "docker-compose.yml").read_text()
+    content = (_REPO_ROOT / "docker/docker-compose.yml").read_text()
     assert "data" in content and "volumes" in content
 
 

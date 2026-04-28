@@ -15,6 +15,7 @@ from ..models.connector import (
     ConnectorResponse,
     ConnectorUpdate,
 )
+from .admin import get_admin_token
 
 router = APIRouter(prefix="/connectors", tags=["connectors"])
 
@@ -184,6 +185,7 @@ def list_connectors(
 def create_connector(
     data: ConnectorCreate,
     manager: ConnectorManager = Depends(get_connector_manager),
+    admin_token: str = Depends(get_admin_token),
 ) -> ConnectorResponse:
     if data.backend not in ("openai_api", "comfyui"):
         raise HTTPException(status_code=400, detail=f"Unknown backend '{data.backend}'")
@@ -214,6 +216,7 @@ def update_connector(
     connector_id: str,
     data: ConnectorUpdate,
     manager: ConnectorManager = Depends(get_connector_manager),
+    admin_token: str = Depends(get_admin_token),
 ) -> ConnectorResponse:
     try:
         instance = manager.update_connector(connector_id, data)
@@ -226,6 +229,7 @@ def update_connector(
 def delete_connector(
     connector_id: str,
     manager: ConnectorManager = Depends(get_connector_manager),
+    admin_token: str = Depends(get_admin_token),
 ) -> None:
     try:
         manager.delete_connector(connector_id)
@@ -340,6 +344,7 @@ async def test_connector_chat(
 def activate_connector(
     connector_id: str,
     manager: ConnectorManager = Depends(get_connector_manager),
+    admin_token: str = Depends(get_admin_token),
 ) -> dict[str, Any]:
     try:
         manager.set_active(connector_id)

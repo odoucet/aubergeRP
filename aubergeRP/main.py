@@ -12,6 +12,8 @@ from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .config import Config, get_config
+from .utils.auth import get_or_create_admin_password_hash
+from .routers import admin as admin_router
 from .routers import characters as characters_router
 from .routers import chat as chat_router
 from .routers import config as config_router
@@ -141,6 +143,21 @@ def _autoprovision_connectors(config: Config, data_dir: str) -> None:
             logger.warning("Auto-provision: config.yaml is read-only, active connector not persisted")
 
 
+def _init_admin_password(config: Config) -> None:
+    """Initialize admin password: generate if missing and log it."""
+    current_hash = config.app.admin_password_hash or ""
+    new_hash, plain_password = get_or_create_admin_password_hash(current_hash)
+    config.app.admin_password_hash = new_hash
+
+    if plain_password:
+        logger.info("=" * 70)
+        logger.info("ADMIN PASSWORD GENERATED (first startup)")
+        logger.info("Password: %s", plain_password)
+        logger.info("Store this securely. You can set AUBERGE_ADMIN_PASSWORD_HASH")
+        logger.info("in the environment to reuse the same password across restarts.")
+        logger.info("=" * 70)
+
+
 def create_app() -> FastAPI:
     logging.basicConfig(level=logging.INFO)
     config = get_config()
@@ -152,6 +169,7 @@ def create_app() -> FastAPI:
     )
     _init_data_dirs(config.app.data_dir)
     _init_sentry(config.app.sentry_dsn)
+    _init_admin_password(config)
     _autoprovision_connectors(config, config.app.data_dir)
 
     # Initialise SQLite database and run migrations
@@ -210,6 +228,7 @@ def create_app() -> FastAPI:
     app.include_router(characters_router.router, prefix="/api")
     app.include_router(conversations_router.router, prefix="/api")
     app.include_router(chat_router.router, prefix="/api")
+    app.include_router(admin_router.router, prefix="/api")
     app.include_router(connectors_router.router, prefix="/api")
     app.include_router(config_router.router, prefix="/api")
     app.include_router(images_router.router, prefix="/api")

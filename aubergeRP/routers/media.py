@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from ..models.media import MediaItem
 from ..services.media_service import MediaNotFoundError, MediaService
+from .admin import get_admin_token
 
 router = APIRouter(prefix="/media", tags=["media"])
 
@@ -19,7 +20,10 @@ def list_media() -> list[MediaItem]:
 
 
 @router.delete("/{media_id}", status_code=204)
-def delete_media(media_id: str) -> None:
+def delete_media(
+    media_id: str,
+    admin_token: str = Depends(get_admin_token),
+) -> None:
     from ..config import get_config
 
     config = get_config()

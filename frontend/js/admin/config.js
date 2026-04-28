@@ -1,3 +1,4 @@
+import { adminFetch } from '/js/admin/auth.js';
 /**
  * admin/config.js — Configuration panel for the Admin UI.
  *
@@ -7,7 +8,9 @@
 // ── API helpers ──────────────────────────────────────────────────────────────
 
 async function apiFetch(path, options = {}) {
-  const res = await fetch(path, options);
+  const method = (options.method || 'GET').toUpperCase();
+  const isWrite = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method);
+  const res = isWrite ? await adminFetch(path, options) : await fetch(path, options);
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
     try {
@@ -16,6 +19,7 @@ async function apiFetch(path, options = {}) {
     } catch (_) {}
     throw new Error(detail);
   }
+  if (res.status === 204) return null;
   return res.json();
 }
 

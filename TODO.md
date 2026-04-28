@@ -11,8 +11,9 @@ Examples to write
 
 Admin
 ----
-- [ ] Add basic auth to admin with a single password.
-Print it in the logs on startup (generated randomly if not set in env) and protect all admin API routes and the admin GUI.
+
+- [x] Add basic auth to admin with a single password.
+Print it in the logs on startup (generated randomly if not set in env) and protect all admin API routes and the admin GUI. Modify readme.md and docs accordingly.
 
 - [ ] Ability to change text display speed (+ preview of what it looks like).
 

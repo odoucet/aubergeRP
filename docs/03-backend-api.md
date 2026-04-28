@@ -12,11 +12,29 @@
 
 ## 2. Authentication
 
-**No authentication.** aubergeRP is a single-user local deployment. All endpoints are open.
+### Admin Endpoints
 
-Multi-user session handling is specified in [POST-MVP.md](POST-MVP.md).
+All write operations on admin resources (connectors, config, characters, media, images cleanup) require authentication via the `X-Admin-Token` header:
+
+#### `POST /api/admin/login`
+**Request:** `{ "password": "string" }`
+**Response: 200 OK**
+```json
+{ "token": "secure-token-string" }
+```
+
+#### `POST /api/admin/logout`
+**Header:** `X-Admin-Token: <token>`
+**Response: 200 OK**
+```json
+{ "message": "Logged out" }
+```
+
+**Chat/conversation endpoints and image retrieval endpoints** (`GET /api/images/{session_token}/{image_id}`) do not require admin authentication.
 
 The constant `SESSION_TOKEN = "00000000-0000-0000-0000-000000000000"` is used internally wherever a per-user identifier will later plug in (e.g., image folder path). See [00 § 9](00-architecture-overview.md). This constant is **never exposed in the API**.
+
+Multi-user session handling is specified in [POST-MVP.md](POST-MVP.md).
 
 ### API Reference
 

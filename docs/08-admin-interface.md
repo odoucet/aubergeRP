@@ -15,8 +15,25 @@ A separate page within aubergeRP that provides:
 
 - Pure HTML + vanilla JavaScript (same approach as the Chat UI).
 - Plain CSS, sharing base styles with the Chat UI.
-- No authentication in the MVP (single-user, local).
+- **Single-password basic authentication** — admin password generated at startup and logged to console, can be persisted in config or environment.
 - REST only (no SSE).
+
+## 2.1 Authentication
+
+The admin panel is protected by a single password. On first startup:
+
+1. **aubergeRP generates a random admin password** and logs it to the console (look for `ADMIN PASSWORD GENERATED` in startup logs).
+2. **Store the password securely** — it is not stored in the default config file.
+3. **To persist the password across restarts**, you can:
+   - Set the environment variable `AUBERGE_ADMIN_PASSWORD_HASH`.
+   - Or manually add it to `config.yaml`:
+
+```yaml
+app:
+  admin_password_hash: "<hash>"
+```
+
+When accessing the admin panel (`/admin/`), you will be presented with a login modal. After successful authentication, your session token is stored in `localStorage` and automatically included in all admin API requests via the `X-Admin-Token` header. Click the "Logout" button in the header to clear your session.
 
 ## 3. Layout
 

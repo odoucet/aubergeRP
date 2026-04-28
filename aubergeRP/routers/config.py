@@ -16,6 +16,7 @@ from ..models.config import (
     GuiConfigUpdate,
     UserConfigResponse,
 )
+from .admin import get_admin_token
 
 router = APIRouter(prefix="/config", tags=["config"])
 
@@ -61,6 +62,7 @@ def get_config_endpoint() -> ConfigResponse:
 def update_config(
     update: ConfigUpdate,
     save_path: Path = Depends(get_config_save_path),
+    admin_token: str = Depends(get_admin_token),
 ) -> ConfigResponse:
     config = get_config()
 
@@ -84,6 +86,7 @@ def update_config(
 def patch_config(
     patch: ConfigPatch,
     save_path: Path = Depends(get_config_save_path),
+    admin_token: str = Depends(get_admin_token),
 ) -> ConfigResponse:
     config = get_config()
 
@@ -124,6 +127,7 @@ def get_gui_config() -> GuiConfigResponse:
 def update_gui_config(
     update: GuiConfigUpdate,
     save_path: Path = Depends(get_config_save_path),
+    admin_token: str = Depends(get_admin_token),
 ) -> GuiConfigResponse:
     config = get_config()
     config.gui.custom_css = update.custom_css

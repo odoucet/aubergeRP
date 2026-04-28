@@ -4,10 +4,14 @@
  * Exports initCharacters({ showToast, showConfirm }) → { refresh }
  */
 
+import { adminFetch } from '/js/admin/auth.js';
+
 // ── API helpers ──────────────────────────────────────────────────────────────
 
 async function apiFetch(path, options = {}) {
-  const res = await fetch(path, options);
+  const method = (options.method || 'GET').toUpperCase();
+  const isWrite = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method);
+  const res = isWrite ? await adminFetch(path, options) : await fetch(path, options);
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
     try {
