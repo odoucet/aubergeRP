@@ -432,6 +432,8 @@ class ChatService:
 
         # On retry, the last message is already the user message; skip re-adding it
         # to avoid duplicates in the conversation history.
+        # Note: the frontend enforces a single-active-stream invariant (_streaming flag),
+        # so two identical messages cannot be sent concurrently in practice.
         last_msg = conv.messages[-1] if conv.messages else None
         is_retry = (
             last_msg is not None
