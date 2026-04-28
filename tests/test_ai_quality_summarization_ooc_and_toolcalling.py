@@ -579,6 +579,54 @@ def test_openai_text_connector_supports_tool_calling():
     assert conn.supports_tool_calling is True
 
 
+def test_openai_text_connector_ollama_no_tool_calling():
+    """Ollama connectors can disable tool calling; no tools field is sent."""
+    conn = OpenAITextConnector(OpenAITextConfig(supports_tool_calling=False))
+    assert conn.supports_tool_calling is False
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_openai_connector_ollama_stream_chat_omits_tools_field():
+    """When supports_tool_calling=False (Ollama), stream_chat_completion must NOT
+    include 'tools' or 'tool_choice' in the request body, as Ollama rejects them."""
+
+    def _sse(*payloads: dict) -> bytes:
+        lines = [f"data: {json.dumps(p)}\n\n" for p in payloads]
+        lines.append("data: [DONE]\n\n")
+        return "".join(lines).encode()
+
+    chunks = [
+        {"choices": [{"delta": {"content": "Hi"}, "finish_reason": None}]},
+        {"choices": [{"delta": {}, "finish_reason": "stop"}]},
+    ]
+
+    captured: dict[str, Any] = {}
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(200, content=_sse(*chunks))
+
+    respx.post("http://localhost:11434/v1/chat/completions").mock(side_effect=_handler)
+
+    config = OpenAITextConfig(
+        base_url="http://localhost:11434/v1",
+        model="llama3",
+        supports_tool_calling=False,
+    )
+    conn = OpenAITextConnector(config)
+
+    tokens = []
+    async for chunk in conn.stream_chat_completion(
+        messages=[{"role": "user", "content": "hi"}]
+    ):
+        tokens.append(chunk)
+
+    assert tokens == ["Hi"]
+    assert "tools" not in captured["body"], "Ollama request must not contain 'tools'"
+    assert "tool_choice" not in captured["body"], "Ollama request must not contain 'tool_choice'"
+
+
 @respx.mock
 @pytest.mark.asyncio
 async def test_openai_connector_stream_with_tools_text_only():
