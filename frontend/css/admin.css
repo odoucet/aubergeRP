@@ -391,7 +391,26 @@
   min-height: 1em;
 }
 .field-row .required { color: var(--color-accent); }
-.field-row label input[type="checkbox"] { margin-right: 0.4rem; }
+.field-row-check {
+  flex-direction: row;
+  align-items: center;
+}
+.field-row-check label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  font-weight: 400;
+}
+.field-row-check input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
 
 .code-input {
   width: 100%;

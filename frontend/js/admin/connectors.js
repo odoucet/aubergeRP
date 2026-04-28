@@ -492,9 +492,11 @@ function renderField(key, label, type, required, value, placeholder = '', inputT
     const tooltipAttr = tooltip ? ` title="${escHtml(tooltip)}"` : '';
     const checked = !!value ? ' checked' : '';
     return `
-      <div class="field-row">
-        <label for="cfg-${key}"${tooltipAttr}>${escHtml(label)}</label>
-        <input type="checkbox" id="cfg-${key}" name="${key}"${checked}>
+      <div class="field-row field-row-check">
+        <label for="cfg-${key}"${tooltipAttr}>
+          <input type="checkbox" id="cfg-${key}" name="${key}"${checked}>
+          ${escHtml(label)}
+        </label>
       </div>
     `;
   }
