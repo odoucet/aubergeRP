@@ -320,20 +320,25 @@ body {
 
 .msg-bubble .rp-hint {
   display: inline-block;
-  padding: 0.05em 0.45em;
-  margin: 0 0.05em;
+  padding: 0.13em 0.65em;
+  margin: 0.05em 0.07em;
   border-radius: 999px;
   font-style: italic;
-  font-size: 0.93em;
-  line-height: 1.45;
-  border: 1px dashed rgba(233, 69, 96, 0.5);
-  background: rgba(233, 69, 96, 0.12);
+  font-size: 0.88em;
+  font-weight: 500;
+  line-height: 1.55;
+  vertical-align: middle;
+  color: var(--color-accent);
+  background: rgba(233, 69, 96, 0.1);
+  box-shadow: 0 0 0 1px rgba(233, 69, 96, 0.35),
+              inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .msg.user .msg-bubble .rp-hint {
-  border-color: rgba(255, 255, 255, 0.55);
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4),
+              inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* images inside messages */
