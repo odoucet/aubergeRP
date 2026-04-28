@@ -6,7 +6,7 @@ A **connector** is a pluggable module for a specific external generation backend
 
 | Backend ID | Types | Description |
 |---|---|---|
-| `openai_api` | `text`, `image` | Any OpenAI-compatible API (Ollama, OpenRouter, OpenAI, vLLM, …) |
+| `openai_api` | `text`, `image` | Any OpenAI-compatible API (LocalAI, OpenRouter, OpenAI, vLLM, …) |
 | `comfyui` | `image` | Local ComfyUI instance with workflow templates |
 
 ## Interfaces
@@ -47,7 +47,7 @@ class BaseConnector(ABC):
 
 | Field | Required | Default | Description |
 |---|---|---|---|
-| `base_url` | yes | `http://localhost:11434/v1` | API base URL |
+| `base_url` | yes | `http://localhost:8080/v1` | API base URL (LocalAI default) |
 | `api_key` | no | `""` | API key |
 | `model` | yes | `llama3` | Model name |
 | `max_tokens` | no | `1024` | Max response tokens |

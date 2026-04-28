@@ -1,0 +1,9 @@
+name: gemma4-26b-a4b-iq4nl
+backend: llama-cpp
+parameters:
+  model: gguf/gemma-4-26B-A4B-it-UD-IQ4_NL.gguf
+  context_size: 4096
+  temperature: 1.0
+  top_p: 0.95
+  top_k: 64
+  repeat_penalty: 1.0

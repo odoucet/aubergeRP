@@ -16,7 +16,7 @@ aubergeRP API (FastAPI, Python 3.12)
         │
         ▼
 ConnectorManager
-   ├── TextConnector  → any OpenAI-compatible chat API (Ollama, OpenRouter, …)
+   ├── TextConnector  → any OpenAI-compatible chat API (LocalAI, OpenRouter, …)
    └── ImageConnector → any OpenAI-compatible image API, or ComfyUI
 ```
 

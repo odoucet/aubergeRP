@@ -6,15 +6,14 @@ DOCKER_DIR       := docker
 PROFILES_DIR     := $(DOCKER_DIR)/profiles
 MODELS_DIR       := data/models
 COMPOSE_BASE     := $(DOCKER_DIR)/docker-compose.yml
-COMPOSE_OLLAMA   := $(DOCKER_DIR)/docker-compose.ollama.yml
-OLLAMA_CONTAINER := auberge-ai
+COMPOSE_LOCALAI  := $(DOCKER_DIR)/docker-compose.localai.yml
 
 # ─── Profile detection ────────────────────────────────────────────────────────
 AVAILABLE_PROFILES := $(patsubst $(PROFILES_DIR)/%.yml,%,$(wildcard $(PROFILES_DIR)/*.yml))
 LEGACY_GPU := $(word 2,$(MAKECMDGOALS))
 GPU ?= $(gpu)
 
-compose_args = -f $(COMPOSE_BASE)$(if $(strip $(GPU)), -f $(COMPOSE_OLLAMA) -f $(PROFILES_DIR)/$(GPU).yml)
+compose_args = -f $(COMPOSE_BASE)$(if $(strip $(GPU)), -f $(COMPOSE_LOCALAI) -f $(PROFILES_DIR)/$(GPU).yml)
 
 # Read a value from the x-gguf section of a profile YAML
 # Usage: $(call gguf_get,key,profile)
@@ -29,7 +28,7 @@ RESET  := \033[0m
 
 .PHONY: run test test-e2e lint lint-fix doc help \
         docker stop clean logs \
-	_compose-up _download-gguf _ollama-create \
+	_compose-up _download-gguf \
 	$(AVAILABLE_PROFILES)
 
 # ─── Help ─────────────────────────────────────────────────────────────────────
@@ -46,7 +45,7 @@ help:
 	@printf "  $(YELLOW)Docker stack$(RESET)\n"
 	@printf "    make docker           Start auberge-app only\n"
 	@printf "    make docker gpu=<profile>\n"
-	@printf "                          Start GPU stack (Ollama + models + auberge-app)\n"
+	@printf "                          Start GPU stack (LocalAI + models + auberge-app)\n"
 	@printf "    make stop [gpu=...]   Stop running containers\n"
 	@printf "    make clean [gpu=...]  Stop and remove containers and networks\n"
 	@printf "    make logs [gpu=...]   Tail container logs\n"
@@ -124,7 +123,7 @@ _compose-up:
 		printf "  $(BLUE)→$(RESET) Starting app-only stack...\n"; \
 	fi
 
-	# make sure we have latest images (especially important for Ollama to get latest modelfile changes)
+	# pull latest images (LocalAI YAML config changes are picked up at container start)
 	@docker compose $(call compose_args) pull
 	@docker compose $(call compose_args) \
 		up -d --remove-orphans --build
@@ -146,28 +145,12 @@ _download-gguf:
 		fi; \
 	fi
 
-# ─── Internal: create an Ollama model if not already loaded ──────────────────
-# Usage: $(MAKE) _ollama-create NAME=model:tag MODELFILE=file.Modelfile
-_ollama-create:
-	@printf "  $(BLUE)→$(RESET) Waiting for Ollama API...\n"
-	@until docker exec $(OLLAMA_CONTAINER) ollama list >/dev/null 2>&1; do sleep 2; done
-	@if docker exec $(OLLAMA_CONTAINER) ollama list 2>/dev/null \
-			| awk 'NR>1{print $$1}' | grep -qF "$(NAME)"; then \
-		printf "  $(GREEN)✓$(RESET) Model $(NAME) already loaded.\n"; \
-	else \
-		printf "  $(BLUE)→$(RESET) Creating model $(NAME)...\n"; \
-		docker exec $(OLLAMA_CONTAINER) ollama create $(NAME) -f /modelfiles/$(MODELFILE); \
-		printf "  $(GREEN)✓$(RESET) $(NAME) ready.\n"; \
-	fi
-
 # ─── Generic profile setup (reads specs from x-gguf in the profile YAML) ─────
+# LocalAI auto-loads models from YAML files in localai-models/ at startup —
+# no model registration step needed.
 _setup-%:
 	@$(MAKE) --no-print-directory _download-gguf \
 		FILE=$(call gguf_get,llm_file,$*) REPO=$(call gguf_get,llm_repo,$*)
 	@$(MAKE) --no-print-directory _download-gguf \
 		FILE=$(call gguf_get,img_file,$*) REPO=$(call gguf_get,img_repo,$*)
 	@$(MAKE) --no-print-directory _compose-up GPU=$*
-	@$(MAKE) --no-print-directory _ollama-create \
-		NAME=$(call gguf_get,llm_name,$*) MODELFILE=$(call gguf_get,llm_modelfile,$*)
-	@$(MAKE) --no-print-directory _ollama-create \
-		NAME=$(call gguf_get,img_name,$*) MODELFILE=$(call gguf_get,img_modelfile,$*)

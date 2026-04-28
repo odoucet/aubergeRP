@@ -1,0 +1,7 @@
+# FLUX.2-klein 9B Q4_K_M — unsloth/FLUX.2-klein-9B-GGUF (~5.91 GB VRAM)
+diffusers:
+  pipeline_type: FLUX
+name: flux-klein
+backend: stablediffusion
+parameters:
+  model: gguf/flux-2-klein-9b-Q4_K_M.gguf

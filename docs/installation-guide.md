@@ -54,7 +54,7 @@ make clean
 
 ### Notes
 
-- This path starts `auberge-app` only (no bundled Ollama container).
+- This path starts `auberge-app` only (no bundled LocalAI container).
 - `config.yaml` only needs to exist. Most connector setup can be done from the Admin UI.
 - Your data stays in the repository `data/` directory.
 
@@ -90,7 +90,7 @@ What this does:
 
 - downloads the required GGUF models if they are missing
 - starts the Docker stack
-- registers the models in Ollama automatically
+- starts LocalAI, which auto-loads models from the YAML config files in `docker/localai-models/`
 
 Then open:
 

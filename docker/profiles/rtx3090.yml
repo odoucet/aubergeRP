@@ -4,18 +4,16 @@ x-gguf:
   llm_repo: unsloth/gemma-4-26B-A4B-it-GGUF
   llm_file: gemma-4-26B-A4B-it-UD-IQ4_NL.gguf
   llm_size: ~13.4 GB
-  llm_name: &llm_name gemma4:26b-a4b-iq4nl
-  llm_modelfile: gemma4-26b-a4b-it-iq4nl.Modelfile
+  llm_name: &llm_name gemma4-26b-a4b-iq4nl
   llm_ctx: &llm_ctx 4096
   llm_max_tokens: &llm_max_tokens 1024
   img_repo: unsloth/FLUX.2-klein-9B-GGUF
   img_file: flux-2-klein-9b-Q4_K_M.gguf
   img_size: ~5.91 GB
-  img_name: &img_name flux-klein:9b-q4km
-  img_modelfile: flux-klein.Modelfile
+  img_name: &img_name flux-klein
 
 services:
-  ollama:
+  localai:
     deploy:
       resources:
         reservations:
@@ -24,17 +22,16 @@ services:
               count: 1
               capabilities: [gpu]
     environment:
-      OLLAMA_MAX_LOADED_MODELS: 2
-      LLM_MODEL: *llm_name
-      IMAGE_MODEL: *img_name
-      OLLAMA_KEEP_ALIVE: -1
-      OLLAMA_NUM_PARALLEL: 2
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      LOCALAI_PARALLEL_REQUESTS: "true"
+      LOCALAI_SINGLE_ACTIVE_BACKEND: "false"
 
   auberge-app:
     environment:
-      AUBERGE_LLM_API_URL: http://ollama:11434/v1
+      AUBERGE_LLM_API_URL: http://localai:8080/v1
       AUBERGE_LLM_MODEL: *llm_name
       AUBERGE_LLM_CONTEXT_WINDOW: *llm_ctx
       AUBERGE_LLM_MAX_TOKENS: *llm_max_tokens
-      AUBERGE_IMG_API_URL: http://ollama:11434/v1
+      AUBERGE_IMG_API_URL: http://localai:8080/v1
       AUBERGE_IMG_MODEL: *img_name
