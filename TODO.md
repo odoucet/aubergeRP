@@ -34,5 +34,3 @@ Items not yet implemented. PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md
 
 - [ ] Write usage examples: OpenRouter API key setup, local Ollama, ComfyUI, importing SillyTavern characters.
 - [ ] Document Docker GPU profiles in README.
-- [ ] Vendor Redoc JS so `/api-docs` works fully offline (currently loads from CDN).
-- [ ] Remove legacy `characters/` and `conversations/` subdirectories from `_init_data_dirs()` (only needed for the one-time JSON→SQLite migration).
