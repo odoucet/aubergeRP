@@ -23,7 +23,7 @@ aubergeRP targets minimal dependencies, zero-build-step frontend, and a **connec
 | `httpx` | Async HTTP client (connector backends) | ≥ 0.27, < 1.0 |
 | `pydantic` | Data validation and serialization | ≥ 2.0, < 3.0 |
 | `sse-starlette` | Server-Sent Events for FastAPI | ≥ 2.0, < 3.0 |
-| `Pillow` | PNG metadata read/write for character cards | ≥ 10.0, < 12.0 |
+| `Pillow` | PNG metadata read/write for character cards | ≥ 12.2.0, < 13.0 |
 | `python-multipart` | File upload handling | ≥ 0.0.9, < 1.0 |
 | `pyyaml` | YAML configuration file parsing | ≥ 6.0, < 7.0 |
 | `sqlmodel` | SQLite ORM + Pydantic integration | ≥ 0.0.18, < 1.0 |
