@@ -16,8 +16,6 @@ x-gguf:
 
 services:
   ollama:
-    environment:
-      - OLLAMA_MAX_LOADED_MODELS=2
     deploy:
       resources:
         reservations:
@@ -26,6 +24,7 @@ services:
               count: 1
               capabilities: [gpu]
     environment:
+      OLLAMA_MAX_LOADED_MODELS: 2
       LLM_MODEL: *llm_name
       IMAGE_MODEL: *img_name
       OLLAMA_KEEP_ALIVE: -1
