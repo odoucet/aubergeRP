@@ -266,6 +266,33 @@ support custom request headers.
 
 **Responses:** `200` Successful Response · `422` Validation Error
 
+### `POST /api/chat/{conversation_id}/retry-image`
+
+Retry Image
+
+Retry generation of a single image with the given prompt and generation_id.
+
+This endpoint is used when an image generation fails and the user clicks
+the "Retry" button. It generates just the image without sending the entire
+message through the chat flow again.
+
+
+**Request body:**
+
+| Field | Type | Required |
+|---|---|---|
+| `prompt` | string | yes |
+| `generation_id` | string | yes |
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `conversation_id` | path | string | yes |  |
+| `x-session-token` | header | string | no |  |
+
+**Responses:** `200` Successful Response · `422` Validation Error
+
 
 ## Config
 
