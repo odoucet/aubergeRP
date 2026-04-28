@@ -9,7 +9,9 @@ from aubergeRP.routers.config import get_config_save_path
 
 
 @pytest.fixture
-def client(tmp_path):
+def client(tmp_path, monkeypatch):
+    # Ensure tests don't read the developer's local config.yaml from repo root.
+    monkeypatch.chdir(tmp_path)
     app = create_app()
     config_file = tmp_path / "config.yaml"
     app.dependency_overrides[get_config_save_path] = lambda: config_file
