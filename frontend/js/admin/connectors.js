@@ -201,6 +201,7 @@ function renderConnectorCard(c) {
         <div class="conn-name">
           ${escHtml(c.name)}
           <span class="conn-backend-badge">${escHtml(c.backend)}</span>
+          ${c.config?.nsfw ? '<span class="conn-nsfw-badge" title="NSFW enabled">NSFW</span>' : ''}
         </div>
         ${meta ? `<div class="conn-meta">${meta}</div>` : ''}
         <div class="conn-status ${statusClass}" id="conn-status-${c.id}">${statusText}</div>
