@@ -1,0 +1,31 @@
+description: |
+    The FLUX.2 [klein] model family are our fastest image models to date. FLUX.2 [klein] unifies generation and editing in a single compact architecture, delivering state-of-the-art quality with end-to-end inference in as low as under a second. Built for applications that require real-time image generation without sacrificing quality, and runs on consumer hardware, with as little as 13GB VRAM.
+
+    FLUX.2 [klein] 4B is a 4 billion parameter rectified flow transformer capable of generating images from text descriptions and supports multi-reference editing capabilities.
+icon: https://avatars.githubusercontent.com/u/164064024
+license: apache-2.0
+urls:
+    - https://huggingface.co/black-forest-labs/FLUX.2-klein-4B
+name: flux-ggml
+config_file: |
+    backend: stablediffusion-ggml
+    step: 25
+    options:
+    - "diffusion_model"
+    - "clip_l_path:clip_l.safetensors"
+    - "t5xxl_path:t5xxl_fp16.safetensors"
+    - "vae_path:ae.safetensors"
+    - "sampler:euler"
+
+    cfg_scale: 1
+files:
+    - filename: stablediffusion-cpp/models/flux-2-klein-4b-Q4_0.gguf
+      sha256: d1023499ef3f2f82ff7c50e6778495195c1b6cc34835741778868428111f9ff4
+      uri: https://huggingface.co/leejet/FLUX.2-klein-4B-GGUF/resolve/main/flux-2-klein-4b-Q4_0.gguf
+    - filename: stablediffusion-cpp/models/flux2-vae.safetensors
+      sha256: d64f3a68e1cc4f9f4e29b6e0da38a0204fe9a49f2d4053f0ec1fa1ca02f9c4b5
+      uri: https://huggingface.co/Comfy-Org/flux2-dev/resolve/main/split_files/vae/flux2-vae.safetensors
+    - filename: stablediffusion-cpp/models/Qwen3-4B-Q4_K_M.gguf
+      sha256: f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a
+      uri: https://huggingface.co/unsloth/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf
+prompt_templates: []

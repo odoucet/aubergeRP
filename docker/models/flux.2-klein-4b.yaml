@@ -1,0 +1,12 @@
+backend: stablediffusion-ggml
+cfg_scale: 1
+name: flux.2-klein-4b
+options:
+    - diffusion_model
+    - vae_path:stablediffusion-cpp/models/flux2-vae.safetensors
+    - sampler:euler
+    - llm_path:stablediffusion-cpp/models/Qwen3-4B-Q4_K_M.gguf
+    - offload_params_to_cpu:true
+parameters:
+    model: stablediffusion-cpp/models/flux-2-klein-4b-Q4_0.gguf
+step: 4

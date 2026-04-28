@@ -5,12 +5,12 @@ x-gguf:
   llm_file: gemma-4-26B-A4B-it-UD-IQ4_NL.gguf
   llm_size: ~13.4 GB
   llm_name: &llm_name gemma4-26b-a4b-iq4nl
-  llm_ctx: &llm_ctx 4096
-  llm_max_tokens: &llm_max_tokens 1024
-  img_repo: unsloth/FLUX.2-klein-9B-GGUF
-  img_file: flux-2-klein-9b-Q4_K_M.gguf
-  img_size: ~5.91 GB
-  img_name: &img_name flux-klein
+  llm_ctx: &llm_ctx 8192
+  llm_max_tokens: &llm_max_tokens 4096
+  img_repo: leejet/FLUX.2-klein-4B-GGUF
+  img_file: flux-2-klein-4b-Q4_0.gguf
+  img_size: ~5.3 GB
+  img_name: &img_name flux.2-klein-4b
 
 services:
   localai:
