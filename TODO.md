@@ -14,6 +14,9 @@ Items not yet implemented. PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md
 
 - [ ] Add a warning on admin, on "add a new connector", if the user is choosing "ComfyUI" backend, stating that this feature is experimental and was not tested yet. 
 
+- [ ] Handle "reasoning" models: sometimes, model use reasoning output to shows character thougts or actions, and they are not transcribed in the final message content. We need to use a better system prompt to avoid this because "reasoning" is often used for out-of-roleplay thoughts.
+One consequence too : the max_tokens parameter is not correctly handled for reasoning models, because reasoning is counted and sometimes it makes the final message content empty, even if the model is generating a lot of text. If we do receive a response with 0 char but many ignored chars, we should log a warning about this and suggest to 1) use a better system prompt to avoid thinking and 2) raise the max_tokens limit to accomodate reasoning output. Also print a friendly message to the user.
+
 ---
 
 ## Medium priority
@@ -34,6 +37,13 @@ Items not yet implemented. PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md
 - [ ] **Video generation connector** (`[VID: …]` marker, `VideoConnector` interface).
 - [ ] **Audio/TTS connector** — play synthesized speech after each assistant message.
 - [ ] Handle storing version (used in GUI and API).
+
+- [ ] Maintain a list of character cards websites. Actually : 
+      * https://jannyai.com/characters
+
+- [ ] Generate favicons, logos and other assets for AubergeRP.
+
+- [ ] One-click translation of a character card in another language, using the LLM. This is a common user request and would be a nice feature to have. It could be implemented as a button on the admin panel, next to each character, that triggers the translation process.
 ---
 
 ## Documentation / housekeeping
