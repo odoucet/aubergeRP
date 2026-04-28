@@ -17,7 +17,7 @@ class OpenAITextConfig(BaseModel):
     context_window: int = 4096
     temperature: float = 0.8
     timeout: int = 120
-    supports_tool_calling: bool = False
+    supports_tool_calling: bool = True
 
 
 class OpenAIImageConfig(BaseModel):
