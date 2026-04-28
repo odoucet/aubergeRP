@@ -33,4 +33,4 @@ Items not yet implemented. PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md
 ## Documentation / housekeeping
 
 - [ ] Write usage examples: OpenRouter API key setup, local Ollama, ComfyUI, importing SillyTavern characters.
-- [ ] Document Docker GPU profiles in README.
+- [ ] Document Docker GPU profiles => auto generate doc based on `docker/profiles/*.yaml` files.
