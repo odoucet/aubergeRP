@@ -16,7 +16,6 @@
   <!-- Open Graph -->
   <meta property="og:title" content="AubergeRP"/>
   <meta property="og:description" content="Self-hosted chat & roleplay with local LLMs."/>
-  <meta property="og:image" content="/favicons/og-card.svg"/>
 </head>
 <body>
 
@@ -25,7 +24,10 @@
 <!-- Header -->
 <header id="header" role="banner">
   <button class="hamburger" id="hamburger-btn" aria-label="Toggle sidebar" aria-expanded="false">☰</button>
-  <div class="logo">aubergeRP</div>
+  <div class="logo">
+    <img class="logo-icon" src="/favicons/favicon-32.svg" alt="" aria-hidden="true">
+    <span>aubergeRP</span>
+  </div>
   <button id="share-session-btn" class="share-btn" aria-label="Share session">Share session</button>
   <button id="fullscreen-btn" class="fullscreen-btn" aria-label="Toggle fullscreen">⛶</button>
   <a href="/admin/" class="admin-link" aria-label="Admin panel">Admin</a>

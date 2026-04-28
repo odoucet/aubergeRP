@@ -59,10 +59,20 @@ body {
 }
 
 #header .logo {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   font-size: 1.2rem;
   font-weight: 700;
   color: var(--color-accent);
   flex: 1;
+}
+
+#header .logo-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  display: block;
+  flex-shrink: 0;
 }
 
 #header .hamburger {
