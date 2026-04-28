@@ -525,7 +525,21 @@ class ChatService:
                         yield event
             else:
                 parser = ImageMarkerParser()
-                async for chunk in text_connector.stream_chat_completion(messages):
+
+                # Extract optional parameters from connector config
+                connector_config = getattr(text_connector, "config", None)
+                kwargs = {}
+                if connector_config:
+                    if hasattr(connector_config, "top_p") and connector_config.top_p is not None:
+                        kwargs["top_p"] = connector_config.top_p
+                    if hasattr(connector_config, "presence_penalty") and connector_config.presence_penalty is not None:
+                        kwargs["presence_penalty"] = connector_config.presence_penalty
+                    if hasattr(connector_config, "frequency_penalty") and connector_config.frequency_penalty is not None:
+                        kwargs["frequency_penalty"] = connector_config.frequency_penalty
+                    if hasattr(connector_config, "extra_body") and connector_config.extra_body:
+                        kwargs["extra_body"] = connector_config.extra_body
+
+                async for chunk in text_connector.stream_chat_completion(messages, **kwargs):
                     for ev in parser.feed(chunk):
                         if ev["type"] == "token":
                             full_text += ev["text"]
@@ -598,7 +612,21 @@ class ChatService:
     ) -> AsyncIterator[dict[str, Any]]:
         """Stream using tool calling; handle generate_image tool calls."""
         tools = [_IMAGE_TOOL]
-        async for event in text_connector.stream_chat_completion_with_tools(messages, tools):
+
+        # Extract optional parameters from connector config
+        connector_config = getattr(text_connector, "config", None)
+        kwargs = {}
+        if connector_config:
+            if hasattr(connector_config, "top_p") and connector_config.top_p is not None:
+                kwargs["top_p"] = connector_config.top_p
+            if hasattr(connector_config, "presence_penalty") and connector_config.presence_penalty is not None:
+                kwargs["presence_penalty"] = connector_config.presence_penalty
+            if hasattr(connector_config, "frequency_penalty") and connector_config.frequency_penalty is not None:
+                kwargs["frequency_penalty"] = connector_config.frequency_penalty
+            if hasattr(connector_config, "extra_body") and connector_config.extra_body:
+                kwargs["extra_body"] = connector_config.extra_body
+
+        async for event in text_connector.stream_chat_completion_with_tools(messages, tools, **kwargs):
             if event["type"] == "token":
                 yield event
             elif event["type"] == "tool_call" and event.get("name") == "generate_image":

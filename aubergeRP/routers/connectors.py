@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ..connectors.manager import ConnectorManager
+from ..models.chat import ConnectorTestChatRequest
 from ..models.connector import (
     ConnectorCreate,
     ConnectorInstance,
@@ -130,6 +131,10 @@ def list_backends() -> list[dict[str, Any]]:
                         "max_tokens": {"type": "number", "required": False},
                         "context_window": {"type": "number", "required": False},
                         "temperature": {"type": "number", "required": False},
+                        "top_p": {"type": "number", "required": False},
+                        "presence_penalty": {"type": "number", "required": False},
+                        "frequency_penalty": {"type": "number", "required": False},
+                        "extra_body": {"type": "object", "required": False},
                         "supports_tool_calling": {"type": "boolean", "required": False},
                     },
                     "image": {
@@ -242,6 +247,93 @@ async def test_connector(
         raise HTTPException(status_code=502, detail=str(exc))
     _last_test_results.set(connector_id, result.get("connected", False))
     return result
+
+
+@router.post("/{connector_id}/test-chat")
+async def test_connector_chat(
+    connector_id: str,
+    request: ConnectorTestChatRequest,
+    manager: ConnectorManager = Depends(get_connector_manager),
+) -> dict[str, Any]:
+    """Test a text connector with a sample message and parameters.
+
+    This endpoint tests the connector by sending a sample message with the
+    specified sampling parameters and returns a sample of the response.
+    Useful for validating that parameters like temperature, top_p, etc. are
+    accepted by the connector.
+    """
+    try:
+        instance = manager.get_connector(connector_id)
+    except KeyError:
+        raise _not_found(connector_id)
+
+    if instance.type != "text":
+        raise HTTPException(
+            status_code=400,
+            detail="Test chat only supported for text connectors"
+        )
+
+    try:
+        conn = manager._build_connector(instance)
+        from ..connectors.base import TextConnector
+        if not isinstance(conn, TextConnector):
+            raise HTTPException(
+                status_code=400,
+                detail="Connector is not a text connector"
+            )
+
+        # Prepare test message with system context
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a helpful assistant. Respond concisely to test the connection."
+            },
+            {
+                "role": "user",
+                "content": request.message
+            }
+        ]
+
+        # Build parameters for the test
+        kwargs: dict[str, Any] = {}
+        if request.temperature is not None:
+            kwargs["temperature"] = request.temperature
+        if request.top_p is not None:
+            kwargs["top_p"] = request.top_p
+        if request.presence_penalty is not None:
+            kwargs["presence_penalty"] = request.presence_penalty
+        if request.frequency_penalty is not None:
+            kwargs["frequency_penalty"] = request.frequency_penalty
+        if request.extra_body:
+            kwargs["extra_body"] = request.extra_body
+
+        # Stream the response and collect first 500 chars
+        response_text = ""
+        async for token in conn.stream_chat_completion(messages, **kwargs):
+            response_text += token
+            if len(response_text) >= 500:  # Limit response for test display
+                response_text = response_text[:500]
+                break
+
+        return {
+            "connected": True,
+            "details": {
+                "sample_response": response_text,
+                "parameters_accepted": {
+                    "temperature": request.temperature is not None,
+                    "top_p": request.top_p is not None,
+                    "presence_penalty": request.presence_penalty is not None,
+                    "frequency_penalty": request.frequency_penalty is not None,
+                    "extra_body": request.extra_body is not None,
+                }
+            }
+        }
+    except Exception as exc:
+        return {
+            "connected": False,
+            "details": {"error": str(exc)}
+        }
+
 
 
 @router.post("/{connector_id}/activate")

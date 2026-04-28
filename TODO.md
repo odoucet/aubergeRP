@@ -16,10 +16,6 @@ Print it in the logs on startup (generated randomly if not set in env) and prote
 
 - [ ] Ability to change text display speed (+ preview of what it looks like).
 
-- [ ] hability to add parameters on model. Example with qwen that can expect an extra_body:
-"chat_template_kwargs": {"enable_thinking": False},
-
-- [ ] make sure connectors can accept temperature/top_p/presence_penalty/frequency_penalty parameters in the body of the request, and pass them to the model if supported. Add this to the "test" function in admin as well.
 
 Front
 -----

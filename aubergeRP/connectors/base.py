@@ -28,6 +28,10 @@ class TextConnector(BaseConnector):
         model: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        top_p: float | None = None,
+        presence_penalty: float | None = None,
+        frequency_penalty: float | None = None,
+        extra_body: dict[str, Any] | None = None,
     ) -> AsyncIterator[str]:
         """Yield text tokens from a streaming chat completion."""
 
@@ -38,6 +42,10 @@ class TextConnector(BaseConnector):
         model: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        top_p: float | None = None,
+        presence_penalty: float | None = None,
+        frequency_penalty: float | None = None,
+        extra_body: dict[str, Any] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Yield events from a streaming chat completion that may include tool calls.
 
@@ -48,7 +56,9 @@ class TextConnector(BaseConnector):
         The default implementation falls back to plain streaming (no tool calls).
         Connectors that support tool calling override this method.
         """
-        async for chunk in self.stream_chat_completion(messages, model, temperature, max_tokens):
+        async for chunk in self.stream_chat_completion(
+            messages, model, temperature, max_tokens, top_p, presence_penalty, frequency_penalty, extra_body
+        ):
             yield {"type": "token", "content": chunk}
 
 

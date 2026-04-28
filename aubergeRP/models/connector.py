@@ -16,6 +16,10 @@ class OpenAITextConfig(BaseModel):
     max_tokens: int = 1024
     context_window: int = 4096
     temperature: float = 0.8
+    top_p: float | None = None
+    presence_penalty: float | None = None
+    frequency_penalty: float | None = None
+    extra_body: dict[str, Any] = Field(default_factory=dict)
     timeout: int = 120
     supports_tool_calling: bool = True
 

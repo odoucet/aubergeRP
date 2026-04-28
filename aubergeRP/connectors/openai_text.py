@@ -33,13 +33,13 @@ class OpenAITextConnector(TextConnector):
                 response.raise_for_status()
                 data = response.json()
                 models = [m["id"] for m in data.get("data", [])]
-                
+
                 details: dict[str, Any] = {"models_available": models}
-                
+
                 # If models are available, check if the configured model is in the list
                 if models and self.config.model not in models:
                     details["model_warning"] = f"Model '{self.config.model}' not found in available models"
-                
+
                 return {"connected": True, "details": details}
         except Exception as exc:
             return {"connected": False, "details": {"error": str(exc)}}
@@ -50,14 +50,42 @@ class OpenAITextConnector(TextConnector):
         model: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        top_p: float | None = None,
+        presence_penalty: float | None = None,
+        frequency_penalty: float | None = None,
+        extra_body: dict[str, Any] | None = None,
     ) -> AsyncIterator[str]:
-        payload = {
+        payload: dict[str, Any] = {
             "model": model or self.config.model,
             "messages": messages,
             "stream": True,
             "max_tokens": max_tokens if max_tokens is not None else self.config.max_tokens,
             "temperature": temperature if temperature is not None else self.config.temperature,
         }
+
+        # Add optional parameters if provided or configured
+        if top_p is not None:
+            payload["top_p"] = top_p
+        elif self.config.top_p is not None:
+            payload["top_p"] = self.config.top_p
+
+        if presence_penalty is not None:
+            payload["presence_penalty"] = presence_penalty
+        elif self.config.presence_penalty is not None:
+            payload["presence_penalty"] = self.config.presence_penalty
+
+        if frequency_penalty is not None:
+            payload["frequency_penalty"] = frequency_penalty
+        elif self.config.frequency_penalty is not None:
+            payload["frequency_penalty"] = self.config.frequency_penalty
+
+        # Merge extra_body (runtime overrides config)
+        extra_body_config = self.config.extra_body or {}
+        if extra_body:
+            extra_body_config = {**extra_body_config, **extra_body}
+        if extra_body_config:
+            payload.update(extra_body_config)
+
         async with httpx.AsyncClient(timeout=self.config.timeout) as client, client.stream(
             "POST",
             f"{self.config.base_url}/chat/completions",
@@ -86,6 +114,10 @@ class OpenAITextConnector(TextConnector):
         model: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        top_p: float | None = None,
+        presence_penalty: float | None = None,
+        frequency_penalty: float | None = None,
+        extra_body: dict[str, Any] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Stream a chat completion that may produce text tokens and/or tool calls.
 
@@ -102,6 +134,30 @@ class OpenAITextConnector(TextConnector):
             "tools": tools,
             "tool_choice": "auto",
         }
+
+        # Add optional parameters if provided or configured
+        if top_p is not None:
+            payload["top_p"] = top_p
+        elif self.config.top_p is not None:
+            payload["top_p"] = self.config.top_p
+
+        if presence_penalty is not None:
+            payload["presence_penalty"] = presence_penalty
+        elif self.config.presence_penalty is not None:
+            payload["presence_penalty"] = self.config.presence_penalty
+
+        if frequency_penalty is not None:
+            payload["frequency_penalty"] = frequency_penalty
+        elif self.config.frequency_penalty is not None:
+            payload["frequency_penalty"] = self.config.frequency_penalty
+
+        # Merge extra_body (runtime overrides config)
+        extra_body_config = self.config.extra_body or {}
+        if extra_body:
+            extra_body_config = {**extra_body_config, **extra_body}
+        if extra_body_config:
+            payload.update(extra_body_config)
+
         # Accumulate tool-call argument fragments keyed by call index.
         tool_calls: dict[int, dict[str, Any]] = {}
 
