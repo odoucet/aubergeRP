@@ -327,6 +327,19 @@ class TestOpenAITextConfig:
         c2 = OpenAITextConfig(**raw)
         assert c2.model == "phi3"
 
+    def test_extra_body_empty_string_coerced_to_dict(self):
+        # Regression: admin form sends "" for empty object fields; must not raise.
+        c = OpenAITextConfig(extra_body="")
+        assert c.extra_body == {}
+
+    def test_extra_body_none_coerced_to_dict(self):
+        c = OpenAITextConfig(extra_body=None)
+        assert c.extra_body == {}
+
+    def test_extra_body_dict_preserved(self):
+        c = OpenAITextConfig(extra_body={"provider": {"allow_fallbacks": False}})
+        assert c.extra_body == {"provider": {"allow_fallbacks": False}}
+
 
 class TestOpenAIImageConfig:
     def test_defaults(self):

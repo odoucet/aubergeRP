@@ -317,3 +317,19 @@ def test_get_active_text_connector_none_if_id_stale(tmp_path):
 def test_get_active_image_connector_none_if_id_stale(tmp_path):
     mgr = make_manager(tmp_path, active_image="deleted-id")
     assert mgr.get_active_image_connector() is None
+
+
+def test_get_active_text_connector_with_empty_string_extra_body(tmp_path):
+    # Regression: connector JSON stored extra_body="" (empty string from admin form)
+    # instead of {}; _build_connector must not fail with a ValidationError.
+    mgr = make_manager(tmp_path)
+    c = mgr.create_connector(text_create(config={
+        "base_url": "http://localhost:11434/v1",
+        "model": "llama3",
+        "api_key": "",
+        "extra_body": "",
+    }))
+    mgr.set_active(c.id)
+    conn = mgr.get_active_text_connector()
+    assert isinstance(conn, OpenAITextConnector)
+    assert conn.config.extra_body == {}

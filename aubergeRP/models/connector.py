@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 ConnectorType = Literal["text", "image", "video", "audio"]
 ConnectorBackend = Literal["openai_api", "comfyui"]
@@ -22,6 +22,13 @@ class OpenAITextConfig(BaseModel):
     extra_body: dict[str, Any] = Field(default_factory=dict)
     timeout: int = 120
     supports_tool_calling: bool = True
+
+    @field_validator("extra_body", mode="before")
+    @classmethod
+    def coerce_extra_body(cls, v: Any) -> Any:
+        if v == "" or v is None:
+            return {}
+        return v
 
 
 class OpenAIImageConfig(BaseModel):
