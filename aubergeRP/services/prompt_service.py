@@ -169,7 +169,7 @@ def reset_prompt(key: str) -> str:
     return default
 
 
-def list_prompts() -> list[dict[str, str]]:
+def list_prompts() -> list[dict[str, object]]:
     """Return metadata for every manageable prompt."""
     result = []
     for key, meta in PROMPT_META.items():

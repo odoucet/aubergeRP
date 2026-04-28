@@ -30,12 +30,12 @@ class PromptUpdate(BaseModel):
 
 
 @router.get("/")
-def get_all_prompts() -> list[dict]:
+def get_all_prompts() -> list[dict[str, object]]:
     return list_prompts()
 
 
 @router.get("/{key}")
-def get_one_prompt(key: str) -> dict:
+def get_one_prompt(key: str) -> dict[str, object]:
     if key not in _ALL_KEYS:
         raise HTTPException(status_code=404, detail=f"Unknown prompt key: {key!r}")
     meta = PROMPT_META[key]
@@ -56,7 +56,7 @@ def update_prompt(
     key: str,
     body: PromptUpdate,
     admin_token: str = Depends(get_admin_token),
-) -> dict:
+) -> dict[str, object]:
     if key not in _ALL_KEYS:
         raise HTTPException(status_code=404, detail=f"Unknown prompt key: {key!r}")
     try:
@@ -70,7 +70,7 @@ def update_prompt(
 def reset_prompt_endpoint(
     key: str,
     admin_token: str = Depends(get_admin_token),
-) -> dict:
+) -> dict[str, object]:
     if key not in _ALL_KEYS:
         raise HTTPException(status_code=404, detail=f"Unknown prompt key: {key!r}")
     if key not in PROMPT_DEFAULTS:
