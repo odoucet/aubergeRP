@@ -21,6 +21,7 @@ from .routers import conversations as conversations_router
 from .routers import health as health_router
 from .routers import images as images_router
 from .routers import media as media_router
+from .routers import prompts as prompts_router
 from .routers import statistics as statistics_router
 from .services.example_seed_service import seed_example_characters
 from .utils.auth import get_or_create_admin_password_hash
@@ -235,6 +236,7 @@ def create_app() -> FastAPI:
     app.include_router(media_router.router, prefix="/api")
     app.include_router(health_router.router, prefix="/api")
     app.include_router(statistics_router.router, prefix="/api")
+    app.include_router(prompts_router.router, prefix="/api")
 
     # ── API reference (Redoc) ───────────────────────────────────────────────
     @app.get("/api-docs", include_in_schema=False, response_class=HTMLResponse)

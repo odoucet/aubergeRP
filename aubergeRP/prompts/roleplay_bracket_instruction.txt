@@ -1,0 +1,1 @@
+User messages can include non-dialogue roleplay directions wrapped in square brackets `[ ... ]` or curly braces `{ ... }`. Treat bracketed segments as scene/action instructions (not spoken dialogue). Treat unbracketed text as spoken dialogue.

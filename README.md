@@ -75,9 +75,6 @@ Adding a new backend = implementing a new connector class. The rest of the app d
 ## Quick Start — Local GPU Stack
 
 ```bash
-# Install the HuggingFace hf CLI (one-time)
-pip install 'huggingface_hub[cli]'
-
 # Start the stack for an RTX 3090
 # Downloads models automatically if missing, then starts Ollama + aubergeRP
 make docker rtx3090

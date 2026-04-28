@@ -27,6 +27,7 @@
     <button class="nav-btn" data-section="statistics">Statistics</button>
     <button class="nav-btn" data-section="config">Configuration</button>
     <button class="nav-btn" data-section="customize">Customization</button>
+    <button class="nav-btn" data-section="prompts">Prompts</button>
   </nav>
 
   <!-- Content area -->
@@ -212,6 +213,21 @@
           <pre id="customize-footer-html-highlight" class="code-highlight" aria-hidden="true"></pre>
           <textarea id="customize-footer-html" class="code-input code-input-overlay" rows="10" placeholder="<!-- injected inside <footer> -->" title="Write custom HTML inserted in the footer." spellcheck="false"></textarea>
         </div>
+      </div>
+    </section>
+
+    <!-- ── Prompts ── -->
+    <section id="section-prompts" class="admin-section" style="display:none" aria-label="Prompt management">
+      <div class="section-header">
+        <h1>Prompts</h1>
+      </div>
+      <p style="margin-bottom:1rem;color:var(--color-muted,#888);font-size:0.9rem;">
+        Edit the system prompts used by the engine. Changes take effect immediately without restart.
+        Use <strong>Reset</strong> to restore the built-in default for a prompt.
+      </p>
+      <div id="prompts-feedback"></div>
+      <div id="prompts-list" aria-live="polite">
+        <div class="loading-row">Loading…</div>
       </div>
     </section>
 
@@ -401,6 +417,7 @@
   import { initMedias }    from '/js/admin/medias.js';
   import { initConfig }     from '/js/admin/config.js';
   import { initStatistics } from '/js/admin/statistics.js';
+  import { initPrompts }    from '/js/admin/prompts.js';
   import { applyHealthBadges } from '/js/admin/connectors.js';
   import { applyGuiCustomization } from '/js/gui-customization.js';
 
@@ -411,7 +428,7 @@
   applyGuiCustomization();
 
   // ── Section routing (hash-based) ────────────────────────────────────────
-  const SECTIONS = ['connectors', 'characters', 'medias', 'health', 'statistics', 'config', 'customize'];
+  const SECTIONS = ['connectors', 'characters', 'medias', 'health', 'statistics', 'config', 'customize', 'prompts'];
   const sectionEls = {};
   const navBtns = {};
 
@@ -435,6 +452,7 @@
     else if (name === 'statistics') statsCtrl.refresh();
     else if (name === 'config') configCtrl.refresh();
     else if (name === 'customize') loadCustomize();
+    else if (name === 'prompts') promptsCtrl.refresh();
   }
 
   SECTIONS.forEach(s => {
@@ -563,6 +581,7 @@
   const mediaCtrl      = initMedias({ showToast, showConfirm });
   const statsCtrl      = initStatistics({ showToast });
   const configCtrl     = initConfig({ showToast });
+  const promptsCtrl    = initPrompts({ showToast });
 
   const _customizeEditors = [
     { inputId: 'customize-css', highlightId: 'customize-css-highlight', language: 'css' },

@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from ..connectors.base import TextConnector
 
+from ..services.prompt_service import get_prompt
+
 # Each message carries a small fixed overhead beyond its content.
 _MSG_OVERHEAD_TOKENS = 4
 # Reserve some tokens for the new user turn and the assistant's reply.
@@ -51,20 +53,10 @@ def _build_summary_prompt(messages: list[dict[str, Any]]) -> list[dict[str, Any]
         content = m.get("content") or ""
         excerpt_lines.append(f"{role.upper()}: {content}")
     excerpt = "\n\n".join(excerpt_lines)
+    user_template = get_prompt("summarization_user")
     return [
-        {
-            "role": "system",
-            "content": (
-                "You are a neutral summarizer. Read the roleplay conversation excerpt below "
-                "and write a concise third-person summary (≤ 150 words) that captures the "
-                "key narrative events, character actions, and any important details. "
-                "Do NOT continue the story; just summarize what happened."
-            ),
-        },
-        {
-            "role": "user",
-            "content": f"Summarize this conversation excerpt:\n\n{excerpt}",
-        },
+        {"role": "system", "content": get_prompt("summarization_system")},
+        {"role": "user", "content": user_template.format(excerpt=excerpt)},
     ]
 
 
