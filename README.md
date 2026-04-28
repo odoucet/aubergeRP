@@ -1,62 +1,72 @@
-# aubergeRP
+# 🏰 AubergeRP
 
-A lightweight, self-hostable roleplay engine. Connect any LLM (local or remote), import SillyTavern characters, and chat with inline AI image generation.
+**The cozy, distraction-free roleplay engine.** *Stop configuring, start roleplaying.*
 
-**Get running in under 10 minutes** → see [Installation Guide](docs/installation-guide.md).
+AubergeRP is a lightweight, self-hostable alternative to SillyTavern. It’s designed for those who want a beautiful, "plug-and-play" experience with local or remote LLMs, featuring native AI image generation without the headache of complex extensions.
 
-## What it does
+## ✨ Why AubergeRP?
 
-- **Roleplay chat** with any OpenAI-compatible LLM (Ollama, OpenRouter, vLLM, …).
-- **SillyTavern-compatible** character cards (import/export JSON and PNG).
-- **LLM-triggered image generation** — the model writes `[IMG: …]` markers; the backend calls the image connector automatically.
-- **ComfyUI support** for local Stable Diffusion workflows (EARLY DRAFT, NOT TESTED YET).
-- **Admin panel** — manage connectors, characters, and usage stats.
-- **No build step** — vanilla HTML/JS frontend, Python/FastAPI backend, SQLite storage.
+| Feature            | AubergeRP          | Other Tools (ST, etc.)      |
+| :---               | :---               | :---                        |
+| **Setup Time**     | < 10 minutes       | Can take hours              |
+| **Interface**      | Minimalist & Cozy  | Complex "Control Room"      |
+| **Image Gen**      | Native & Automatic | Requires complex extensions |
+| **Learning Curve** | None (Plug & Play) | High (Many sliders/tabs)    |
 
-## Quick Start
+## 📸 Preview
 
-```bash
-git clone https://github.com/odoucet/aubergeRP.git
-cd aubergeRP
-cp config.example.yaml config.yaml
-make docker
-```
+| Desktop View | Mobile View |
+| :---         | :--- |
+| ![Desktop Screenshot](docs/img/desktop-main.png) | ![Mobile Screenshot](docs/img/mobile-view.png) |
 
-Open **http://localhost:8123** — the admin password is printed in the startup logs.
 
-Then: 
- * go to Admin 
- * add a text connector (your LLM)
- * (optional) add an image connector
- * (optional) import a character (or use one of the bundled examples)
- * Chat !
+## 🚀 Key Features
 
-See [docs/installation-guide.md](docs/installation-guide.md) for the local GPU stack (`make docker gpu=rtx3090`) and other options.
+* **Zero-Friction Setup:** Get running in minutes with Docker.
+* **Universal Connectivity:** Support for any OpenAI-compatible API (Ollama, OpenRouter, **but also local setup!** vLLM, ollama, etc.).
+* **SillyTavern Compatible:** Seamlessly import and export your favorite `.png` or `.json` character cards.
+* **Smart Image Generation:** The AI triggers image generation automatically based on the story context (via ComfyUI or SD-WebUI).
+* **Lightweight Stack:** No complex build steps. Just Python (FastAPI) and Vanilla JS.
+* **Admin Dashboard:** Easily manage your connectors, characters, and check your usage stats.
 
-## Development
 
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp config.example.yaml config.yaml
-make run      # dev server with hot-reload at http://localhost:8123
-make test     # run test suite
-make lint     # ruff + mypy
-make doc      # regenerate docs/03-backend-api.md from source
-```
+## 🛠 Quick Start
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for full contribution guidelines.
+1. **Clone & Config**
+   ```bash
+   git clone https://github.com/odoucet/aubergeRP.git
+   cd aubergeRP
+   cp config.example.yaml config.yaml
+   ```
 
-## Documentation
+2. **Launch with Docker**
+   ```bash
+   make docker
+   ```
 
-| Document | Description |
-|---|---|
-| [Installation Guide](docs/installation-guide.md) | Docker, GPU stack, troubleshooting |
-| [Architecture](docs/00-architecture-overview.md) | High-level design decisions |
-| [Configuration](docs/09-configuration-and-setup.md) | `config.yaml` reference |
-| [Connector System](docs/06-connector-system.md) | How to add a new backend |
-| [API Reference](docs/03-backend-api.md) | REST/SSE endpoints (run `make doc` to regenerate) |
+3. **Enjoy!**
+   Open **http://localhost:8123**. The admin password is displayed in your terminal logs.
+   * Go to **Admin** -> Add a **Text Connector**.
+   * Import a character and start your story.
 
-## License
+> [!TIP]
+> Using a local GPU? Check the [Installation Guide](docs/installation-guide.md) for optimized Docker commands (`make docker gpu=rtx3090`).
 
-Apache 2.0
+
+## 🏗 Technology Stack
+
+* **Backend:** Python 3.11+, FastAPI, SQLite.
+* **Frontend:** Vanilla HTML/JS + Tailwind CSS (No heavy frameworks).
+* **Protocols:** SSE (Server-Sent Events) for real-time streaming.
+* **License:** Apache 2.0.
+
+
+## 📚 Documentation
+
+* 📖 [Installation Guide](docs/installation-guide.md) – Step-by-step setup (Docker, GPU, etc.).
+* 🧩 [Connector System](docs/06-connector-system.md) – How to add new AI backends.
+* ⚙️ [Configuration](docs/09-configuration-and-setup.md) – `config.yaml` reference.
+* 🏗 [Architecture](docs/00-architecture-overview.md) – High-level design for contributors.
+
+
+**AubergeRP** is a labor of love. If you like the project, consider giving it a ⭐ on GitHub!
