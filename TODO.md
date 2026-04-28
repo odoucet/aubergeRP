@@ -27,7 +27,7 @@ Items not yet implemented. PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md
 - [ ] **Video generation connector** (`[VID: …]` marker, `VideoConnector` interface).
 - [ ] **Audio/TTS connector** — play synthesized speech after each assistant message.
 - [ ] **Cloud deployment / sync** — hosted SQLite (Turso/LiteFS), Postgres backend, or backup to object storage.
-
+- [ ] Handle storing version (used in GUI and API).
 ---
 
 ## Documentation / housekeeping
