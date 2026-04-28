@@ -17,6 +17,17 @@
 
 const _TOKEN_KEY = 'auberge_session_token';
 
+function _uuid() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Fallback for non-secure contexts (self-signed certs, older mobile browsers)
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 function _initSessionToken() {
   // Check if the URL carries a shared token
   const params = new URLSearchParams(window.location.search);
@@ -33,7 +44,7 @@ function _initSessionToken() {
 
   // Create a new token if none exists
   if (!localStorage.getItem(_TOKEN_KEY)) {
-    localStorage.setItem(_TOKEN_KEY, crypto.randomUUID());
+    localStorage.setItem(_TOKEN_KEY, _uuid());
   }
 }
 
