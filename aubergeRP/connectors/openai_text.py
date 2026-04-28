@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -8,6 +9,8 @@ import httpx
 
 from ..models.connector import OpenAITextConfig
 from .base import TextConnector
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAITextConnector(TextConnector):
@@ -86,6 +89,12 @@ class OpenAITextConnector(TextConnector):
         if extra_body_config:
             payload.update(extra_body_config)
 
+        model_name = payload["model"]
+        req_bytes = len(json.dumps(payload).encode())
+        logger.info("LLM request: model=%s messages=%d req=%d bytes", model_name, len(messages), req_bytes)
+        logger.debug("LLM payload: %s", json.dumps(payload, ensure_ascii=False))
+
+        total_chars = 0
         async with httpx.AsyncClient(timeout=self.config.timeout) as client, client.stream(
             "POST",
             f"{self.config.base_url}/chat/completions",
@@ -103,9 +112,11 @@ class OpenAITextConnector(TextConnector):
                     chunk = json.loads(payload_str)
                     content = chunk["choices"][0]["delta"].get("content")
                     if content:
+                        total_chars += len(content)
                         yield content
                 except (json.JSONDecodeError, KeyError, IndexError):
                     continue
+        logger.info("LLM response: model=%s resp=%d chars", model_name, total_chars)
 
     async def stream_chat_completion_with_tools(
         self,
@@ -158,8 +169,14 @@ class OpenAITextConnector(TextConnector):
         if extra_body_config:
             payload.update(extra_body_config)
 
+        model_name = payload["model"]
+        req_bytes = len(json.dumps(payload).encode())
+        logger.info("LLM request (tools): model=%s messages=%d tools=%d req=%d bytes", model_name, len(messages), len(tools), req_bytes)
+        logger.debug("LLM payload: %s", json.dumps(payload, ensure_ascii=False))
+
         # Accumulate tool-call argument fragments keyed by call index.
         tool_calls: dict[int, dict[str, Any]] = {}
+        total_chars = 0
 
         async with httpx.AsyncClient(timeout=self.config.timeout) as client, client.stream(
             "POST",
@@ -181,6 +198,7 @@ class OpenAITextConnector(TextConnector):
                     # Text content
                     content = delta.get("content")
                     if content:
+                        total_chars += len(content)
                         yield {"type": "token", "content": content}
 
                     # Tool call fragments
@@ -199,6 +217,8 @@ class OpenAITextConnector(TextConnector):
                             tool_calls[idx]["arguments_raw"] += fn["arguments"]
                 except (json.JSONDecodeError, KeyError, IndexError):
                     continue
+
+        logger.info("LLM response (tools): model=%s resp=%d chars tool_calls=%d", model_name, total_chars, len(tool_calls))
 
         # Emit completed tool calls in order.
         for idx in sorted(tool_calls):

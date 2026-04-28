@@ -71,14 +71,19 @@ class _TestResultsStore:
 # Module-level singleton — shared between connectors and health routers.
 _last_test_results: _TestResultsStore = _TestResultsStore()
 
+_manager_instance: ConnectorManager | None = None
+
 
 def get_connector_manager() -> ConnectorManager:
-    from ..config import get_config
-    config = get_config()
-    return ConnectorManager(
-        data_dir=config.app.data_dir,
-        config=config,
-    )
+    global _manager_instance
+    if _manager_instance is None:
+        from ..config import get_config
+        config = get_config()
+        _manager_instance = ConnectorManager(
+            data_dir=config.app.data_dir,
+            config=config,
+        )
+    return _manager_instance
 
 
 def _redact(instance: ConnectorInstance, is_active: bool) -> ConnectorResponse:

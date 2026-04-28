@@ -6,7 +6,7 @@ from fastapi import APIRouter
 
 from ..config import get_config
 from ..connectors.manager import ConnectorManager
-from .connectors import _last_test_results
+from .connectors import _last_test_results, get_connector_manager
 
 router = APIRouter(prefix="/health", tags=["health"])
 
@@ -27,7 +27,7 @@ def _connector_info(manager: ConnectorManager, connector_id: str | None) -> dict
 @router.get("/")
 def health() -> dict[str, Any]:
     config = get_config()
-    manager = ConnectorManager(data_dir=config.app.data_dir, config=config)
+    manager = get_connector_manager()
     text_id = config.active_connectors.text or None
     image_id = config.active_connectors.image or None
     return {
