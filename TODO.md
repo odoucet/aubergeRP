@@ -43,11 +43,9 @@ One consequence too : the max_tokens parameter is not correctly handled for reas
 
 - [ ] One-click translation of a character card in another language, using the LLM. This is a common user request and would be a nice feature to have. It could be implemented as a button on the admin panel, next to each character, that triggers the translation process.
 
-- [ ] Frontend CSS style for ambiance messages is far from perfect (dashed lines are not well rendered, and the overall look is not very good). We should improve this to make ambiance messages more visually distinct and appealing.
-
 ---
 
 ## Documentation / housekeeping
 
 - [ ] Write usage examples: OpenRouter API key setup, local Ollama, ComfyUI, importing SillyTavern characters.
-- [ ] Document Docker GPU profiles => auto generate doc based on `docker/profiles/*.yaml` files with LLM used and size.
+- [ ] Document Docker GPU profiles => auto generate doc based on `docker/profiles/*.yaml` files with LLM used and size (note: where to grab this info ?).
