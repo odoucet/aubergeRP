@@ -50,4 +50,4 @@ One consequence too : the max_tokens parameter is not correctly handled for reas
 ## Documentation / housekeeping
 
 - [ ] Write usage examples: OpenRouter API key setup, local Ollama, ComfyUI, importing SillyTavern characters.
-- [ ] Document Docker GPU profiles => auto generate doc based on `docker/profiles/*.yaml` files.
+- [ ] Document Docker GPU profiles => auto generate doc based on `docker/profiles/*.yaml` files with LLM used and size.
