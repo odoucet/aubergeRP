@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import base64
+import json
+import logging
 from typing import Any
 
 import httpx
 
 from ..models.connector import OpenAIImageConfig
 from .base import ImageConnector
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAIImageConnector(ImageConnector):
@@ -77,11 +81,16 @@ class OpenAIImageConnector(ImageConnector):
             "size": size,
             "n": 1,
         }
+        logger.debug(f"[OpenAI Images API] Sending: {json.dumps(payload, default=str)}")
         response = await client.post(
             f"{self.config.base_url}/images/generations",
             headers=self._headers(),
             json=payload,
         )
+        if response.status_code >= 400:
+            logger.error(
+                f"[OpenAI Images API] HTTP {response.status_code}: {response.text}"
+            )
         response.raise_for_status()
         item = response.json()["data"][0]
         return await self._extract_image_bytes(item, client)
@@ -100,11 +109,17 @@ class OpenAIImageConnector(ImageConnector):
             "stream": False,
             "image_config": {"size": size},
         }
+        logger.debug(f"[OpenRouter Chat API] Model: {model}, Size: {size}")
+        logger.debug(f"[OpenRouter Chat API] Payload: {json.dumps(payload, default=str)}")
         response = await client.post(
             f"{self.config.base_url}/chat/completions",
             headers=self._headers(),
             json=payload,
         )
+        if response.status_code >= 400:
+            logger.error(
+                f"[OpenRouter Chat API] HTTP {response.status_code}: {response.text}"
+            )
         response.raise_for_status()
 
         data = response.json()

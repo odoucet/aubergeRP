@@ -2,7 +2,7 @@
 
 This guide is intentionally short.
 
-The recommended setup is Docker-first on Linux, macOS, and Windows:
+The recommended setup is Docker-first on Linux, macOS, and Windows using `docker compose`:
 
 - Use `make docker` if you want the fastest path and plan to connect aubergeRP to remote APIs such as OpenRouter, OpenAI, or another OpenAI-compatible backend.
 - Use `make docker gpu=rtx3090` if you want the local GPU stack with preconfigured models.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 import uuid
 from collections.abc import AsyncIterator
@@ -17,6 +18,8 @@ from ..services.media_service import MediaService
 from ..services.prompt_service import get_prompt
 from ..services.statistics_service import StatisticsService
 from ..services.summarization_service import count_prompt_tokens, maybe_summarize
+
+logger = logging.getLogger(__name__)
 
 _PREFIX = "[IMG:"
 _MAX_IMAGE_MARKERS = 3
@@ -656,6 +659,7 @@ class ChatService:
             }
             return
         try:
+            logger.debug(f"[Image Gen] Starting image generation for gen_id={gen_id}")
             if text_connector is not None and messages is not None:
                 prompt = await self._generate_image_prompt(
                     text_connector, char, messages, prompt
@@ -664,6 +668,9 @@ class ChatService:
             prefix = auberge.get("image_prompt_prefix", "")
             negative = auberge.get("negative_prompt", "")
             full_prompt = f"{prefix} {prompt}".strip() if prefix else prompt
+            logger.debug(
+                f"[Image Gen] Full prompt: {full_prompt[:200]}... (len={len(full_prompt)})"
+            )
             img_bytes: bytes | None = None
             async for event in img_connector.generate_image_with_progress(
                 full_prompt, negative_prompt=negative
@@ -688,6 +695,54 @@ class ChatService:
             filename = f"{uuid.uuid4()}.png"
             (self._images_dir / filename).write_bytes(img_bytes)
             url = f"/api/images/{self._session_token}/{filename}"
+            logger.debug(
+                f"[Image Gen] Successfully generated image (gen_id={gen_id}, size={len(img_bytes)} bytes)"
+            )
             yield {"type": "image_complete", "generation_id": gen_id, "image_url": url}
         except Exception as exc:
-            yield {"type": "image_failed", "generation_id": gen_id, "detail": str(exc)}
+            logger.exception(
+                f"[Image Gen] Error generating image (gen_id={gen_id}): {exc}",
+                exc_info=True,
+            )
+            yield {
+                "type": "image_failed",
+                "generation_id": gen_id,
+                "detail": str(exc),
+            }
+
+    async def retry_generate_image(
+        self,
+        conversation_id: str,
+        prompt: str,
+        generation_id: str,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Retry generation of a single image with the given prompt and generation_id.
+
+        This is called when a user clicks the "Retry" button after an image
+        generation failure. The prompt is re-used without modification or
+        LLM-based enhancement — it is treated as the final, user-approved prompt.
+        """
+        try:
+            conv = self._conversation_service.get_conversation(conversation_id)
+            char = self._character_service.get_character(conv.character_id)
+        except Exception as exc:
+            logger.error(f"[Retry Image] Failed to load conversation/character: {exc}")
+            yield {
+                "type": "image_failed",
+                "generation_id": generation_id,
+                "detail": str(exc),
+            }
+            return
+
+        # Re-generate the image with the stored prompt (no LLM enhancement).
+        # Pass text_connector=None and messages=None so that _handle_image skips
+        # the prompt refinement step and uses the prompt as-is.
+        async for event in self._handle_image(
+            char=char,
+            gen_id=generation_id,
+            prompt=prompt,
+            text_connector=None,
+            messages=None,
+        ):
+            yield event
+

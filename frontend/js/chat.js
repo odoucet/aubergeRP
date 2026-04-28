@@ -457,6 +457,7 @@ function createStreamingMessage() {
 
   let rawText = '';
   const pendingImages = new Set();
+  const imagePrompts = new Map(); // genId -> prompt mapping for retries
 
   function updateMediaStatus() {
     if (pendingImages.size === 0) {
@@ -489,6 +490,7 @@ function createStreamingMessage() {
       typingEl.remove();
       wrapper.style.display = '';
       pendingImages.add(genId);
+      imagePrompts.set(genId, prompt);
       updateMediaStatus();
 
       const ph = document.createElement('div');
@@ -534,7 +536,26 @@ function createStreamingMessage() {
       if (ph) {
         const errEl = document.createElement('div');
         errEl.className = 'img-error';
-        errEl.textContent = '⚠ ' + (detail || 'Image generation failed');
+        const prompt = imagePrompts.get(genId) || '';
+        errEl.innerHTML = '⚠ ' + (detail || 'Image generation failed');
+        
+        // Add retry button
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'msg-retry-btn';
+        retryBtn.textContent = 'Retry';
+        retryBtn.style.marginLeft = '8px';
+        retryBtn.addEventListener('click', async () => {
+          retryBtn.disabled = true;
+          retryBtn.textContent = 'Retrying…';
+          try {
+            await retryImageGeneration(_activeConversationId, prompt, genId, errEl, imagesContainer);
+          } catch (err) {
+            errEl.textContent = '⚠ Retry failed: ' + err.message;
+            retryBtn.remove();
+          }
+        });
+        errEl.appendChild(retryBtn);
+        
         ph.replaceWith(errEl);
       }
     },
@@ -821,6 +842,89 @@ function scrollToBottom() {
 
 function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+async function retryImageGeneration(conversationId, prompt, genId, errEl, imagesContainer) {
+  // Replace error with placeholder while retrying
+  const ph = document.createElement('div');
+  ph.className = 'img-placeholder';
+  ph.id = `img-ph-${genId}`;
+  ph.innerHTML = `
+    <div class="spinner" id="img-spinner-${genId}"></div>
+    <span class="img-placeholder-title">Retrying image…</span>
+    ${prompt ? `<div class="img-placeholder-prompt">${escapeHtml(prompt)}</div>` : ''}
+  `;
+  errEl.replaceWith(ph);
+  scrollToBottom();
+
+  // Create a minimal handler just for image events
+  const imageHandlers = {
+    onImageStart: () => {},
+    onImageProgress: (gId, step, total) => {
+      if (gId === genId) {
+        const spinner = document.getElementById(`img-spinner-${genId}`);
+        const progressEl = document.createElement('div');
+        progressEl.className = 'img-progress';
+        progressEl.id = `img-progress-retry-${genId}`;
+        progressEl.innerHTML = `
+          <div class="img-progress-bar" id="img-progress-bar-retry-${genId}" style="width: 0%"></div>
+        `;
+        if (!spinner.nextElementSibling || !spinner.nextElementSibling.classList.contains('img-progress')) {
+          if (spinner) spinner.after(progressEl);
+        }
+        const pct = total > 0 ? Math.round((step / total) * 100) : 0;
+        const barEl = document.getElementById(`img-progress-bar-retry-${genId}`);
+        if (barEl) barEl.style.width = `${pct}%`;
+      }
+    },
+    onImageComplete: (gId, imageUrl) => {
+      if (gId === genId) {
+        const ph2 = document.getElementById(`img-ph-${genId}`);
+        if (ph2) {
+          ph2.replaceWith(createImageElement(imageUrl));
+          scrollToBottom();
+        }
+      }
+    },
+    onImageFailed: (gId, detail) => {
+      if (gId === genId) {
+        const ph2 = document.getElementById(`img-ph-${genId}`);
+        if (ph2) {
+          const errEl2 = document.createElement('div');
+          errEl2.className = 'img-error';
+          errEl2.innerHTML = '⚠ Retry failed: ' + (detail || 'Unknown error');
+          ph2.replaceWith(errEl2);
+          scrollToBottom();
+        }
+      }
+    },
+  };
+
+  try {
+    const res = await fetch(`/api/chat/${encodeURIComponent(conversationId)}/retry-image`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Session-Token': getSessionToken(),
+      },
+      body: JSON.stringify({ prompt, generation_id: genId }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    }
+
+    await readSSE(res, imageHandlers);
+  } catch (err) {
+    const ph2 = document.getElementById(`img-ph-${genId}`);
+    if (ph2) {
+      const errEl2 = document.createElement('div');
+      errEl2.className = 'img-error';
+      errEl2.textContent = '⚠ ' + err.message;
+      ph2.replaceWith(errEl2);
+    }
+    throw err;
+  }
 }
 
 export function showToast(message, duration = 4000) {

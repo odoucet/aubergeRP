@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Header
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from ..connectors.manager import ConnectorManager
 from ..event_bus import EventBus, get_event_bus
@@ -17,9 +19,17 @@ from ..services.conversation_service import ConversationService
 from ..services.media_service import MediaService
 from ..services.statistics_service import StatisticsService
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 _KEEPALIVE_TIMEOUT = 30.0  # seconds between SSE keepalive comments
+
+
+class RetryImageRequest(BaseModel):
+    """Request to retry image generation with a stored prompt."""
+    prompt: str
+    generation_id: str
 
 
 def get_session_token(x_session_token: str = Header(default="")) -> str:
@@ -97,5 +107,42 @@ async def chat_events(
                     yield ": keepalive\n\n"
         finally:
             bus.unsubscribe(session_token, conversation_id, q)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.post("/{conversation_id}/retry-image")
+async def retry_image(
+    conversation_id: str,
+    body: RetryImageRequest,
+    session_token: str = Depends(get_session_token),
+    service: ChatService = Depends(get_chat_service),
+) -> StreamingResponse:
+    """Retry generation of a single image with the given prompt and generation_id.
+
+    This endpoint is used when an image generation fails and the user clicks
+    the "Retry" button. It generates just the image without sending the entire
+    message through the chat flow again.
+    """
+    async def event_generator() -> AsyncGenerator[str, None]:
+        try:
+            async for event in service.retry_generate_image(
+                conversation_id=conversation_id,
+                prompt=body.prompt,
+                generation_id=body.generation_id,
+            ):
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+        except Exception as exc:
+            logger.exception(
+                f"[Retry Image] Error generating image (gen_id={body.generation_id}): {exc}",
+                exc_info=True,
+            )
+            yield f"data: {json.dumps({
+                'type': 'image_failed',
+                'generation_id': body.generation_id,
+                'detail': str(exc),
+            },
+            ensure_ascii=False
+            )}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
