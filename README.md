@@ -19,14 +19,19 @@ A lightweight, self-hostable roleplay engine. Connect any LLM, import SillyTaver
 git clone https://github.com/odoucet/aubergeRP.git
 cd aubergeRP
 cp config.example.yaml config.yaml
-docker compose -f docker/docker-compose.yml up --build
+make docker
 ```
 
 Open **http://localhost:8123** — the admin password is printed in the startup logs.
 
-Then: Admin → add a text connector (your LLM) → add an image connector (optional) → import a character → chat.
+Then: 
+ * go to Admin 
+ * add a text connector (your LLM)
+ * (optional) add an image connector
+ * (optional) import a character (or use one of the bundled examples)
+ * Chat !
 
-See [docs/installation-guide.md](docs/installation-guide.md) for the local GPU stack (`make docker rtx3090`) and other options.
+See [docs/installation-guide.md](docs/installation-guide.md) for the local GPU stack (`make docker gpu=rtx3090`) and other options.
 
 ## Development
 

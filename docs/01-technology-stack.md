@@ -38,5 +38,6 @@
 | `make lint` | ruff + mypy |
 | `make lint-fix` | Auto-fix lint issues |
 | `make doc` | Regenerate `docs/03-backend-api.md` |
-| `make docker <profile>` | Start local GPU stack |
-| `make stop` / `make clean` / `make logs` | Docker management |
+| `make docker` | Start app-only Docker stack |
+| `make docker gpu=rtx3090` | Start local GPU stack |
+| `make stop` / `make clean` / `make logs` | Docker management (`gpu=...` optional) |

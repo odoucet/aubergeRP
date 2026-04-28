@@ -6,12 +6,15 @@ DOCKER_DIR       := docker
 PROFILES_DIR     := $(DOCKER_DIR)/profiles
 MODELS_DIR       := data/models
 COMPOSE_BASE     := $(DOCKER_DIR)/docker-compose.yml
+COMPOSE_OLLAMA   := $(DOCKER_DIR)/docker-compose.ollama.yml
 OLLAMA_CONTAINER := auberge-ai
 
 # ─── Profile detection ────────────────────────────────────────────────────────
 AVAILABLE_PROFILES := $(patsubst $(PROFILES_DIR)/%.yml,%,$(wildcard $(PROFILES_DIR)/*.yml))
-# Supports both: make docker rtx3090  and  make docker PROFILE=rtx3090
-PROFILE ?= $(word 2,$(MAKECMDGOALS))
+LEGACY_GPU := $(word 2,$(MAKECMDGOALS))
+GPU ?= $(gpu)
+
+compose_args = -f $(COMPOSE_BASE)$(if $(strip $(GPU)), -f $(COMPOSE_OLLAMA) -f $(PROFILES_DIR)/$(GPU).yml)
 
 # Read a value from the x-gguf section of a profile YAML
 # Usage: $(call gguf_get,key,profile)
@@ -26,8 +29,8 @@ RESET  := \033[0m
 
 .PHONY: run test lint lint-fix doc help \
         docker stop clean logs \
-        _compose-up _download-gguf _ollama-create \
-        $(AVAILABLE_PROFILES)
+	_compose-up _download-gguf _ollama-create \
+	$(AVAILABLE_PROFILES)
 
 # ─── Help ─────────────────────────────────────────────────────────────────────
 help:
@@ -40,19 +43,23 @@ help:
 	@printf "    make doc              Regenerate docs/03-backend-api.md from source\n"
 	@printf "\n"
 	@printf "  $(YELLOW)Docker stack$(RESET)\n"
-	@printf "    make docker <profile> Download models, start Ollama + auberge-app\n"
-	@printf "    make stop             Stop running containers\n"
-	@printf "    make clean            Stop and remove containers and networks\n"
-	@printf "    make logs             Tail container logs\n"
+	@printf "    make docker           Start auberge-app only\n"
+	@printf "    make docker gpu=<profile>\n"
+	@printf "                          Start GPU stack (Ollama + models + auberge-app)\n"
+	@printf "    make stop [gpu=...]   Stop running containers\n"
+	@printf "    make clean [gpu=...]  Stop and remove containers and networks\n"
+	@printf "    make logs [gpu=...]   Tail container logs\n"
 	@printf "\n"
 	@printf "  $(YELLOW)Available profiles$(RESET)\n"
 	@for p in $(AVAILABLE_PROFILES); do \
-		printf "    make docker $$p\n"; \
+		printf "    make docker gpu=$$p\n"; \
 	done
 	@printf "\n"
 	@printf "  $(YELLOW)Examples$(RESET)\n"
-	@printf "    make docker rtx3090\n"
-	@printf "    make docker PROFILE=rtx3090\n"
+	@printf "    make docker\n"
+	@printf "    make docker gpu=rtx3090\n"
+	@printf "    make stop gpu=rtx3090\n"
+	@printf "    make clean gpu=rtx3090\n"
 
 # ─── Dev targets ──────────────────────────────────────────────────────────────
 run:
@@ -71,48 +78,51 @@ lint-fix:
 doc:
 	python scripts/generate_api_docs.py
 
-# ─── Docker: make docker <profile> ────────────────────────────────────────────
+# ─── Docker: make docker [gpu=<profile>] ─────────────────────────────────────
 docker:
-	@if [ -z "$(PROFILE)" ]; then \
-		printf "$(RED)Error:$(RESET) No profile specified.\n"; \
-		printf "Usage:  make docker <profile>\n"; \
+	@if [ -n "$(LEGACY_GPU)" ]; then \
+		printf "$(RED)Error:$(RESET) Positional profiles are no longer supported.\n"; \
+		printf "       Use: make docker gpu=$(LEGACY_GPU)\n"; \
+		exit 1; \
+	fi
+	@if [ -n "$(GPU)" ] && [ ! -f "$(PROFILES_DIR)/$(GPU).yml" ]; then \
+		printf "$(RED)Error:$(RESET) GPU profile '$(GPU)' does not exist.\n"; \
 		printf "Profiles: $(AVAILABLE_PROFILES)\n"; \
 		exit 1; \
 	fi
-	@if [ ! -f "$(PROFILES_DIR)/$(PROFILE).yml" ]; then \
-		printf "$(RED)Error:$(RESET) Profile '$(PROFILE)' does not exist.\n"; \
-		printf "Profiles: $(AVAILABLE_PROFILES)\n"; \
-		exit 1; \
+	@if [ -n "$(GPU)" ]; then \
+		$(MAKE) --no-print-directory _setup-$(GPU) GPU=$(GPU); \
+	else \
+		$(MAKE) --no-print-directory _compose-up; \
 	fi
-	@$(MAKE) --no-print-directory _setup-$(PROFILE)
-
-# Absorb hardware names as no-op targets so make doesn't error on them
-$(AVAILABLE_PROFILES):
-	@:
-
 stop:
 	@printf "  $(YELLOW)→$(RESET) Stopping stack...\n"
-	@docker compose -f $(COMPOSE_BASE) stop
+	@docker compose $(call compose_args) stop
 
 clean:
 	@printf "  $(RED)→$(RESET) Removing containers and networks...\n"
-	@docker compose -f $(COMPOSE_BASE) down
+	@docker compose $(call compose_args) down
 
 logs:
-	@docker compose -f $(COMPOSE_BASE) logs -f
+	@docker compose $(call compose_args) logs -f
+
+# Explicitly reject legacy positional profile usage.
+$(AVAILABLE_PROFILES):
+	@printf "$(RED)Error:$(RESET) Positional profiles are no longer supported.\n"
+	@printf "       Use: make docker gpu=$@\n"
+	@exit 1
 
 # ─── Internal: compose up ─────────────────────────────────────────────────────
 _compose-up:
-	@printf "  $(BLUE)→$(RESET) Starting stack [$(PROFILE)]...\n"
+	@if [ -n "$(GPU)" ]; then \
+		printf "  $(BLUE)→$(RESET) Starting GPU stack [$(GPU)]...\n"; \
+	else \
+		printf "  $(BLUE)→$(RESET) Starting app-only stack...\n"; \
+	fi
 
 	# make sure we have latest images (especially important for Ollama to get latest modelfile changes)
-	@docker compose \
-		-f $(COMPOSE_BASE) \
-		-f $(PROFILES_DIR)/$(PROFILE).yml \
-		pull
-	@docker compose \
-		-f $(COMPOSE_BASE) \
-		-f $(PROFILES_DIR)/$(PROFILE).yml \
+	@docker compose $(call compose_args) pull
+	@docker compose $(call compose_args) \
 		up -d --remove-orphans --build
 
 # ─── Internal: download a single GGUF if missing ─────────────────────────────
@@ -152,7 +162,7 @@ _setup-%:
 		FILE=$(call gguf_get,llm_file,$*) REPO=$(call gguf_get,llm_repo,$*)
 	@$(MAKE) --no-print-directory _download-gguf \
 		FILE=$(call gguf_get,img_file,$*) REPO=$(call gguf_get,img_repo,$*)
-	@$(MAKE) --no-print-directory _compose-up PROFILE=$*
+	@$(MAKE) --no-print-directory _compose-up GPU=$*
 	@$(MAKE) --no-print-directory _ollama-create \
 		NAME=$(call gguf_get,llm_name,$*) MODELFILE=$(call gguf_get,llm_modelfile,$*)
 	@$(MAKE) --no-print-directory _ollama-create \

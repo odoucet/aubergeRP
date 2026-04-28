@@ -4,8 +4,8 @@ This guide is intentionally short.
 
 The recommended setup is Docker-first on Linux, macOS, and Windows:
 
-- Use `docker compose up` if you want the fastest path and plan to connect aubergeRP to remote APIs such as OpenRouter, OpenAI, or another OpenAI-compatible backend.
-- Use `make docker <profile>` if you want the local GPU stack with preconfigured models.
+- Use `make docker` if you want the fastest path and plan to connect aubergeRP to remote APIs such as OpenRouter, OpenAI, or another OpenAI-compatible backend.
+- Use `make docker gpu=rtx3090` if you want the local GPU stack with preconfigured models.
 
 Everything else has been removed on purpose. The goal is to get you to a working app with the fewest possible steps.
 
@@ -26,7 +26,7 @@ Use this if you want the easiest setup.
 git clone https://github.com/odoucet/aubergeRP.git
 cd aubergeRP
 cp config.example.yaml config.yaml
-docker compose -f docker/docker-compose.yml up --build
+make docker
 ```
 
 Then open:
@@ -34,7 +34,7 @@ Then open:
 - App: **http://localhost:8123**
 - Admin: **http://localhost:8123/admin/**
 
-On first startup, aubergeRP generates an admin password and prints it in the container logs. Keep the `docker compose up` command attached the first time so you can copy that password easily.
+On first startup, aubergeRP generates an admin password and prints it in the container logs.
 
 After that:
 
@@ -44,25 +44,17 @@ After that:
 4. Set the connector as active.
 5. Start chatting.
 
-### Run In Background Later
-
-Once you have the admin password, you can start it detached:
-
-```bash
-docker compose -f docker/docker-compose.yml up -d --build
-```
-
 Useful commands:
 
 ```bash
-docker compose -f docker/docker-compose.yml logs -f
-docker compose -f docker/docker-compose.yml stop
-docker compose -f docker/docker-compose.yml down
+make logs
+make stop
+make clean
 ```
 
 ### Notes
 
-- This path works well even if you do not plan to use the bundled Ollama service.
+- This path starts `auberge-app` only (no bundled Ollama container).
 - `config.yaml` only needs to exist. Most connector setup can be done from the Admin UI.
 - Your data stays in the repository `data/` directory.
 
@@ -91,7 +83,7 @@ pip install 'huggingface_hub[cli]'
 git clone https://github.com/odoucet/aubergeRP.git
 cd aubergeRP
 cp config.example.yaml config.yaml
-make docker rtx3090
+make docker gpu=rtx3090
 ```
 
 What this does:
@@ -108,7 +100,7 @@ Then open:
 If you need to retrieve the generated admin password after startup:
 
 ```bash
-make logs
+make logs gpu=rtx3090
 ```
 
 ### Available Profile
@@ -120,19 +112,19 @@ Currently included in this repository:
 ### Useful Commands
 
 ```bash
-make logs
-make stop
-make clean
+make logs gpu=rtx3090
+make stop gpu=rtx3090
+make clean gpu=rtx3090
 ```
 
 ---
 
 ## Which Option Should You Choose?
 
-- Choose `docker compose up` if you want the fastest setup and expect to use remote APIs.
-- Choose `make docker rtx3090` if you want a local GPU-backed stack with models prepared for you.
+- Choose `make docker` if you want the fastest setup and expect to use remote APIs.
+- Choose `make docker gpu=rtx3090` if you want a local GPU-backed stack with models prepared for you.
 
-If you are unsure, start with `docker compose up`.
+If you are unsure, start with `make docker`.
 
 ---
 
@@ -153,9 +145,9 @@ If those pages load, the installation is working.
 | Problem | What to do |
 |---|---|
 | `config.yaml` missing | Run `cp config.example.yaml config.yaml` |
-| Port `8123` already in use | Start with `AUBERGE_PORT=8001 docker compose -f docker/docker-compose.yml up --build` |
+| Port `8123` already in use | Start with `AUBERGE_PORT=8001 make docker` |
 | GPU profile fails to start | Check Docker GPU support and NVIDIA Container Toolkit installation |
 | `hf` command not found | Run `pip install 'huggingface_hub[cli]'` |
-| You missed the admin password in logs | Run `make logs` or `docker compose -f docker/docker-compose.yml logs -f` |
+| You missed the admin password in logs | Run `make logs` (or `make logs gpu=rtx3090` for the GPU stack) |
 
 Database migrations run automatically at startup.

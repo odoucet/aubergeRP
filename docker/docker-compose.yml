@@ -1,14 +1,4 @@
 services:
-  ollama:
-    image: ollama/ollama:latest
-    container_name: auberge-ai
-    volumes:
-      - ollama_storage:/root/.ollama
-      - ../data/models:/data/models:ro
-      - ./modelfiles:/modelfiles:ro
-    ports:
-      - "11434:11434"
-
   auberge-app:
     build:
       context: ..
@@ -22,8 +12,3 @@ services:
       - ../config.yaml:/app/config.yaml
     ports:
       - "${AUBERGE_PORT:-8123}:8123"
-    depends_on:
-      - ollama
-
-volumes:
-  ollama_storage:
