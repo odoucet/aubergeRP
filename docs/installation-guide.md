@@ -69,13 +69,6 @@ Use this if you want aubergeRP plus local models on your own GPU.
 - Docker with Compose v2
 - GNU `make`
 - NVIDIA Container Toolkit
-- `hf` CLI from `huggingface_hub`
-
-Install the Hugging Face CLI if needed:
-
-```bash
-pip install 'huggingface_hub[cli]'
-```
 
 ### Steps
 
@@ -88,9 +81,8 @@ make docker gpu=rtx3090
 
 What this does:
 
-- downloads the required GGUF models if they are missing
-- starts the Docker stack
-- starts LocalAI, which auto-loads models from the YAML config files in `docker/localai-models/`
+- starts LocalAI and auberge-app
+- installs the models via the LocalAI gallery API (models download in the background on first run)
 
 Then open:
 
@@ -147,7 +139,6 @@ If those pages load, the installation is working.
 | `config.yaml` missing | Run `cp config.example.yaml config.yaml` |
 | Port `8123` already in use | Start with `AUBERGE_PORT=8001 make docker` |
 | GPU profile fails to start | Check Docker GPU support and NVIDIA Container Toolkit installation |
-| `hf` command not found | Run `pip install 'huggingface_hub[cli]'` |
 | You missed the admin password in logs | Run `make logs` (or `make logs gpu=rtx3090` for the GPU stack) |
 
 Database migrations run automatically at startup.

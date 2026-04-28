@@ -1,15 +1,9 @@
 # RTX 3090 (24 GB VRAM)
 
-x-gguf:
-  llm_repo: unsloth/gemma-4-26B-A4B-it-GGUF
-  llm_file: gemma-4-26B-A4B-it-UD-IQ4_NL.gguf
-  llm_size: ~13.4 GB
-  llm_name: &llm_name gemma4-26b-a4b-iq4nl
+x-models:
+  llm_name: &llm_name gemma-4-e2b-it
   llm_ctx: &llm_ctx 8192
   llm_max_tokens: &llm_max_tokens 4096
-  img_repo: leejet/FLUX.2-klein-4B-GGUF
-  img_file: flux-2-klein-4b-Q4_0.gguf
-  img_size: ~5.3 GB
   img_name: &img_name flux.2-klein-4b
 
 services:
@@ -21,11 +15,6 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    environment:
-      NVIDIA_VISIBLE_DEVICES: all
-      NVIDIA_DRIVER_CAPABILITIES: compute,utility
-      LOCALAI_PARALLEL_REQUESTS: "true"
-      LOCALAI_SINGLE_ACTIVE_BACKEND: "false"
 
   auberge-app:
     environment:

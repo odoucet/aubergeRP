@@ -4,7 +4,6 @@ export GID := $(shell id -g)
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DOCKER_DIR       := docker
 PROFILES_DIR     := $(DOCKER_DIR)/profiles
-MODELS_DIR       := data/models
 COMPOSE_BASE     := $(DOCKER_DIR)/docker-compose.yml
 COMPOSE_LOCALAI  := $(DOCKER_DIR)/docker-compose.localai.yml
 
@@ -15,9 +14,9 @@ GPU ?= $(gpu)
 
 compose_args = -f $(COMPOSE_BASE)$(if $(strip $(GPU)), -f $(COMPOSE_LOCALAI) -f $(PROFILES_DIR)/$(GPU).yml)
 
-# Read a value from the x-gguf section of a profile YAML
-# Usage: $(call gguf_get,key,profile)
-gguf_get = $(shell sed -n 's/^[[:space:]]*$(1)[[:space:]]*:[[:space:]]*//p' $(PROFILES_DIR)/$(2).yml | sed 's/^&[^ ]* //; s/[[:space:]]*#.*//')
+# Read a value from the x-models section of a profile YAML
+# Usage: $(call profile_get,key,profile)
+profile_get = $(shell sed -n 's/^[[:space:]]*$(1)[[:space:]]*:[[:space:]]*//p' $(PROFILES_DIR)/$(2).yml | sed 's/^&[^ ]* //; s/[[:space:]]*#.*//')
 
 # ─── Terminal colours ─────────────────────────────────────────────────────────
 GREEN  := \033[1;32m
@@ -28,7 +27,7 @@ RESET  := \033[0m
 
 .PHONY: run test test-e2e lint lint-fix doc help \
         docker stop clean logs \
-	_compose-up _download-gguf \
+	_compose-up _localai-install \
 	$(AVAILABLE_PROFILES)
 
 # ─── Help ─────────────────────────────────────────────────────────────────────
@@ -45,7 +44,7 @@ help:
 	@printf "  $(YELLOW)Docker stack$(RESET)\n"
 	@printf "    make docker           Start auberge-app only\n"
 	@printf "    make docker gpu=<profile>\n"
-	@printf "                          Start GPU stack (LocalAI + models + auberge-app)\n"
+	@printf "                          Start LocalAI + auberge-app, install models via gallery\n"
 	@printf "    make stop [gpu=...]   Stop running containers\n"
 	@printf "    make clean [gpu=...]  Stop and remove containers and networks\n"
 	@printf "    make logs [gpu=...]   Tail container logs\n"
@@ -122,35 +121,30 @@ _compose-up:
 	else \
 		printf "  $(BLUE)→$(RESET) Starting app-only stack...\n"; \
 	fi
-
-	# pull latest images (LocalAI YAML config changes are picked up at container start)
 	@docker compose $(call compose_args) pull
 	@docker compose $(call compose_args) \
 		up -d --remove-orphans --build
 
-# ─── Internal: download a single GGUF if missing ─────────────────────────────
-# Usage: $(MAKE) _download-gguf FILE=x.gguf REPO=org/repo
-_download-gguf:
-	@if [ -f "$(MODELS_DIR)/$(FILE)" ]; then \
-		printf "  $(GREEN)✓$(RESET) $(FILE) already present.\n"; \
+# ─── Internal: install a model via LocalAI gallery API ───────────────────────
+# Usage: $(MAKE) _localai-install NAME=model-name
+# The install is asynchronous: LocalAI downloads the model in the background.
+_localai-install:
+	@printf "  $(BLUE)→$(RESET) Waiting for LocalAI API...\n"
+	@until curl -sf http://localhost:8080/v1/models >/dev/null 2>&1; do sleep 2; done
+	@if curl -sf http://localhost:8080/v1/models 2>/dev/null | grep -q '"$(NAME)"'; then \
+		printf "  $(GREEN)✓$(RESET) $(NAME) already installed.\n"; \
 	else \
-		printf "  $(BLUE)↓$(RESET) Downloading $(FILE) (~may take a while)...\n"; \
-		mkdir -p $(MODELS_DIR); \
-		if command -v hf >/dev/null 2>&1; then \
-			hf download $(REPO) $(FILE) --local-dir $(MODELS_DIR); \
-		else \
-			printf "  $(RED)✗$(RESET) hf not found.\n"; \
-			printf "       Install: pip install 'huggingface_hub[cli]'\n"; \
-			exit 1; \
-		fi; \
+		printf "  $(BLUE)↓$(RESET) Installing $(NAME) (downloading in background)...\n"; \
+		curl -sf -X POST "http://localhost:8080/api/models/install/$(NAME)" \
+			-H "Content-Type: application/json" -d '{}' >/dev/null \
+			&& printf "  $(GREEN)✓$(RESET) $(NAME) install started — check 'make logs' for progress.\n" \
+			|| printf "  $(RED)✗$(RESET) Failed to request install for $(NAME).\n"; \
 	fi
 
-# ─── Generic profile setup (reads specs from x-gguf in the profile YAML) ─────
-# LocalAI auto-loads models from YAML files in localai-models/ at startup —
-# no model registration step needed.
+# ─── Generic profile setup ────────────────────────────────────────────────────
 _setup-%:
-	@$(MAKE) --no-print-directory _download-gguf \
-		FILE=$(call gguf_get,llm_file,$*) REPO=$(call gguf_get,llm_repo,$*)
-	@$(MAKE) --no-print-directory _download-gguf \
-		FILE=$(call gguf_get,img_file,$*) REPO=$(call gguf_get,img_repo,$*)
 	@$(MAKE) --no-print-directory _compose-up GPU=$*
+	@$(MAKE) --no-print-directory _localai-install \
+		NAME=$(call profile_get,llm_name,$*)
+	@$(MAKE) --no-print-directory _localai-install \
+		NAME=$(call profile_get,img_name,$*)
