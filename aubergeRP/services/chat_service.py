@@ -658,6 +658,7 @@ class ChatService:
                 "detail": "No active image connector",
             }
             return
+        full_prompt = prompt
         try:
             logger.debug(f"[Image Gen] Starting image generation for gen_id={gen_id}")
             if text_connector is not None and messages is not None:
@@ -701,7 +702,7 @@ class ChatService:
             yield {"type": "image_complete", "generation_id": gen_id, "image_url": url}
         except Exception as exc:
             logger.exception(
-                f"[Image Gen] Error generating image (gen_id={gen_id}): {exc}",
+                f"[Image Gen] Error generating image (gen_id={gen_id}, prompt={full_prompt[:200]!r}): {exc}",
                 exc_info=True,
             )
             yield {
