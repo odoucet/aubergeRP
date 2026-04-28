@@ -159,8 +159,8 @@ def _init_admin_password(config: Config) -> None:
 
 
 def create_app() -> FastAPI:
-    logging.basicConfig(level=logging.INFO)
     config = get_config()
+    logging.basicConfig(level=getattr(logging, config.app.log_level, logging.INFO))
     logger.info(
         "Starting aubergeRP | data_dir=%s port=%s log_level=%s",
         Path(config.app.data_dir).resolve(),
