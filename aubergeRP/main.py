@@ -12,7 +12,6 @@ from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .config import Config, get_config
-from .utils.auth import get_or_create_admin_password_hash
 from .routers import admin as admin_router
 from .routers import characters as characters_router
 from .routers import chat as chat_router
@@ -24,6 +23,7 @@ from .routers import images as images_router
 from .routers import media as media_router
 from .routers import statistics as statistics_router
 from .services.example_seed_service import seed_example_characters
+from .utils.auth import get_or_create_admin_password_hash
 
 _BUILTIN_WORKFLOWS_DIR = Path(__file__).parent / "comfyui_workflows"
 logger = logging.getLogger(__name__)

@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from typing import Optional
 
 
 def generate_random_password(length: int = 16) -> str:
     """Generate a random secure password.
-    
+
     Args:
         length: The length of the password to generate.
-        
+
     Returns:
         A random password string.
     """
@@ -23,10 +22,10 @@ def generate_random_password(length: int = 16) -> str:
 
 def hash_password(password: str) -> str:
     """Hash a password using SHA-256.
-    
+
     Args:
         password: The plain-text password to hash.
-        
+
     Returns:
         The hashed password as a hex string.
     """
@@ -35,11 +34,11 @@ def hash_password(password: str) -> str:
 
 def verify_password(password: str, password_hash: str) -> bool:
     """Verify a password against a stored hash.
-    
+
     Args:
         password: The plain-text password to verify.
         password_hash: The stored hash to verify against.
-        
+
     Returns:
         True if the password matches the hash, False otherwise.
     """
@@ -47,16 +46,16 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 def get_or_create_admin_password_hash(
-    current_hash: Optional[str],
-) -> tuple[str, Optional[str]]:
+    current_hash: str | None,
+) -> tuple[str, str | None]:
     """Get or create an admin password hash.
-    
+
     If a hash is provided, it is returned as-is. If not provided or empty,
     a new password is generated and hashed.
-    
+
     Args:
         current_hash: The current admin password hash (if any).
-        
+
     Returns:
         A tuple of (password_hash, plain_password_to_log_or_none).
         If a new password was generated, the second value contains the plain
@@ -65,7 +64,7 @@ def get_or_create_admin_password_hash(
     """
     if current_hash:
         return current_hash, None
-    
+
     plain_password = generate_random_password()
     password_hash = hash_password(plain_password)
     return password_hash, plain_password

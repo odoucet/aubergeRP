@@ -65,7 +65,7 @@ lint:
 	python -m mypy aubergeRP/
 
 lint-fix:
-	python -m ruff check aubergeRP/ tests/ --fix
+	python -m ruff check aubergeRP/ tests/ --fix --unsafe-fixes
 
 # ─── Docker: make docker <profile> ────────────────────────────────────────────
 docker:
