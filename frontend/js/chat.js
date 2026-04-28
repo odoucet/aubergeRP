@@ -533,30 +533,31 @@ function createStreamingMessage() {
       pendingImages.delete(genId);
       updateMediaStatus();
       const ph = document.getElementById(`img-ph-${genId}`);
+      const errEl = document.createElement('div');
+      errEl.className = 'img-error';
+      const prompt = imagePrompts.get(genId) || '';
+      errEl.innerHTML = '⚠ ' + (detail || 'Image generation failed');
+
+      const retryBtn = document.createElement('button');
+      retryBtn.className = 'msg-retry-btn';
+      retryBtn.textContent = 'Retry';
+      retryBtn.style.marginLeft = '8px';
+      retryBtn.addEventListener('click', async () => {
+        retryBtn.disabled = true;
+        retryBtn.textContent = 'Retrying…';
+        try {
+          await retryImageGeneration(_activeConversationId, prompt, genId, errEl, imagesContainer);
+        } catch (err) {
+          errEl.textContent = '⚠ Retry failed: ' + err.message;
+          retryBtn.remove();
+        }
+      });
+      errEl.appendChild(retryBtn);
+
       if (ph) {
-        const errEl = document.createElement('div');
-        errEl.className = 'img-error';
-        const prompt = imagePrompts.get(genId) || '';
-        errEl.innerHTML = '⚠ ' + (detail || 'Image generation failed');
-        
-        // Add retry button
-        const retryBtn = document.createElement('button');
-        retryBtn.className = 'msg-retry-btn';
-        retryBtn.textContent = 'Retry';
-        retryBtn.style.marginLeft = '8px';
-        retryBtn.addEventListener('click', async () => {
-          retryBtn.disabled = true;
-          retryBtn.textContent = 'Retrying…';
-          try {
-            await retryImageGeneration(_activeConversationId, prompt, genId, errEl, imagesContainer);
-          } catch (err) {
-            errEl.textContent = '⚠ Retry failed: ' + err.message;
-            retryBtn.remove();
-          }
-        });
-        errEl.appendChild(retryBtn);
-        
         ph.replaceWith(errEl);
+      } else {
+        imagesContainer.appendChild(errEl);
       }
     },
     finalize() {
@@ -892,7 +893,24 @@ async function retryImageGeneration(conversationId, prompt, genId, errEl, images
         if (ph2) {
           const errEl2 = document.createElement('div');
           errEl2.className = 'img-error';
-          errEl2.innerHTML = '⚠ Retry failed: ' + (detail || 'Unknown error');
+          errEl2.innerHTML = '⚠ ' + (detail || 'Unknown error');
+
+          const retryBtn2 = document.createElement('button');
+          retryBtn2.className = 'msg-retry-btn';
+          retryBtn2.textContent = 'Retry';
+          retryBtn2.style.marginLeft = '8px';
+          retryBtn2.addEventListener('click', async () => {
+            retryBtn2.disabled = true;
+            retryBtn2.textContent = 'Retrying…';
+            try {
+              await retryImageGeneration(conversationId, prompt, genId, errEl2, imagesContainer);
+            } catch (err) {
+              errEl2.textContent = '⚠ Retry failed: ' + err.message;
+              retryBtn2.remove();
+            }
+          });
+          errEl2.appendChild(retryBtn2);
+
           ph2.replaceWith(errEl2);
           scrollToBottom();
         }
