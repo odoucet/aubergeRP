@@ -28,6 +28,31 @@ jobs:
       - name: Run lint
         run: make lint
 
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Ensure docs are up to date
+        run: |
+          make doc
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Error: 'make doc' generated uncommitted changes."
+            git status --short
+            git --no-pager diff
+            exit 1
+          fi
+
   pip-audit:
     name: Pip Audit
     runs-on: ubuntu-latest
