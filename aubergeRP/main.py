@@ -151,7 +151,8 @@ def _init_admin_password(config: Config) -> None:
     To get a stable password across restarts, set AUBERGE_ADMIN_PASSWORD_HASH.
     """
     import os
-    from .utils.auth import hash_password, generate_random_password
+
+    from .utils.auth import generate_random_password, hash_password
 
     env_hash = os.environ.get("AUBERGE_ADMIN_PASSWORD_HASH", "").strip()
     if env_hash:

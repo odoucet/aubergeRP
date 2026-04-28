@@ -538,8 +538,8 @@ async def test_stream_image_failure_detail_no_mdn_url(tmp_path):
             if False:
                 yield {}
             import httpx
-            response = httpx.Response(400, json={"error": {"message": "Provider returned error"}})
-            raise ValueError(f"[OpenRouter Chat API] HTTP 400: Provider returned error")
+            httpx.Response(400, json={"error": {"message": "Provider returned error"}})
+            raise ValueError("[OpenRouter Chat API] HTTP 400: Provider returned error")
 
         async def test_connection(self) -> dict:
             return {}

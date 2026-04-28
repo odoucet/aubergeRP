@@ -112,7 +112,7 @@ class OpenAITextConnector(TextConnector):
                 payload_str = line[6:]
                 if payload_str == "[DONE]":
                     break
-                
+
                 try:
                     chunk = json.loads(payload_str)
                     content = chunk["choices"][0]["delta"].get("content")
@@ -178,7 +178,13 @@ class OpenAITextConnector(TextConnector):
 
         model_name = payload["model"]
         req_bytes = len(json.dumps(payload).encode())
-        logger.info("LLM request (tools): model=%s messages=%d tools=%d req=%d bytes", model_name, len(messages), len(tools), req_bytes)
+        logger.info(
+            "LLM request (tools): model=%s messages=%d tools=%d req=%d bytes",
+            model_name,
+            len(messages),
+            len(tools),
+            req_bytes
+        )
         logger.debug("LLM payload: %s", json.dumps(payload, ensure_ascii=False))
 
         # Accumulate tool-call argument fragments keyed by call index.

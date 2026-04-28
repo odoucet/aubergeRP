@@ -242,9 +242,8 @@ async def test_generate_image_openrouter_400_logs_prompt(caplog):
     respx.post(f"{BASE_OPENROUTER}/chat/completions").respond(
         400, json={"error": {"message": "Provider returned error", "code": 400}}
     )
-    with caplog.at_level(logging.ERROR, logger="aubergeRP.connectors.openai_image"):
-        with pytest.raises(ValueError):
-            await make_connector().generate_image("a dragon in a forest")
+    with caplog.at_level(logging.ERROR, logger="aubergeRP.connectors.openai_image"), pytest.raises(ValueError):
+        await make_connector().generate_image("a dragon in a forest")
     assert any("a dragon in a forest" in r.message for r in caplog.records)
 
 
@@ -339,9 +338,8 @@ async def test_generate_image_openai_compat_400_logs_prompt(caplog):
     respx.post(f"{BASE_OPENAI_COMPAT}/images/generations").respond(
         400, json={"error": {"message": "Bad request", "code": 400}}
     )
-    with caplog.at_level(logging.ERROR, logger="aubergeRP.connectors.openai_image"):
-        with pytest.raises(ValueError):
-            await make_connector(base_url=BASE_OPENAI_COMPAT).generate_image("medieval castle at night")
+    with caplog.at_level(logging.ERROR, logger="aubergeRP.connectors.openai_image"), pytest.raises(ValueError):
+        await make_connector(base_url=BASE_OPENAI_COMPAT).generate_image("medieval castle at night")
     assert any("medieval castle at night" in r.message for r in caplog.records)
 
 
