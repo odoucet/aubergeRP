@@ -36,6 +36,19 @@
         __test.dispatchSSEEvent({ type: 'image_progress', generation_id: 'gen-2', step: 1, total: 4 }, streaming);
         window.__streaming = streaming;
       },
+      // Simulate failure without a prior image_start (e.g. placeholder missing)
+      failImageOrphan(genId = 'gen-orphan', detail = 'Generation failed') {
+        const streaming = __test.createStreamingMessage();
+        window.__streaming = streaming;
+        streaming.onImageFailed(genId, detail);
+      },
+      // Simulate full retry cycle: start → fail (to produce errEl with retry btn)
+      startAndFailImage(prompt = 'a tavern', detail = 'HTTP 400') {
+        const streaming = __test.createStreamingMessage();
+        streaming.onImageStart('gen-retry', prompt);
+        window.__streaming = streaming;
+        streaming.onImageFailed('gen-retry', detail);
+      },
     };
   </script>
 </body>

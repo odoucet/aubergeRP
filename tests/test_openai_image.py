@@ -192,8 +192,60 @@ async def test_generate_image_openrouter_uses_overrides():
 @respx.mock
 async def test_generate_image_openrouter_raises_on_error():
     respx.post(f"{BASE_OPENROUTER}/chat/completions").respond(502)
-    with pytest.raises(httpx.HTTPStatusError):
+    with pytest.raises(ValueError, match="HTTP 502"):
         await make_connector().generate_image("test")
+
+
+@respx.mock
+async def test_generate_image_openrouter_400_clean_message():
+    """HTTP 400 with JSON error body raises ValueError with clean message (no MDN URL)."""
+    error_body = {
+        "error": {
+            "message": "Provider returned error",
+            "code": 400,
+            "metadata": {
+                "raw": json.dumps({
+                    "status": "Request Moderated",
+                    "details": {"Moderation Reasons": ["Content Policy Violation"]},
+                }),
+                "provider_name": "Black Forest Labs",
+            },
+        }
+    }
+    respx.post(f"{BASE_OPENROUTER}/chat/completions").respond(400, json=error_body)
+    with pytest.raises(ValueError) as exc_info:
+        await make_connector().generate_image("explicit scene")
+    msg = str(exc_info.value)
+    assert "HTTP 400" in msg
+    assert "Content Policy Violation" in msg
+    assert "developer.mozilla.org" not in msg
+
+
+@respx.mock
+async def test_generate_image_openrouter_400_json_error_no_metadata():
+    """HTTP 400 with simple JSON error message (no nested metadata)."""
+    respx.post(f"{BASE_OPENROUTER}/chat/completions").respond(
+        400, json={"error": {"message": "Invalid model", "code": 400}}
+    )
+    with pytest.raises(ValueError) as exc_info:
+        await make_connector().generate_image("test")
+    msg = str(exc_info.value)
+    assert "HTTP 400" in msg
+    assert "Invalid model" in msg
+    assert "developer.mozilla.org" not in msg
+
+
+@respx.mock
+async def test_generate_image_openrouter_400_logs_prompt(caplog):
+    """Prompt is included in the ERROR log when generation fails."""
+    import logging
+    respx.post(f"{BASE_OPENROUTER}/chat/completions").respond(
+        400, json={"error": {"message": "Provider returned error", "code": 400}}
+    )
+    with caplog.at_level(logging.ERROR, logger="aubergeRP.connectors.openai_image"):
+        with pytest.raises(ValueError):
+            await make_connector().generate_image("a dragon in a forest")
+    assert any("a dragon in a forest" in r.message for r in caplog.records)
 
 
 @respx.mock
@@ -264,3 +316,66 @@ async def test_generate_image_openai_compat_url_fallback():
     respx.get(IMAGE_URL).respond(200, content=FAKE_PNG)
     result = await make_connector(base_url=BASE_OPENAI_COMPAT).generate_image("a blue sky")
     assert result == FAKE_PNG
+
+
+@respx.mock
+async def test_generate_image_openai_compat_400_clean_message():
+    """OpenAI Images API HTTP 400 raises ValueError with clean message (no MDN URL)."""
+    respx.post(f"{BASE_OPENAI_COMPAT}/images/generations").respond(
+        400, json={"error": {"message": "Billing quota exceeded", "code": "billing_hard_limit_reached"}}
+    )
+    with pytest.raises(ValueError) as exc_info:
+        await make_connector(base_url=BASE_OPENAI_COMPAT).generate_image("test")
+    msg = str(exc_info.value)
+    assert "HTTP 400" in msg
+    assert "Billing quota exceeded" in msg
+    assert "developer.mozilla.org" not in msg
+
+
+@respx.mock
+async def test_generate_image_openai_compat_400_logs_prompt(caplog):
+    """Prompt is included in ERROR log for OpenAI Images API failures."""
+    import logging
+    respx.post(f"{BASE_OPENAI_COMPAT}/images/generations").respond(
+        400, json={"error": {"message": "Bad request", "code": 400}}
+    )
+    with caplog.at_level(logging.ERROR, logger="aubergeRP.connectors.openai_image"):
+        with pytest.raises(ValueError):
+            await make_connector(base_url=BASE_OPENAI_COMPAT).generate_image("medieval castle at night")
+    assert any("medieval castle at night" in r.message for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# _format_http_error helper
+# ---------------------------------------------------------------------------
+
+def test_format_http_error_moderation():
+    """Moderation reasons are surfaced in the formatted message."""
+    connector = make_connector()
+    raw = json.dumps({
+        "status": "Request Moderated",
+        "details": {"Moderation Reasons": ["Content Policy Violation", "Adult Content"]},
+    })
+    mock_resp = httpx.Response(400, json={"error": {"message": "Provider returned error", "metadata": {"raw": raw}}})
+    msg = connector._format_http_error(mock_resp, "[Test]")
+    assert "HTTP 400" in msg
+    assert "Content Policy Violation" in msg
+    assert "Adult Content" in msg
+    assert "Request Moderated" in msg
+
+
+def test_format_http_error_simple_message():
+    """Simple JSON error message is returned cleanly."""
+    connector = make_connector()
+    mock_resp = httpx.Response(429, json={"error": {"message": "Rate limit exceeded"}})
+    msg = connector._format_http_error(mock_resp, "[Test]")
+    assert "HTTP 429" in msg
+    assert "Rate limit exceeded" in msg
+
+
+def test_format_http_error_non_json_body():
+    """Non-JSON body falls back to just the status code."""
+    connector = make_connector()
+    mock_resp = httpx.Response(503, text="Service Unavailable")
+    msg = connector._format_http_error(mock_resp, "[Test]")
+    assert "HTTP 503" in msg

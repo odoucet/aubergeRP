@@ -528,6 +528,79 @@ async def test_stream_image_connector_failure(tmp_path):
     assert "image gen failed" in failed["detail"]
 
 
+async def test_stream_image_failure_detail_no_mdn_url(tmp_path):
+    """image_failed.detail must not contain MDN URLs from httpx error formatting."""
+
+    class _HttpErrorImage:
+        connector_type = "image"
+
+        async def generate_image_with_progress(self, prompt, **kw):
+            if False:
+                yield {}
+            import httpx
+            response = httpx.Response(400, json={"error": {"message": "Provider returned error"}})
+            raise ValueError(f"[OpenRouter Chat API] HTTP 400: Provider returned error")
+
+        async def test_connection(self) -> dict:
+            return {}
+
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=_FakeText(["[IMG:tavern scene]"]),
+        image_conn=_HttpErrorImage(),
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.stream_chat(conv.id, "Hi"))
+    failed = next(e for e in events if e["type"] == "image_failed")
+    assert "developer.mozilla.org" not in failed["detail"]
+    assert "HTTP 400" in failed["detail"]
+
+
+async def test_stream_image_failure_logs_prompt(tmp_path, caplog):
+    """The image prompt is included in the ERROR log when generation fails."""
+    import logging
+
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=_FakeText(["[IMG:dragon breathing fire]"]),
+        image_conn=_FailImage(),
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    with caplog.at_level(logging.ERROR, logger="aubergeRP.services.chat_service"):
+        await collect(svc.stream_chat(conv.id, "Hi"))
+    assert any("dragon breathing fire" in r.message for r in caplog.records)
+
+
+async def test_retry_generate_image_success(tmp_path):
+    """retry_generate_image yields image_complete on success."""
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        image_conn=_FakeImage(b"RETRIED"),
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.retry_generate_image(conv.id, "a sunset", "gen-retry-1"))
+    assert any(e["type"] == "image_complete" for e in events)
+    complete = next(e for e in events if e["type"] == "image_complete")
+    assert complete["generation_id"] == "gen-retry-1"
+
+
+async def test_retry_generate_image_failure(tmp_path):
+    """retry_generate_image yields image_failed when connector raises."""
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        image_conn=_FailImage(),
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.retry_generate_image(conv.id, "a sunset", "gen-retry-2"))
+    failed = next(e for e in events if e["type"] == "image_failed")
+    assert failed["generation_id"] == "gen-retry-2"
+    assert "image gen failed" in failed["detail"]
+
+
 async def test_stream_image_saves_to_disk(tmp_path):
     char_svc, conv_svc, svc = make_chat_service(
         tmp_path,

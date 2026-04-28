@@ -75,3 +75,32 @@ test('dispatchSSEEvent routes image progress events to the visible placeholder',
     assert.notEqual(progressWidth, '0px');
   });
 });
+
+test('shows retry button and error message when image generation fails', async () => {
+  await withPage(async (page) => {
+    await page.evaluate(() => window.__chatHarness.startAndFailImage('a dragon', 'HTTP 400: Content Policy Violation'));
+
+    await page.waitForSelector('.img-error', { state: 'attached' });
+
+    const errorText = await page.textContent('.img-error');
+    assert.ok(errorText.includes('HTTP 400: Content Policy Violation'));
+    assert.ok(!errorText.includes('developer.mozilla.org'));
+
+    const retryBtn = await page.$('.img-error .msg-retry-btn');
+    assert.ok(retryBtn !== null, 'retry button should be present after image failure');
+    const btnText = await retryBtn.textContent();
+    assert.equal(btnText.trim(), 'Retry');
+  });
+});
+
+test('shows retry button even when image_failed arrives without a prior image_start', async () => {
+  await withPage(async (page) => {
+    // Simulate server sending image_failed without image_start (placeholder missing)
+    await page.evaluate(() => window.__chatHarness.failImageOrphan('gen-orphan', 'Unexpected failure'));
+
+    await page.waitForSelector('.img-error', { state: 'attached' });
+
+    const retryBtn = await page.$('.img-error .msg-retry-btn');
+    assert.ok(retryBtn !== null, 'retry button should appear even without a placeholder');
+  });
+});
