@@ -19,6 +19,7 @@ One consequence too : the max_tokens parameter is not correctly handled for reas
 
 - [ ] Check if no image connector is set, that everything is working correctly: no call to image generation, no error, and that the user can still have a conversation with the LLM. This is a common use case for users who just want to use the chat feature without images. Add unit tests for this case.
 
+- [ ] add a cache buster on static assets (js/css) to avoid browser caching issues after updates (needs to think twice about implementation on this one).
 ---
 
 ## Medium priority
