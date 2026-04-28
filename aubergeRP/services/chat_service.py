@@ -55,9 +55,10 @@ _OOC_GUARDRAIL = (
 _NSFW_PATTERNS: list[re.Pattern[str]] = [
     # Lightweight lexical heuristic similar to OOC detection.
     re.compile(r"\b(nsfw|explicit|porn|pornographic|erotic|sexual|sex scene)\b", re.IGNORECASE),
-    re.compile(r"\b(nude|nudity|naked|topless|bottomless)\b", re.IGNORECASE),
+    re.compile(r"\b(nude|nudity|naked|topless|bottomless|full nudity)\b", re.IGNORECASE),
     re.compile(r"\b(fetish|bdsm|domination|submission|kink)\b", re.IGNORECASE),
-    re.compile(r"\b(contenu sexuel|contenu explicite|nu intégral|pornographique)\b", re.IGNORECASE),
+    # French-language equivalents for multilingual user input detection.
+    re.compile(r"\b(contenu sexuel|contenu explicite|nu int\u00e9gral|pornographique)\b", re.IGNORECASE),
 ]
 
 _NSFW_BLOCK_GUARDRAIL = (
@@ -423,17 +424,34 @@ class ChatService:
         user_name: str = "User",
     ) -> AsyncIterator[dict[str, Any]]:
         try:
-            self._conversation_service.append_message(conversation_id, "user", content)
-        except Exception as exc:
-            yield {"type": "error", "detail": str(exc)}
-            return
-
-        try:
             conv = self._conversation_service.get_conversation(conversation_id)
             char = self._character_service.get_character(conv.character_id)
         except Exception as exc:
             yield {"type": "error", "detail": str(exc)}
             return
+
+        # On retry, the last message is already the user message; skip re-adding it
+        # to avoid duplicates in the conversation history.
+        # Note: the frontend enforces a single-active-stream invariant (_streaming flag),
+        # so two identical messages cannot be sent concurrently in practice.
+        last_msg = conv.messages[-1] if conv.messages else None
+        is_retry = (
+            last_msg is not None
+            and last_msg.role == "user"
+            and last_msg.content == content
+        )
+        if not is_retry:
+            try:
+                self._conversation_service.append_message(conversation_id, "user", content)
+            except Exception as exc:
+                yield {"type": "error", "detail": str(exc)}
+                return
+            # Reload conversation to include the newly appended user message.
+            try:
+                conv = self._conversation_service.get_conversation(conversation_id)
+            except Exception as exc:
+                yield {"type": "error", "detail": str(exc)}
+                return
 
         text_connector = self._connector_manager.get_active_text_connector()
         if text_connector is None:
