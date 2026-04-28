@@ -344,6 +344,44 @@ async def test_generate_image_openai_compat_400_logs_prompt(caplog):
 
 
 # ---------------------------------------------------------------------------
+# size fallback
+# ---------------------------------------------------------------------------
+
+
+@respx.mock
+async def test_generate_image_openai_compat_empty_size_falls_back_to_default():
+    """Empty size string in config falls back to 1024x1024, not sent as empty."""
+    route = respx.post(f"{BASE_OPENAI_COMPAT}/images/generations").respond(
+        200, json={"data": [{"b64_json": base64.b64encode(FAKE_PNG).decode()}]}
+    )
+    await make_connector(base_url=BASE_OPENAI_COMPAT, size="").generate_image("a castle")
+    body = json.loads(route.calls[0].request.content)
+    assert body["size"] == "1024x1024"
+
+
+@respx.mock
+async def test_generate_image_openai_compat_none_size_falls_back_to_default():
+    """None size param with empty config falls back to 1024x1024."""
+    route = respx.post(f"{BASE_OPENAI_COMPAT}/images/generations").respond(
+        200, json={"data": [{"b64_json": base64.b64encode(FAKE_PNG).decode()}]}
+    )
+    await make_connector(base_url=BASE_OPENAI_COMPAT, size="").generate_image("a castle", size=None)
+    body = json.loads(route.calls[0].request.content)
+    assert body["size"] == "1024x1024"
+
+
+@respx.mock
+async def test_generate_image_openai_compat_explicit_size_overrides_default():
+    """Explicit size param is sent as-is and not overridden."""
+    route = respx.post(f"{BASE_OPENAI_COMPAT}/images/generations").respond(
+        200, json={"data": [{"b64_json": base64.b64encode(FAKE_PNG).decode()}]}
+    )
+    await make_connector(base_url=BASE_OPENAI_COMPAT).generate_image("a castle", size="512x512")
+    body = json.loads(route.calls[0].request.content)
+    assert body["size"] == "512x512"
+
+
+# ---------------------------------------------------------------------------
 # _format_http_error helper
 # ---------------------------------------------------------------------------
 

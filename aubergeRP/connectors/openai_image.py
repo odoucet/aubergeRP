@@ -169,7 +169,7 @@ class OpenAIImageConnector(ImageConnector):
     ) -> bytes:
         full_prompt = f"{prompt}. Avoid: {negative_prompt}" if negative_prompt else prompt
         resolved_model = model or self.config.model
-        resolved_size = size or self.config.size
+        resolved_size = size or self.config.size or "1024x1024"
 
         async with httpx.AsyncClient(timeout=self.config.timeout) as client:
             if self._is_openrouter():
