@@ -421,10 +421,9 @@
   import { applyHealthBadges } from '/js/admin/connectors.js';
   import { applyGuiCustomization } from '/js/gui-customization.js';
 
+  async function main() {
   const authenticated = await initAdminAuth();
-  if (!authenticated) {
-    return;
-  }
+  if (!authenticated) return;
   applyGuiCustomization();
 
   // ── Section routing (hash-based) ────────────────────────────────────────
@@ -677,6 +676,9 @@
     const h = window.location.hash.replace('#', '');
     activateSection(SECTIONS.includes(h) ? h : 'connectors');
   });
+  } // end main()
+
+  main();
 </script>
 
 </body>
