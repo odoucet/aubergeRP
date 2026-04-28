@@ -96,6 +96,12 @@ logs:
 # ─── Internal: compose up ─────────────────────────────────────────────────────
 _compose-up:
 	@printf "  $(BLUE)→$(RESET) Starting stack [$(PROFILE)]...\n"
+
+	# make sure we have latest images (especially important for Ollama to get latest modelfile changes)
+	@docker compose \
+		-f $(COMPOSE_BASE) \
+		-f $(PROFILES_DIR)/$(PROFILE).yml \
+		pull
 	@docker compose \
 		-f $(COMPOSE_BASE) \
 		-f $(PROFILES_DIR)/$(PROFILE).yml \
