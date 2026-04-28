@@ -21,10 +21,16 @@ Example with URL: http://ollama:11434/v1  ·  Model: qwen3.6-27b:q4km
 Last test: Connected. 2 model(s) available (flux-klein:9b-q4km, glm47-flash:q4_0).
 => model not listed, which gives a 404 if we try to use it later in the front.
 
+- [ ] hability to add parameters on model. Example with qwen that can expect an extra_body:
+"chat_template_kwargs": {"enable_thinking": False},
+
+- [ ] make sure connectors can accept temperature/top_p/presence_penalty/frequency_penalty parameters in the body of the request, and pass them to the model if supported. Add this to the "test" function in admin as well.
+
 Front
 -----
 
 - [ ] if a chat failed, and we click on "retry", the original message is added again to the chat history, invisible first, but if we refresh the page, we can see that the message is duplicated.
+
 
 Bug fixes
 ---------
