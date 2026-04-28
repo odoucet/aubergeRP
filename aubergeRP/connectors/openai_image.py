@@ -68,6 +68,29 @@ class OpenAIImageConnector(ImageConnector):
         img_response.raise_for_status()
         return img_response.content
 
+    def _format_http_error(self, response: httpx.Response, context: str) -> str:
+        """Build a human-readable error from an HTTP error response body."""
+        try:
+            body = response.json()
+            error = body.get("error", {})
+            msg = error.get("message", "")
+            metadata = error.get("metadata", {})
+            raw_str = metadata.get("raw")
+            if isinstance(raw_str, str):
+                try:
+                    raw = json.loads(raw_str)
+                    status = raw.get("status", "")
+                    reasons = raw.get("details", {}).get("Moderation Reasons", [])
+                    if reasons:
+                        return f"{context} HTTP {response.status_code}: {msg} — {status}: {', '.join(reasons)}"
+                except (json.JSONDecodeError, AttributeError):
+                    pass
+            if msg:
+                return f"{context} HTTP {response.status_code}: {msg}"
+        except Exception:
+            pass
+        return f"{context} HTTP {response.status_code}"
+
     async def _generate_via_openai_images_api(
         self,
         full_prompt: str,
@@ -88,10 +111,9 @@ class OpenAIImageConnector(ImageConnector):
             json=payload,
         )
         if response.status_code >= 400:
-            logger.error(
-                f"[OpenAI Images API] HTTP {response.status_code}: {response.text}"
-            )
-        response.raise_for_status()
+            error_msg = self._format_http_error(response, "[OpenAI Images API]")
+            logger.error(f"{error_msg}\nPrompt: {full_prompt[:500]}")
+            raise ValueError(error_msg)
         item = response.json()["data"][0]
         return await self._extract_image_bytes(item, client)
 
@@ -117,10 +139,9 @@ class OpenAIImageConnector(ImageConnector):
             json=payload,
         )
         if response.status_code >= 400:
-            logger.error(
-                f"[OpenRouter Chat API] HTTP {response.status_code}: {response.text}"
-            )
-        response.raise_for_status()
+            error_msg = self._format_http_error(response, "[OpenRouter Chat API]")
+            logger.error(f"{error_msg}\nPrompt: {full_prompt[:500]}")
+            raise ValueError(error_msg)
 
         data = response.json()
         message = (data.get("choices") or [{}])[0].get("message") or {}
