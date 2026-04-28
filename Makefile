@@ -24,7 +24,7 @@ BLUE   := \033[1;34m
 RED    := \033[1;31m
 RESET  := \033[0m
 
-.PHONY: run test lint lint-fix help \
+.PHONY: run test lint lint-fix doc help \
         docker stop clean logs \
         _compose-up _download-gguf _ollama-create \
         $(AVAILABLE_PROFILES)
@@ -37,6 +37,7 @@ help:
 	@printf "    make test             Run test suite\n"
 	@printf "    make lint             Run ruff + mypy\n"
 	@printf "    make lint-fix         Fix linting issues automatically (ruff --fix)\n"
+	@printf "    make doc              Regenerate docs/03-backend-api.md from source\n"
 	@printf "\n"
 	@printf "  $(YELLOW)Docker stack$(RESET)\n"
 	@printf "    make docker <profile> Download models, start Ollama + auberge-app\n"
@@ -66,6 +67,9 @@ lint:
 
 lint-fix:
 	python -m ruff check aubergeRP/ tests/ --fix --unsafe-fixes
+
+doc:
+	python scripts/generate_api_docs.py
 
 # ─── Docker: make docker <profile> ────────────────────────────────────────────
 docker:

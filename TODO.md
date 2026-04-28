@@ -1,29 +1,38 @@
-Doc
+# TODO
+
+Items not yet implemented. PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ---
-- [ ] Document in README + /docs/ the Docker implementation with GPU cards pre-configured with optimal model to run (see /docker/)
 
+## High priority
 
-Examples to write
---------
-- Create an API key on openrouter and use it with the OpenAI-compatible text connector
-- How to use a local LLM with the OpenAI-compatible connector interface
-- How to use the ComfyUI connector for image generation
-- How to import characters from SillyTavern into aubergeRP
+- [ ] **Full user authentication** — password or IP-allowlist protecting the chat UI (the admin panel already has its own password). Config: `app.auth_mode` (`none` | `password` | `ip_allowlist`).
 
-Admin
-----
+---
 
+## Medium priority
 
-Front
------
+- [ ] **Manual "Generate Image" button** — UI fallback to trigger image generation without relying on the LLM emitting a `[IMG: …]` marker.
+- [ ] **Hallucination mitigation** — detect clearly off-topic or repetitive responses; retry with a corrective system message. Config: `chat.hallucination_retry`.
+- [ ] **Configurable NSFW filter** — pre/post-processing layer. Config: `chat.nsfw_filter` (`off` | `warn` | `block`).
 
+---
 
-Bug fixes
----------
+## Low priority / Future
 
+- [ ] **Multi-character conversations** — more than one character per conversation.
+- [ ] **Multi-model support** — separate connectors for chat, summarization, and classification.
+- [ ] **Proactive image triggering** — LLM decides on its own when to emit an image (not only on explicit user request).
+- [ ] **Quota management** — per-conversation token or cost limit.
+- [ ] **Video generation connector** (`[VID: …]` marker, `VideoConnector` interface).
+- [ ] **Audio/TTS connector** — play synthesized speech after each assistant message.
+- [ ] **Cloud deployment / sync** — hosted SQLite (Turso/LiteFS), Postgres backend, or backup to object storage.
 
-Future
-------
-- [ ] Manage multiple connectors of the same type, handle a "default" connector (there can be only one for the same type at a given moment) ; be able to connect the connectors by character, or let the LLM choose based on keywords? Carefully prepare the spec for this...
+---
 
-- [ ] Ability to change text display speed (+ preview of what it looks like).
+## Documentation / housekeeping
+
+- [ ] Write usage examples: OpenRouter API key setup, local Ollama, ComfyUI, importing SillyTavern characters.
+- [ ] Document Docker GPU profiles in README.
+- [ ] Vendor Redoc JS so `/api-docs` works fully offline (currently loads from CDN).
+- [ ] Remove legacy `characters/` and `conversations/` subdirectories from `_init_data_dirs()` (only needed for the one-time JSON→SQLite migration).
