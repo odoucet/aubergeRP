@@ -11,6 +11,7 @@ import {
   getSessionToken,
   copyShareUrl,
 } from './api.js';
+import { setStatusItem } from './layout.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -736,23 +737,6 @@ async function updateHealth() {
   setStatusItem('audio', c.audio);
 }
 
-function setStatusItem(type, info) {
-  const el = document.getElementById(`status-${type}`);
-  if (!el) return;
-  const dot = el.querySelector('.status-dot');
-  const label = el.querySelector('.status-label');
-  if (!info) {
-    dot.className = 'status-dot na';
-    label.textContent = `${capitalize(type)} —`;
-  } else if (info.connected) {
-    dot.className = 'status-dot ok';
-    label.textContent = `${capitalize(type)} ✓`;
-  } else {
-    dot.className = 'status-dot err';
-    label.textContent = `${capitalize(type)} ✕`;
-  }
-}
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function renderMarkdown(text) {
@@ -841,9 +825,6 @@ function scrollToBottom() {
   list.scrollTop = list.scrollHeight;
 }
 
-function capitalize(s) {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 async function retryImageGeneration(conversationId, prompt, genId, errEl, imagesContainer) {
   // Replace error with placeholder while retrying

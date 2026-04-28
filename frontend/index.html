@@ -24,10 +24,7 @@
 <!-- Header -->
 <header id="header" role="banner">
   <button class="hamburger" id="hamburger-btn" aria-label="Toggle sidebar" aria-expanded="false">☰</button>
-  <div class="logo">
-    <img class="logo-icon" src="/favicons/favicon-32.svg" alt="" aria-hidden="true">
-    <span>aubergeRP</span>
-  </div>
+  <div class="logo"></div>
   <button id="share-session-btn" class="share-btn" aria-label="Share session">Share session</button>
   <button id="fullscreen-btn" class="fullscreen-btn" aria-label="Toggle fullscreen">⛶</button>
   <a href="/admin/" class="admin-link" aria-label="Admin panel">Admin</a>
@@ -94,36 +91,8 @@
   </main>
 </div>
 
-<!-- Status bar -->
-<footer id="statusbar" role="contentinfo" aria-label="Connector status">
-  <div class="status-item" id="status-text">
-    <div class="status-dot na" aria-hidden="true"></div>
-    <span class="status-label">Text —</span>
-  </div>
-  <div class="status-item" id="status-image">
-    <div class="status-dot na" aria-hidden="true"></div>
-    <span class="status-label">Image —</span>
-  </div>
-  <div class="status-item" id="status-video">
-    <div class="status-dot na" aria-hidden="true"></div>
-    <span class="status-label">Video —</span>
-  </div>
-  <div class="status-item" id="status-audio">
-    <div class="status-dot na" aria-hidden="true"></div>
-    <span class="status-label">Audio —</span>
-  </div>
-  <div class="status-help" aria-label="About connector statuses">
-    <button
-      type="button"
-      class="status-help-btn"
-      aria-describedby="status-help-tooltip"
-      title="What do these connector types mean?"
-    >?</button>
-    <span id="status-help-tooltip" class="status-help-tooltip" role="tooltip">
-      These are capability categories. A green dot means the active connector for that type is reachable. Red means configured but unavailable. Gray means no connector is set.
-    </span>
-  </div>
-</footer>
+<!-- Status bar (populated by layout.js) -->
+<footer id="statusbar"></footer>
 
 </div><!-- /#app -->
 
@@ -136,8 +105,12 @@
 <!-- App modules -->
 <script type="module">
   import { applyGuiCustomization } from '/js/gui-customization.js';
+  import { initStatusBar, initHeaderLogo } from '/js/layout.js';
   import { initCharacters, loadCharacters, setSelectedCharacter } from '/js/characters.js';
   import { initChat, onCharacterSelected, showToast } from '/js/chat.js';
+
+  initStatusBar();
+  initHeaderLogo();
 
   // Hamburger toggle (responsive sidebar)
   const hamburgerBtn = document.getElementById('hamburger-btn');

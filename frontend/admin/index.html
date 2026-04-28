@@ -6,12 +6,19 @@
   <title>aubergeRP — Admin</title>
   <link rel="stylesheet" href="/css/main.css">
   <link rel="stylesheet" href="/css/admin.css">
+
+  <!-- AubergeRP favicon pack -->
+  <link rel="icon" href="/favicons/favicon.svg" type="image/svg+xml"/>
+  <link rel="apple-touch-icon" href="/favicons/apple-touch-icon.svg"/>
+  <link rel="mask-icon" href="/favicons/safari-pinned-tab.svg" color="#f4b860"/>
+  <link rel="manifest" href="/favicons/site.webmanifest"/>
+  <meta name="theme-color" content="#1a0f08"/>
 </head>
 <body>
 
 <!-- Header -->
 <header id="header" role="banner">
-  <div class="logo">aubergeRP Admin</div>
+  <div class="logo"></div>
   <a href="/" class="chat-link" aria-label="Back to chat">← Chat</a>
 </header>
 
@@ -234,13 +241,8 @@
   </main>
 </div>
 
-<!-- Status bar -->
-<footer id="statusbar" role="contentinfo">
-  <div id="api-status" class="status-item">
-    <div class="status-dot na" aria-hidden="true"></div>
-    <span class="status-label" id="api-status-label">API —</span>
-  </div>
-</footer>
+<!-- Status bar (populated by layout.js) -->
+<footer id="statusbar"></footer>
 
 <!-- Toast -->
 <div id="toast" role="alert" aria-live="assertive"></div>
@@ -412,14 +414,17 @@
 <!-- App modules -->
 <script type="module">
   import { initAdminAuth } from '/js/admin/auth.js';
-  import { initConnectors } from '/js/admin/connectors.js';
+  import { initConnectors, applyHealthBadges } from '/js/admin/connectors.js';
   import { initCharacters } from '/js/admin/characters.js';
   import { initMedias }    from '/js/admin/medias.js';
   import { initConfig }     from '/js/admin/config.js';
   import { initStatistics } from '/js/admin/statistics.js';
   import { initPrompts }    from '/js/admin/prompts.js';
-  import { applyHealthBadges } from '/js/admin/connectors.js';
   import { applyGuiCustomization } from '/js/gui-customization.js';
+  import { initStatusBar, setStatusItem, initHeaderLogo } from '/js/layout.js';
+
+  initStatusBar();
+  initHeaderLogo({ badge: 'Admin' });
 
   async function main() {
   const authenticated = await initAdminAuth();
@@ -504,10 +509,11 @@
         return `<div class="health-row"><span class="health-type">${t}</span> ${icon} <strong>${c.name}</strong></div>`;
       }).join('');
 
-      const apiDot = document.querySelector('#api-status .status-dot');
-      const apiLabel = document.getElementById('api-status-label');
-      apiDot.className = 'status-dot ok';
-      apiLabel.textContent = `API v${health.version}`;
+      const c = health.connectors || {};
+      setStatusItem('text', c.text);
+      setStatusItem('image', c.image);
+      setStatusItem('video', c.video);
+      setStatusItem('audio', c.audio);
 
       el.innerHTML = `
         <dl class="health-dl">
@@ -661,6 +667,11 @@
     try {
       const health = await fetch('/api/health/').then(r => r.json());
       applyHealthBadges(health);
+      const c = health.connectors || {};
+      setStatusItem('text', c.text);
+      setStatusItem('image', c.image);
+      setStatusItem('video', c.video);
+      setStatusItem('audio', c.audio);
     } catch (_) {
       // Silently ignore polling errors; badges keep their last-known state
     }

@@ -27,22 +27,15 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  align-items: center;
 }
 
-/* ─── App container (max-width constraint) ──────────────────────────────── */
+/* ─── App container ─────────────────────────────────────────────────────── */
 #app {
   width: 100%;
-  max-width: 1200px;
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-:fullscreen #app,
-:-webkit-full-screen #app {
-  max-width: none;
 }
 
 /* ─── Header ───────────────────────────────────────────────────────────── */
@@ -131,6 +124,14 @@ body {
   flex: 1;
   display: flex;
   overflow: hidden;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+:fullscreen #main,
+:-webkit-full-screen #main {
+  max-width: none;
 }
 
 /* ─── Sidebar ──────────────────────────────────────────────────────────── */
