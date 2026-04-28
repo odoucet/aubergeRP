@@ -73,6 +73,11 @@ body {
   height: 1.1rem;
   display: block;
   flex-shrink: 0;
+  transform: translateY(1px);
+}
+
+#header .logo span {
+  line-height: 1;
 }
 
 #header .hamburger {
