@@ -41,9 +41,10 @@ One consequence too : the max_tokens parameter is not correctly handled for reas
 - [ ] Maintain a list of character cards websites. Actually : 
       * https://jannyai.com/characters
 
-- [ ] Generate favicons, logos and other assets for AubergeRP.
-
 - [ ] One-click translation of a character card in another language, using the LLM. This is a common user request and would be a nice feature to have. It could be implemented as a button on the admin panel, next to each character, that triggers the translation process.
+
+- [ ] Frontend CSS style for ambiance messages is far from perfect (dashed lines are not well rendered, and the overall look is not very good). We should improve this to make ambiance messages more visually distinct and appealing.
+
 ---
 
 ## Documentation / housekeeping
