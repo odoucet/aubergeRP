@@ -12,11 +12,6 @@ Examples to write
 Admin
 ----
 
-- [x] Add basic auth to admin with a single password.
-Print it in the logs on startup (generated randomly if not set in env) and protect all admin API routes and the admin GUI. Modify readme.md and docs accordingly.
-
-- [ ] Ability to change text display speed (+ preview of what it looks like).
-
 
 Front
 -----
@@ -28,8 +23,9 @@ Bug fixes
 
 Future
 ------
-- [ ] Manage multiple connectors of the same type, and be able to connect the connectors by character, or let the LLM choose based on keywords? Carefully prepare the spec for this...
+- [ ] Manage multiple connectors of the same type, handle a "default" connector (there can be only one for the same type at a given moment) ; be able to connect the connectors by character, or let the LLM choose based on keywords? Carefully prepare the spec for this...
 
-- [ ] For image generation, it would be necessary to first generate a prompt with the LLM based on the scene description, then send this prompt to the image connector. This would allow for better coherence between images and text, and also enable "prompt engineering" to improve the quality of generated images.
-Look at what exists today but remains very light.
-For example, in my last image, the keywords are "Steampunk Marianne, intense gaze, soot-covered face, mechanical arm, workshop background" which does not describe at all
+
+- [ ] Isolate all prompts used in the sourcecode into separate files in aubergeRP/prompts/ to allow users to easily customize them. This includes the prompt for generating image descriptions from scene text, the prompt for summarizing conversations, and any other prompt currently hardcoded in the source. Add a page on admin UI to edit these prompts.
+
+- [ ] Ability to change text display speed (+ preview of what it looks like).
