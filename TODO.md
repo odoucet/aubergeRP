@@ -12,12 +12,12 @@ Items not yet implemented. PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md
 
 - [ ] Improve system prompt to format roleplay dialogs : use italic for the ambiance and actions, and normal text for dialogues. This will make it easier to read and understand the generated content, especially when the LLM is generating complex scenes.
 
-- [ ] Add a warning on admin, on "add a new connector", if the user is choosing "ComfyUI" backend, stating that this feature is experimental and was not tested yet. 
+- [ ] Hide "videos" and "audios" menus/footer buttons for now, as they are not implemented yet. This will avoid confusion for users who might expect these features to be available (dont forget admin panel too, especially connector form). Add them to TODO.md to think about their implementation later.
 
 - [ ] Handle "reasoning" models: sometimes, model use reasoning output to shows character thougts or actions, and they are not transcribed in the final message content. We need to use a better system prompt to avoid this because "reasoning" is often used for out-of-roleplay thoughts.
-One consequence too : the max_tokens parameter is not correctly handled for reasoning models, because reasoning is counted and sometimes it makes the final message content empty, even if the model is generating a lot of text. If we do receive a response with 0 char but many ignored chars, we should log a warning about this and suggest to 1) use a better system prompt to avoid thinking and 2) raise the max_tokens limit to accomodate reasoning output. Also print a friendly message to the user.
+One consequence too : the max_tokens parameter is not correctly handled for reasoning models, because reasoning is counted and sometimes it makes the final message content empty, even if the model is generating a lot of text. If we do receive a response with 0 char but many ignored chars, we should log a warning about this and suggest to 1) use a better system prompt to avoid thinking and 2) raise the max_tokens limit to accomodate reasoning output. Also print a friendly message to the frontend user.
 
-- [ ] Check if no image connector is set, that everything is working correctly: no call to image generation, no error, and that the user can still have a conversation with the LLM. This is a common use case for users who just want to use the chat feature without images. Add unit tests for this case.
+- [ ] Check if no image connector is set that everything is working correctly: no call to image generation, no error, and that the user can still have a conversation with the LLM. This is a common use case for users who just want to use the chat feature without images. Add unit tests for this case.
 
 - [ ] add a cache buster on static assets (js/css) to avoid browser caching issues after updates (needs to think twice about implementation on this one).
 ---
