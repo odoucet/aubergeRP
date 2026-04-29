@@ -334,6 +334,17 @@ def test_build_prompt_resolves_user_macro():
     assert "Bob" in system["content"]
 
 
+def test_build_prompt_includes_no_reasoning_instruction():
+    """The system prompt must include the no-reasoning instruction for reasoning model safety."""
+    from aubergeRP.services.prompt_service import get_prompt
+    char = _char()
+    conv = _conv(char)
+    msgs = build_prompt(conv, char)
+    system = next(m for m in msgs if m["role"] == "system")
+    expected = get_prompt("no_reasoning_instruction")
+    assert expected in system["content"]
+
+
 def test_format_user_message_for_llm_without_brackets_is_unchanged():
     content = "Hello there"
     assert _format_user_message_for_llm(content) == content
@@ -1054,3 +1065,36 @@ async def test_generate_scene_image_works_without_text_connector(tmp_path):
     # Should have image_start + image_complete (no text connector means no prompt enhancement)
     assert any(e["type"] == "image_start" for e in events)
     assert any(e["type"] == "image_complete" for e in events)
+
+
+# ---------------------------------------------------------------------------
+# stream_chat — empty response warning (reasoning model protection)
+# ---------------------------------------------------------------------------
+
+async def test_stream_empty_response_yields_warning(tmp_path):
+    """When the LLM returns no text and no images, a warning event is emitted."""
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, text_conn=_FakeText([]))
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.stream_chat(conv.id, "Hi"))
+    warnings = [e for e in events if e["type"] == "warning"]
+    assert len(warnings) == 1
+    assert "reasoning" in warnings[0]["detail"].lower() or "empty" in warnings[0]["detail"].lower()
+
+
+async def test_stream_empty_response_still_ends_with_done(tmp_path):
+    """Even when the response is empty, the stream must end with a done event."""
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, text_conn=_FakeText([]))
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.stream_chat(conv.id, "Hi"))
+    assert events[-1]["type"] == "done"
+
+
+async def test_stream_non_empty_response_no_warning(tmp_path):
+    """No warning is emitted when the LLM returns normal content."""
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, text_conn=_FakeText(["Hello!"]))
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.stream_chat(conv.id, "Hi"))
+    assert not any(e["type"] == "warning" for e in events)

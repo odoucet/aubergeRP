@@ -254,6 +254,9 @@ def build_prompt(
     img_instruction_key = "image_tool_instruction" if use_tool_calling else "image_marker_instruction"
     system_parts.append(get_prompt(img_instruction_key))
     system_parts.append(get_prompt("roleplay_bracket_instruction"))
+    no_reasoning = get_prompt("no_reasoning_instruction")
+    if no_reasoning:
+        system_parts.append(no_reasoning)
     if char.data.description:
         system_parts.append(
             f"{char.data.name}'s description: "
@@ -543,6 +546,24 @@ class ChatService:
                     media_items=generated_media,
                 )
             call_success = True
+            if not full_text and not image_urls:
+                logger.warning(
+                    "LLM returned an empty response for conversation %s. "
+                    "If you are using a reasoning model, consider: "
+                    "1) checking that the no_reasoning_instruction system prompt is effective, "
+                    "2) raising the max_tokens limit to accommodate reasoning output.",
+                    conversation_id,
+                )
+                yield {
+                    "type": "warning",
+                    "detail": (
+                        "The model returned an empty response. "
+                        "If you are using a reasoning model (e.g. DeepSeek-R1, Qwen3), "
+                        "its thinking may have consumed all available tokens. "
+                        "Try raising the max_tokens limit in the connector settings, "
+                        "or update the system prompt to discourage lengthy reasoning."
+                    ),
+                }
             yield {
                 "type": "done",
                 "message_id": msg.id,

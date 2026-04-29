@@ -514,6 +514,19 @@ body {
   border-radius: 8px;
   border: 1px solid rgba(233,69,96,0.3);
   align-self: flex-start;
+}
+
+.msg-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  color: #b8860b;
+  padding: 0.5rem 0.8rem;
+  background: rgba(255,193,7,0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(255,193,7,0.4);
+  align-self: flex-start;
   max-width: 80%;
 }
 

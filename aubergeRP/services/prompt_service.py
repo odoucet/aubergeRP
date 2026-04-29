@@ -61,6 +61,12 @@ PROMPT_DEFAULTS: dict[str, str] = {
         "Do NOT continue the story; just summarize what happened."
     ),
     "summarization_user": "Summarize this conversation excerpt:\n\n{excerpt}",
+    "no_reasoning_instruction": (
+        "IMPORTANT: Do NOT use your internal reasoning or thinking process to generate "
+        "character dialogue, actions, or responses. All character output must appear in "
+        "the final message content. Use reasoning/thinking only for internal planning, "
+        "never as a substitute for the actual response."
+    ),
 }
 
 # Human-readable labels and descriptions shown in the admin UI.
@@ -124,6 +130,14 @@ PROMPT_META: dict[str, dict[str, str]] = {
         "description": (
             "User message sent alongside the summarization system prompt. "
             "Must contain the {excerpt} placeholder."
+        ),
+    },
+    "no_reasoning_instruction": {
+        "label": "No-Reasoning Instruction",
+        "description": (
+            "Appended to the system prompt to instruct reasoning/thinking models not to "
+            "place character dialogue or actions inside their internal reasoning section. "
+            "Helps prevent empty responses when using models like DeepSeek-R1 or Qwen3."
         ),
     },
     "image_prompt": {
