@@ -1,9 +1,20 @@
+import os
+import tempfile
+
 import pytest
+
+# Ensure modules importing `aubergeRP.main` at collection time don't try writing
+# to a host-level path from local config (e.g. /data).
+os.environ.setdefault("AUBERGE_DATA_DIR", tempfile.mkdtemp(prefix="aubergeRP-tests-"))
 
 
 @pytest.fixture(autouse=True)
-def disable_admin_auth_for_tests(monkeypatch):
-    monkeypatch.delenv("AUBERGE_DATA_DIR", raising=False)
+def disable_admin_auth_for_tests(monkeypatch, tmp_path, request):
+    # Keep config-loading unit tests independent from env overrides.
+    if request.node.fspath.basename == "test_config.py":
+        monkeypatch.delenv("AUBERGE_DATA_DIR", raising=False)
+    else:
+        monkeypatch.setenv("AUBERGE_DATA_DIR", str(tmp_path / "_appdata"))
     monkeypatch.delenv("AUBERGE_HOST", raising=False)
     monkeypatch.delenv("AUBERGE_PORT", raising=False)
     monkeypatch.delenv("AUBERGE_LOG_LEVEL", raising=False)
