@@ -503,17 +503,27 @@ body {
 }
 
 /* inline error */
-.msg-error {
+.msg-error,
+.msg-warning {
   display: flex;
   align-items: center;
   gap: 0.6rem;
   font-size: 0.82rem;
-  color: var(--color-accent);
   padding: 0.5rem 0.8rem;
-  background: rgba(233,69,96,0.1);
   border-radius: 8px;
-  border: 1px solid rgba(233,69,96,0.3);
   align-self: flex-start;
+}
+
+.msg-error {
+  color: var(--color-accent);
+  background: rgba(233,69,96,0.1);
+  border: 1px solid rgba(233,69,96,0.3);
+}
+
+.msg-warning {
+  color: #b8860b;
+  background: rgba(255,193,7,0.1);
+  border: 1px solid rgba(255,193,7,0.4);
   max-width: 80%;
 }
 

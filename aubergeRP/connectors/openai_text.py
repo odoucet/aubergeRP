@@ -96,6 +96,7 @@ class OpenAITextConnector(TextConnector):
 
         total_chars = 0
         total_ignored_chars = 0
+        total_reasoning_chars = 0
         async with httpx.AsyncClient(timeout=self.config.timeout) as client, client.stream(
             "POST",
             f"{self.config.base_url}/chat/completions",
@@ -115,15 +116,32 @@ class OpenAITextConnector(TextConnector):
 
                 try:
                     chunk = json.loads(payload_str)
-                    content = chunk["choices"][0]["delta"].get("content")
+                    delta = chunk["choices"][0]["delta"]
+                    content = delta.get("content")
+                    reasoning = delta.get("reasoning_content") or delta.get("reasoning")
                     if content:
                         total_chars += len(content)
                         yield content
                     else:
                         total_ignored_chars += len(payload_str)
+                    if reasoning:
+                        total_reasoning_chars += len(reasoning)
                 except (json.JSONDecodeError, KeyError, IndexError):
                     continue
-        logger.info("LLM response: model=%s resp=%d chars ignored=%d chars", model_name, total_chars, total_ignored_chars)
+        if total_chars == 0 and total_reasoning_chars > 0:
+            logger.warning(
+                "LLM response: model=%s — response content is empty but %d reasoning chars "
+                "were detected. The model placed its output in the reasoning/thinking section "
+                "instead of the final message. Consider: 1) using a system prompt that "
+                "discourages reasoning for roleplay output, 2) raising the max_tokens limit "
+                "to accommodate reasoning tokens.",
+                model_name,
+                total_reasoning_chars,
+            )
+        logger.info(
+            "LLM response: model=%s resp=%d chars reasoning=%d chars ignored=%d chars",
+            model_name, total_chars, total_reasoning_chars, total_ignored_chars
+        )
 
     async def stream_chat_completion_with_tools(
         self,

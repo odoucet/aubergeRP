@@ -702,6 +702,9 @@ function dispatchSSEEvent(event, handlers) {
     case 'done':
       handlers.finalize();
       break;
+    case 'warning':
+      appendWarningMessage(event.detail || 'Warning');
+      break;
     case 'error':
       handlers.finalize();
       appendErrorMessage(event.detail || 'Unknown error', () => handleSend(_lastUserMessage));
@@ -729,6 +732,17 @@ function appendErrorMessage(detail, onRetry) {
     el.appendChild(retryBtn);
   }
 
+  list.appendChild(el);
+  scrollToBottom();
+}
+
+function appendWarningMessage(detail) {
+  const list = document.getElementById('message-list');
+  const el = document.createElement('div');
+  el.className = 'msg-warning';
+  const text = document.createElement('span');
+  text.textContent = '⚠ ' + detail;
+  el.appendChild(text);
   list.appendChild(el);
   scrollToBottom();
 }

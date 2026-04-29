@@ -189,3 +189,74 @@ def test_headers_omits_authorization_when_api_key_empty():
 def test_headers_includes_authorization_when_api_key_set():
     headers = make_connector(api_key="sk-test")._headers()
     assert headers["Authorization"] == "Bearer sk-test"
+
+
+# ---------------------------------------------------------------------------
+# reasoning_content tracking
+# ---------------------------------------------------------------------------
+
+@respx.mock
+async def test_stream_reasoning_only_yields_no_tokens(caplog):
+    """When the model only returns reasoning_content (no content), yield nothing and log warning."""
+    import logging
+
+    body = (
+        b'data: {"choices": [{"delta": {"reasoning_content": "I am thinking..."}}]}\n\n'
+        b'data: {"choices": [{"delta": {}, "finish_reason": "stop"}]}\n\n'
+        b'data: [DONE]\n\n'
+    )
+    respx.post(f"{BASE_URL}/chat/completions").respond(
+        200, content=body, headers={"content-type": "text/event-stream"}
+    )
+    tokens = []
+    with caplog.at_level(logging.WARNING, logger="aubergeRP.connectors.openai_text"):
+        async for token in make_connector().stream_chat_completion([{"role": "user", "content": "Hi"}]):
+            tokens.append(token)
+
+    assert tokens == []
+    assert any("reasoning" in record.message.lower() for record in caplog.records)
+
+
+@respx.mock
+async def test_stream_reasoning_field_variant(caplog):
+    """Also handles 'reasoning' field (used by some APIs) the same way."""
+    import logging
+
+    body = (
+        b'data: {"choices": [{"delta": {"reasoning": "Thinking step..."}}]}\n\n'
+        b"data: [DONE]\n\n"
+    )
+    respx.post(f"{BASE_URL}/chat/completions").respond(
+        200, content=body, headers={"content-type": "text/event-stream"}
+    )
+    tokens = []
+    with caplog.at_level(logging.WARNING, logger="aubergeRP.connectors.openai_text"):
+        async for token in make_connector().stream_chat_completion([]):
+            tokens.append(token)
+
+    assert tokens == []
+    assert any("reasoning" in record.message.lower() for record in caplog.records)
+
+
+@respx.mock
+async def test_stream_reasoning_with_content_no_warning(caplog):
+    """When both reasoning and content are present, no warning is emitted."""
+    import logging
+
+    body = (
+        b'data: {"choices": [{"delta": {"reasoning_content": "thinking", "content": "Hello"}}]}\n\n'
+        b"data: [DONE]\n\n"
+    )
+    respx.post(f"{BASE_URL}/chat/completions").respond(
+        200, content=body, headers={"content-type": "text/event-stream"}
+    )
+    tokens = []
+    with caplog.at_level(logging.WARNING, logger="aubergeRP.connectors.openai_text"):
+        async for token in make_connector().stream_chat_completion([]):
+            tokens.append(token)
+
+    assert tokens == ["Hello"]
+    assert not any(
+        "reasoning" in record.message.lower() and record.levelno == logging.WARNING
+        for record in caplog.records
+    )
