@@ -17,8 +17,6 @@ When using the project and navigating, I sometimes add items here that I think a
 - [ ] Handle "reasoning" models: sometimes, model use reasoning output to shows character thougts or actions, and they are not transcribed in the final message content. We need to use a better system prompt to avoid this because "reasoning" is often used for out-of-roleplay thoughts.
 One consequence too : the max_tokens parameter is not correctly handled for reasoning models, because reasoning is counted and sometimes it makes the final message content empty, even if the model is generating a lot of text. If we do receive a response with 0 char but many ignored chars, we should log a warning about this and suggest to 1) use a better system prompt to avoid thinking and 2) raise the max_tokens limit to accomodate reasoning output. Also print a friendly message to the frontend user.
 
-- [ ] add a cache buster on static assets (js/css) to avoid browser caching issues after updates (needs to think twice about implementation on this one).
-
 ---
 
 ## Medium priority
