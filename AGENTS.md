@@ -37,16 +37,19 @@ a temp-dir SQLite DB — see `tests/conftest.py`.
 
 ## Prompts
 
-Every LLM prompt must be stored as a `.txt` file in `aubergeRP/prompts/` **and** have an
-identical embedded fallback in `PROMPT_DEFAULTS` inside `prompt_service.py`.
+Every LLM prompt lives exclusively as a `.txt` file in `aubergeRP/prompts/`.
+The `.txt` file is the single source of truth — admin-editable at runtime and
+committed to git as the factory default. **Do NOT embed prompt text inside
+Python source code.**
 
 Rules:
-- When adding a new prompt key, create `aubergeRP/prompts/<key>.txt` whose content matches
-  the string you add to `PROMPT_DEFAULTS`.
-- When editing the default text of an existing prompt, update **both** the `.txt` file
-  and the `PROMPT_DEFAULTS` entry so they stay in sync.
-- The `.txt` file is the authoritative on-disk version (admin-editable at runtime).
-  `PROMPT_DEFAULTS` is the fallback used when the file is missing or empty.
+- When adding a new prompt key, create `aubergeRP/prompts/<key>.txt` with the
+  prompt text and add a matching entry in `PROMPT_META` inside
+  `prompt_service.py` (label + description only — no prompt text in Python).
+- When editing the default text of an existing prompt, update only the `.txt`
+  file.
+- `PROMPT_DEFAULTS` in `prompt_service.py` is populated automatically from the
+  `.txt` files at server start-up; do not edit it manually.
 
 ## post-actions
 
