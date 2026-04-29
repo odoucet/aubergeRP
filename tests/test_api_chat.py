@@ -191,3 +191,78 @@ def test_events_are_valid_json():
     assert len(events) == 2
     for e in events:
         assert "type" in e
+
+
+# ---------------------------------------------------------------------------
+# generate-image endpoint
+# ---------------------------------------------------------------------------
+
+class _MockServiceWithSceneImage:
+    def __init__(self, events: list[dict]) -> None:
+        self._events = events
+
+    async def stream_chat(self, conversation_id, content, user_name="User"):
+        return
+        yield  # make it an async generator
+
+    async def generate_scene_image(self, conversation_id):
+        for event in self._events:
+            yield event
+
+
+def _make_gen_image_client(events: list[dict]) -> TestClient:
+    app = create_app()
+    svc = _MockServiceWithSceneImage(events)
+    app.dependency_overrides[get_chat_service] = lambda: svc
+    return TestClient(app)
+
+
+def test_generate_image_returns_200():
+    client = _make_gen_image_client([
+        {"type": "image_start", "generation_id": "g1", "prompt": ""},
+        {"type": "image_complete", "generation_id": "g1", "image_url": "/api/images/tok/img.png"},
+    ])
+    resp = client.post("/api/chat/conv-1/generate-image")
+    assert resp.status_code == 200
+
+
+def test_generate_image_content_type_is_event_stream():
+    client = _make_gen_image_client([
+        {"type": "image_start", "generation_id": "g1", "prompt": ""},
+        {"type": "image_complete", "generation_id": "g1", "image_url": "/api/images/tok/img.png"},
+    ])
+    resp = client.post("/api/chat/conv-1/generate-image")
+    assert "text/event-stream" in resp.headers["content-type"]
+
+
+def test_generate_image_emits_image_start_and_complete():
+    client = _make_gen_image_client([
+        {"type": "image_start", "generation_id": "g1", "prompt": ""},
+        {"type": "image_complete", "generation_id": "g1", "image_url": "/api/images/tok/img.png"},
+    ])
+    resp = client.post("/api/chat/conv-1/generate-image")
+    events = parse_sse(resp.text)
+    types = [e["type"] for e in events]
+    assert "image_start" in types
+    assert "image_complete" in types
+
+
+def test_generate_image_emits_image_failed_on_error():
+    client = _make_gen_image_client([
+        {"type": "image_start", "generation_id": "g1", "prompt": ""},
+        {"type": "image_failed", "generation_id": "g1", "detail": "No image connector"},
+    ])
+    resp = client.post("/api/chat/conv-1/generate-image")
+    events = parse_sse(resp.text)
+    failed = next(e for e in events if e["type"] == "image_failed")
+    assert "connector" in failed["detail"].lower()
+
+
+def test_generate_image_no_request_body_required():
+    """The endpoint must work without a JSON body."""
+    client = _make_gen_image_client([
+        {"type": "image_failed", "generation_id": "g1", "detail": "No connector"},
+    ])
+    # No json= kwarg → body is empty
+    resp = client.post("/api/chat/conv-x/generate-image")
+    assert resp.status_code == 200

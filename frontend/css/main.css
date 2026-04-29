@@ -596,6 +596,34 @@ body {
 #send-btn:hover { opacity: 0.85; }
 #send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+#input-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: stretch;
+  flex-shrink: 0;
+}
+
+#generate-image-btn {
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0 0.8rem;
+  height: 42px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.2s, background 0.2s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+#generate-image-btn:hover { background: #6d28d9; }
+#generate-image-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
 /* ─── Status bar ─────────────────────────────────────────────────────────── */
 #statusbar {
   height: var(--statusbar-h);

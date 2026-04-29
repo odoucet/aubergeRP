@@ -711,6 +711,47 @@ class ChatService:
                 "detail": str(exc),
             }
 
+    async def generate_scene_image(
+        self,
+        conversation_id: str,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Generate an image of the current scene from the conversation context.
+
+        Uses the text connector (if available) to build a rich image prompt from
+        the recent conversation history, then delegates to the active image connector.
+        """
+        try:
+            conv = self._conversation_service.get_conversation(conversation_id)
+            char = self._character_service.get_character(conv.character_id)
+        except Exception as exc:
+            gen_id = str(uuid.uuid4())
+            yield {
+                "type": "image_failed",
+                "generation_id": gen_id,
+                "detail": str(exc),
+            }
+            return
+
+        gen_id = str(uuid.uuid4())
+        yield {"type": "image_start", "generation_id": gen_id, "prompt": ""}
+
+        text_connector = self._connector_manager.get_active_text_connector()
+        messages: list[dict[str, Any]] | None = None
+        if text_connector is not None:
+            try:
+                messages = build_prompt(conv, char)
+            except Exception:
+                messages = None
+
+        async for event in self._handle_image(
+            char=char,
+            gen_id=gen_id,
+            prompt="",
+            text_connector=text_connector,
+            messages=messages,
+        ):
+            yield event
+
     async def retry_generate_image(
         self,
         conversation_id: str,

@@ -85,7 +85,15 @@
         title="Roleplay tip: wrap non-dialogue directions in [ ] or { }. Example: [whispers] I open the door."
         aria-label="Message input"
       ></textarea>
-      <button id="send-btn" aria-label="Send message">Send</button>
+      <div id="input-actions">
+        <button
+          id="generate-image-btn"
+          style="display:none"
+          aria-label="Generate a picture of the scene"
+          title="Generate a picture of the current scene"
+        >🖼</button>
+        <button id="send-btn" aria-label="Send message">Send</button>
+      </div>
     </div>
 
   </main>

@@ -8,6 +8,12 @@
 </head>
 <body>
   <section id="message-list" aria-label="Messages"></section>
+  <div id="input-area" style="display:none">
+    <div id="input-actions">
+      <button id="generate-image-btn" style="display:none" aria-label="Generate a picture of the scene">🖼</button>
+      <button id="send-btn">Send</button>
+    </div>
+  </div>
 
   <script type="module">
     import { __test } from '../../../frontend/js/chat.js';
@@ -48,6 +54,13 @@
         streaming.onImageStart('gen-retry', prompt);
         window.__streaming = streaming;
         streaming.onImageFailed('gen-retry', detail);
+      },
+      // Image connector status helpers
+      setImageConnector(hasConnector) {
+        __test.updateImageConnectorStatus(hasConnector);
+      },
+      getHasImageConnector() {
+        return __test.getHasImageConnector();
       },
     };
   </script>

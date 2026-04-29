@@ -111,6 +111,26 @@ async def chat_events(
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
+@router.post("/{conversation_id}/generate-image")
+async def generate_scene_image(
+    conversation_id: str,
+    session_token: str = Depends(get_session_token),
+    service: ChatService = Depends(get_chat_service),
+) -> StreamingResponse:
+    """Generate an image of the current scene from the conversation context.
+
+    This endpoint triggers image generation using the active image connector,
+    with a prompt built automatically from the recent conversation history via
+    the active text connector.  It is called when the user clicks the
+    "Generate scene image" button in the frontend.
+    """
+    async def event_generator() -> AsyncGenerator[str, None]:
+        async for event in service.generate_scene_image(conversation_id):
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
 @router.post("/{conversation_id}/retry-image")
 async def retry_image(
     conversation_id: str,
