@@ -3,5 +3,6 @@
 .ruff_cache/
 .mypy_cache/
 .claude/
+.vscode/
 data/
 config.yaml
