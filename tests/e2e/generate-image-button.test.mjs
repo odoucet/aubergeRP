@@ -73,7 +73,7 @@ test('generate-image button has a distinctive label', async () => {
 
 test('generate-image button is still present after toggling connector status multiple times', async () => {
   await withPage(async (page) => {
-    for (let i = 0; i < 3; i++) {
+    for (let toggleCount = 0; toggleCount < 3; toggleCount++) {
       await page.evaluate(() => window.__chatHarness.setImageConnector(true));
       await page.evaluate(() => window.__chatHarness.setImageConnector(false));
     }

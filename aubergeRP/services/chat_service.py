@@ -724,11 +724,15 @@ class ChatService:
             conv = self._conversation_service.get_conversation(conversation_id)
             char = self._character_service.get_character(conv.character_id)
         except Exception as exc:
+            logger.error(
+                f"[Generate Scene Image] Failed to load conversation/character "
+                f"(conversation_id={conversation_id!r}): {exc}"
+            )
             gen_id = str(uuid.uuid4())
             yield {
                 "type": "image_failed",
                 "generation_id": gen_id,
-                "detail": str(exc),
+                "detail": "Failed to load conversation",
             }
             return
 
