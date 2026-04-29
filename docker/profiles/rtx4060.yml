@@ -1,14 +1,13 @@
-# RTX 3090 (24 GB VRAM)
+# RTX 4060 (8 GB VRAM)
 
-# Objective is to be around 19B of VRAM usage, to keep space for context.
-# gemma-4-e4b-it: 6.3GB
-# flux.2-klein-9b: 10.7GB
+# qwen3-vl-4b-instruct: 3.4GB
+# flux.2-klein-4b: 5.0GB
 
 x-models:
-  llm_name: &llm_name gemma-4-e4b-it
-  llm_ctx: &llm_ctx 8192
-  llm_max_tokens: &llm_max_tokens 4096
-  img_name: &img_name flux.2-klein-9b
+  llm_name: &llm_name qwen3-vl-4b-instruct
+  llm_ctx: &llm_ctx 4096
+  llm_max_tokens: &llm_max_tokens 1024
+  img_name: &img_name flux.2-klein-4b
 
 services:
   localai:
