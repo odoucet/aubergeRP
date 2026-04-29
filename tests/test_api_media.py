@@ -48,10 +48,88 @@ def test_media_list_endpoint_returns_prompt(tmp_path):
 
     assert resp.status_code == 200
     payload = resp.json()
-    assert len(payload) == 1
-    assert payload[0]["media_type"] == "image"
-    assert payload[0]["prompt"] == "a fantasy tavern at dusk"
-    assert payload[0]["media_url"] == "/api/images/session-1/example.png"
+    assert payload["total"] == 1
+    assert payload["page"] == 1
+    items = payload["items"]
+    assert len(items) == 1
+    assert items[0]["media_type"] == "image"
+    assert items[0]["prompt"] == "a fantasy tavern at dusk"
+    assert items[0]["media_url"] == "/api/images/session-1/example.png"
+
+
+def test_media_list_endpoint_pagination(tmp_path):
+    reset_config()
+    get_config().app.data_dir = str(tmp_path)
+
+    char_svc = CharacterService(data_dir=tmp_path)
+    conv_svc = ConversationService(data_dir=tmp_path, character_service=char_svc)
+    media_svc = MediaService(data_dir=tmp_path)
+
+    char = char_svc.create_character(CharacterData(name="Test", description="Tester"))
+    conv = conv_svc.create_conversation(char.id, owner="session-2")
+    msg = conv_svc.append_message(conv.id, "assistant", "msg")
+
+    images_dir = tmp_path / "images" / "session-2"
+    images_dir.mkdir(parents=True, exist_ok=True)
+    for i in range(5):
+        fname = f"img{i}.png"
+        (images_dir / fname).write_bytes(b"PNGDATA")
+        media_svc.record_generated_media(
+            conversation_id=conv.id,
+            message_id=msg.id,
+            media_items=[(f"/api/images/session-2/{fname}", f"prompt {i}")],
+        )
+
+    app = create_app()
+    with TestClient(app) as client:
+        resp = client.get("/api/media/?page=1&per_page=3")
+        assert resp.status_code == 200
+        page1 = resp.json()
+        assert page1["total"] == 5
+        assert page1["page"] == 1
+        assert page1["per_page"] == 3
+        assert len(page1["items"]) == 3
+
+        resp2 = client.get("/api/media/?page=2&per_page=3")
+        assert resp2.status_code == 200
+        page2 = resp2.json()
+        assert page2["total"] == 5
+        assert len(page2["items"]) == 2
+
+
+def test_media_list_endpoint_filter_by_type(tmp_path):
+    reset_config()
+    get_config().app.data_dir = str(tmp_path)
+
+    char_svc = CharacterService(data_dir=tmp_path)
+    conv_svc = ConversationService(data_dir=tmp_path, character_service=char_svc)
+    media_svc = MediaService(data_dir=tmp_path)
+
+    char = char_svc.create_character(CharacterData(name="Test", description="Tester"))
+    conv = conv_svc.create_conversation(char.id, owner="session-3")
+    msg = conv_svc.append_message(conv.id, "assistant", "msg")
+
+    images_dir = tmp_path / "images" / "session-3"
+    images_dir.mkdir(parents=True, exist_ok=True)
+    (images_dir / "img.png").write_bytes(b"PNGDATA")
+    media_svc.record_generated_media(
+        conversation_id=conv.id,
+        message_id=msg.id,
+        media_items=[("/api/images/session-3/img.png", "image prompt")],
+    )
+    media_svc.record_generated_media(
+        conversation_id=conv.id,
+        message_id=msg.id,
+        media_items=[("/api/images/session-3/clip.mp4", "video prompt")],
+    )
+
+    app = create_app()
+    with TestClient(app) as client:
+        resp = client.get("/api/media/?media_type=image")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] == 1
+        assert data["items"][0]["media_type"] == "image"
 
 
 def test_media_delete_endpoint_removes_db_message_link_and_file(tmp_path):
@@ -62,14 +140,15 @@ def test_media_delete_endpoint_removes_db_message_link_and_file(tmp_path):
     app = create_app()
     with TestClient(app) as client:
         listed = client.get("/api/media/")
-        media_id = listed.json()[0]["id"]
+        media_id = listed.json()["items"][0]["id"]
 
         resp = client.delete(f"/api/media/{media_id}")
         assert resp.status_code == 204
 
         listed_after = client.get("/api/media/")
         assert listed_after.status_code == 200
-        assert listed_after.json() == []
+        assert listed_after.json()["total"] == 0
+        assert listed_after.json()["items"] == []
 
     conv = conv_svc.list_conversations()[0]
     full = conv_svc.get_conversation(conv.id)

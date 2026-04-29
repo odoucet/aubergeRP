@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from ..db_models import ConversationRow, MediaRow, MessageRow
 
@@ -25,13 +25,26 @@ class MediaService:
 
         return Session(get_engine(self._data_dir))
 
-    def list_media(self) -> list[MediaRow]:
+    def list_media(
+        self,
+        page: int = 1,
+        per_page: int = 50,
+        media_type: str | None = None,
+    ) -> tuple[list[MediaRow], int]:
         with self._get_session() as session:
             created_at_expr = cast(Any, MediaRow.created_at)
-            rows = list(
-                session.exec(select(MediaRow).order_by(created_at_expr.desc()))
-            )
-            return rows
+
+            count_query = select(func.count()).select_from(MediaRow)
+            if media_type:
+                count_query = count_query.where(MediaRow.media_type == media_type)
+            total = session.exec(count_query).one()
+
+            rows_query = select(MediaRow).order_by(created_at_expr.desc())
+            if media_type:
+                rows_query = rows_query.where(MediaRow.media_type == media_type)
+            offset = (page - 1) * per_page
+            rows = list(session.exec(rows_query.offset(offset).limit(per_page)))
+            return rows, total
 
     def record_generated_media(
         self,

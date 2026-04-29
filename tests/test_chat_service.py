@@ -646,7 +646,7 @@ async def test_stream_image_persists_prompt_in_media_library(tmp_path):
     done = next(e for e in events if e["type"] == "done")
     assert len(done["images"]) == 1
 
-    medias = media_svc.list_media()
+    medias, _total = media_svc.list_media()
     assert len(medias) == 1
     assert medias[0].prompt == "a cinematic tavern scene"
     assert medias[0].media_url == done["images"][0]
@@ -751,7 +751,7 @@ async def test_stream_image_media_prompt_is_original_not_enhanced(tmp_path):
     conv = conv_svc.create_conversation(char.id)
 
     await collect(svc.stream_chat(conv.id, "Hi"))
-    medias = media_svc.list_media()
+    medias, _total = media_svc.list_media()
     assert len(medias) == 1
     assert medias[0].prompt == "original keywords"
 
