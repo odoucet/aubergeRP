@@ -2,6 +2,8 @@
 
 Items not yet implemented. PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
+When using the project and navigating, I sometimes add items here that I think are missing or could be improved. This is not an exhaustive list of all the work that needs to be done, but it gives an idea of the current state of the project and the next steps.
+
 ---
 
 ## High priority
@@ -12,28 +14,20 @@ Items not yet implemented. PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md
 
 - [ ] Improve system prompt to format roleplay dialogs : use italic for the ambiance and actions, and normal text for dialogues. This will make it easier to read and understand the generated content, especially when the LLM is generating complex scenes.
 
-- [x] Hide "videos" and "audios" menus/footer buttons for now, as they are not implemented yet. This will avoid confusion for users who might expect these features to be available (dont forget admin panel too, especially connector form). Add them to TODO.md to think about their implementation later.
-
 - [ ] Handle "reasoning" models: sometimes, model use reasoning output to shows character thougts or actions, and they are not transcribed in the final message content. We need to use a better system prompt to avoid this because "reasoning" is often used for out-of-roleplay thoughts.
 One consequence too : the max_tokens parameter is not correctly handled for reasoning models, because reasoning is counted and sometimes it makes the final message content empty, even if the model is generating a lot of text. If we do receive a response with 0 char but many ignored chars, we should log a warning about this and suggest to 1) use a better system prompt to avoid thinking and 2) raise the max_tokens limit to accomodate reasoning output. Also print a friendly message to the frontend user.
 
-- [x] Check if no image connector is set that everything is working correctly: no call to image generation, no error, and that the user can still have a conversation with the LLM. This is a common use case for users who just want to use the chat feature without images. Add unit tests for this case.
-
 - [ ] add a cache buster on static assets (js/css) to avoid browser caching issues after updates (needs to think twice about implementation on this one).
-
-- [ ] add a button on front to generate a picture of the scene : it's self-explanatory and avoid "[ ]" markers for this. The button should be visible only if an image connector is configured, and when clicked it should send a message to the backend to trigger image generation with the current conversation context. On mobile there is some room for this just up the "send" button". Use a nice icon and a different color to make it stand out.
-
-- [x] review the conversation UI when an image generation is triggered : actually we have two messages for this and it's confusing. Remove the first one that is useless. 
-
-- [x] on mobile, always keep the scrollbar at the bottom when a new message is added, to avoid users missing new messages or images. With the focus on textarea, it makes it worse because it opens the keyboard but the chat window is not scrolled to the bottom.
 
 ---
 
 ## Medium priority
 
-- [ ] **Manual "Generate Image" button** — UI fallback to trigger image generation without relying on the LLM emitting a `[IMG: …]` marker.
 - [ ] **Hallucination mitigation** — detect clearly off-topic or repetitive responses; retry with a corrective system message. Config: `chat.hallucination_retry`.
-- [ ] **Configurable NSFW filter** — pre/post-processing layer. Config: `chat.nsfw_filter` (`off` | `warn` | `block`). Actually the implementation is very incomplete, with just a declaration on connectors.
+
+- [ ] **Configurable NSFW filter** — pre/post-processing layer. Config: `chat.nsfw_filter` (`off` | `warn` | `block`). Actually the implementation is very incomplete, with just a declaration on connectors but no actual filtering logic. There is a prompt for this, make sure it is used correctly. 
+On frontend, all images generated with an NSFW connector must be blurried by default and visible only when the user clicks on them.
+
 - [ ] Improve media listing on admin : smaller image previews, pagination, search ...
 
 ---
@@ -42,15 +36,13 @@ One consequence too : the max_tokens parameter is not correctly handled for reas
 
 - [ ] **Multi-character conversations** — more than one character per conversation.
 - [ ] **Multi-model support** — separate connectors for chat, summarization, and classification.
-- [ ] **Proactive image triggering** — LLM decides on its own when to emit an image (not only on explicit user request).
-- [ ] **Quota management** — per-conversation token or cost limit.
+- [ ] **Proactive image triggering** — LLM decides on its own when to emit an image (not only on explicit user request). Maybe work on the system prompt to let the LLM know it can do this ?
+- [ ] **Quota management** — per-conversation token limit, when connecting external APIs with quotas (like OpenAI). 
 - [ ] **Video generation connector** (`[VID: …]` marker, `VideoConnector` interface) — currently hidden from the UI until implemented. Design the connector interface, define the SSE event flow, and add UI controls for video playback.
 - [ ] **Audio/TTS connector** — play synthesized speech after each assistant message. Currently hidden from the UI. Design the connector interface and add playback controls to the chat UI.
 - [ ] Handle storing version (used in GUI and API).
-
 - [ ] Maintain a list of character cards websites. Actually : 
       * https://jannyai.com/characters
-
 - [ ] One-click translation of a character card in another language, using the LLM. This is a common user request and would be a nice feature to have. It could be implemented as a button on the admin panel, next to each character, that triggers the translation process.
 
 ---
