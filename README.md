@@ -4,6 +4,8 @@
 
 AubergeRP is a lightweight, self-hostable alternative to SillyTavern. It’s designed for those who want a beautiful, "plug-and-play" experience with local or remote LLMs, featuring native AI image generation without the headache of complex extensions.
 
+The Docker setup ships with a bundled [LocalAI](https://localai.io/) instance — text and image models are **downloaded automatically** on first run, so you get a fully working text + image stack with a single command and no manual model management.
+
 ## ✨ Why AubergeRP?
 
 | Feature            | AubergeRP          | Other Tools (ST, etc.)      |
@@ -43,14 +45,23 @@ AubergeRP is a lightweight, self-hostable alternative to SillyTavern. It’s des
    ```bash
    make docker
    ```
+   This starts AubergeRP standalone, you will need to plug text/image LLM.
+   Use this if you have no GPU or just want to test the app with a remote LLM.
+
+   If you do have a GPU : 
+   ```bash
+   make docker gpu=rtx3090
+   ```
+   This starts AubergeRP with a LocalAI instance, which will automatically download and serve the configured text and image models.
+
+   If your model is not listed, use one closer to it in terms of VRAM usage, and edit the `docker/profiles/*.yml` files to set the correct model name for LocalAI.
+
 
 3. **Enjoy!**
    Open **http://localhost:8123**. The admin password is displayed in your terminal logs.
-   * Go to **Admin** -> Add a **Text Connector**.
-   * Import a character and start your story.
+   * Go to **Admin** -> The LocalAI text connector is pre-configured. Some characters are already provisioned to try out, but you can also import a character and start your story.
+   * Image generation works out of the box once the model download completes.
 
-> [!TIP]
-> Using a local GPU? Check the [Installation Guide](docs/installation-guide.md) for optimized Docker commands (`make docker gpu=rtx3090`).
 
 
 ## 🏗 Technology Stack
