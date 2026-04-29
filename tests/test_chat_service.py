@@ -743,3 +743,151 @@ async def test_stream_image_media_prompt_is_original_not_enhanced(tmp_path):
     medias = media_svc.list_media()
     assert len(medias) == 1
     assert medias[0].prompt == "original keywords"
+
+
+# ---------------------------------------------------------------------------
+# _generate_image_prompt — template content
+# ---------------------------------------------------------------------------
+
+class _CapturingText:
+    """Text connector that records every message list it receives."""
+
+    connector_type = "text"
+
+    def __init__(self, response: str = "enhanced prompt") -> None:
+        self._response = response
+        self.received: list[list[dict]] = []
+
+    async def stream_chat_completion(self, messages, **kw) -> AsyncIterator[str]:
+        self.received.append(list(messages))
+        yield self._response
+
+    async def test_connection(self) -> dict:
+        return {}
+
+
+async def test_generate_image_prompt_includes_char_name(tmp_path):
+    conn = _CapturingText()
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, conn)
+    char = char_svc.create_character(CharacterData(name="Seraphina", description="A warrior."))
+    await svc._generate_image_prompt(conn, char, [], "battle")
+    user_content = conn.received[0][0]["content"]
+    assert "Seraphina" in user_content
+
+
+async def test_generate_image_prompt_includes_char_description(tmp_path):
+    conn = _CapturingText()
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, conn)
+    char = char_svc.create_character(CharacterData(name="X", description="A legendary blacksmith with a scarred face."))
+    await svc._generate_image_prompt(conn, char, [], "forge")
+    user_content = conn.received[0][0]["content"]
+    assert "legendary blacksmith" in user_content
+
+
+async def test_generate_image_prompt_includes_scenario(tmp_path):
+    conn = _CapturingText()
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, conn)
+    char = char_svc.create_character(CharacterData(name="X", description="Y", scenario="A dark forest at midnight."))
+    await svc._generate_image_prompt(conn, char, [], "trees")
+    user_content = conn.received[0][0]["content"]
+    assert "dark forest" in user_content
+
+
+async def test_generate_image_prompt_includes_raw_keywords(tmp_path):
+    conn = _CapturingText()
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, conn)
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    await svc._generate_image_prompt(conn, char, [], "dragon attacking castle")
+    user_content = conn.received[0][0]["content"]
+    assert "dragon attacking castle" in user_content
+
+
+async def test_generate_image_prompt_includes_recent_exchanges(tmp_path):
+    conn = _CapturingText()
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, conn)
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    messages = [
+        {"role": "user", "content": "Tell me about the moonlit tavern"},
+        {"role": "assistant", "content": "The tavern glows with candlelight."},
+    ]
+    await svc._generate_image_prompt(conn, char, messages, "scene")
+    user_content = conn.received[0][0]["content"]
+    assert "moonlit tavern" in user_content
+    assert "candlelight" in user_content
+
+
+async def test_generate_image_prompt_no_messages_uses_placeholder(tmp_path):
+    conn = _CapturingText()
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, conn)
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    await svc._generate_image_prompt(conn, char, [], "scene")
+    user_content = conn.received[0][0]["content"]
+    assert "(no prior exchanges)" in user_content
+
+
+async def test_generate_image_prompt_excludes_system_messages(tmp_path):
+    conn = _CapturingText()
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, conn)
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    messages = [
+        {"role": "system", "content": "SECRET_SYSTEM_CONTENT"},
+        {"role": "user", "content": "hello"},
+    ]
+    await svc._generate_image_prompt(conn, char, messages, "scene")
+    user_content = conn.received[0][0]["content"]
+    assert "SECRET_SYSTEM_CONTENT" not in user_content
+
+
+async def test_generate_image_prompt_limits_context_to_max_messages(tmp_path):
+    conn = _CapturingText()
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, conn)
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    messages = [
+        {"role": "user" if i % 2 == 0 else "assistant", "content": f"msg_{i}"}
+        for i in range(10)
+    ]
+    await svc._generate_image_prompt(conn, char, messages, "scene")
+    user_content = conn.received[0][0]["content"]
+    # last 6 messages (indices 4-9) must appear; earlier ones must not
+    assert "msg_4" in user_content
+    assert "msg_9" in user_content
+    assert "msg_0" not in user_content
+    assert "msg_3" not in user_content
+
+
+async def test_generate_image_prompt_empty_llm_result_falls_back_to_raw(tmp_path):
+    conn = _CapturingText(response="   ")
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, conn)
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    result = await svc._generate_image_prompt(conn, char, [], "original prompt")
+    assert result == "original prompt"
+
+
+# ---------------------------------------------------------------------------
+# _generate_image_prompt — tool-calling path
+# ---------------------------------------------------------------------------
+
+async def test_stream_image_tool_call_uses_llm_enhanced_prompt(tmp_path):
+    """Image prompt is LLM-enhanced also when triggered via the tool-calling path."""
+
+    class _ToolCallText:
+        connector_type = "text"
+        supports_tool_calling = True
+
+        async def stream_chat_completion_with_tools(self, messages, tools, **kw):
+            yield {"type": "tool_call", "name": "generate_image", "arguments": {"prompt": "elf girl forest"}}
+
+        async def stream_chat_completion(self, messages, **kw):
+            yield "llm enhanced tool call prompt"
+
+        async def test_connection(self):
+            return {}
+
+    img_conn = _RecordingImage()
+    char_svc, conv_svc, svc = make_chat_service(tmp_path, _ToolCallText(), img_conn)
+    char = char_svc.create_character(CharacterData(name="Elara", description="An elven ranger."))
+    conv = conv_svc.create_conversation(char.id)
+
+    events = await collect(svc.stream_chat(conv.id, "Show me the scene"))
+    assert any(e["type"] == "image_complete" for e in events)
+    assert img_conn.last_prompt == "llm enhanced tool call prompt"

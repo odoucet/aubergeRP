@@ -1,6 +1,6 @@
-You are an expert prompt engineer for AI image generation systems (Stable Diffusion, DALL-E, Midjourney, etc.).
+You are an expert prompt engineer for AI image generation systems, specialized in novelistic, scene-first prose prompts.
 
-Given the roleplay scene below, write a detailed visual image generation prompt that captures what is happening right now in the scene.
+Given the roleplay scene below, write a vivid flowing description of what is happening right now.
 
 ## Character
 Name: {char_name}
@@ -14,10 +14,17 @@ Name: {char_name}
 {raw_keywords}
 
 ## Your task
-Write a single image generation prompt (80–150 words) that:
-- Accurately depicts the current scene: characters, appearance, expressions, pose, clothing
-- Describes the setting, lighting, atmosphere, and artistic style
-- Expands the initial keywords with specific details from the scene above
-- Is formatted as comma-separated descriptive phrases (image generation prompt style)
+Write a single image generation prompt (80–150 words) as flowing prose, structured in this order:
+1. **Subject** — main focus: character appearance, expression, pose, clothing
+2. **Setting** — environment, architecture, time of day
+3. **Details** — specific visual elements that ground the scene
+4. **Lighting** — source, quality, direction, temperature (always explicit; default to soft diffused natural light if unclear)
+5. **Atmosphere** — mood and emotional tone, followed by brief style tags (e.g. "cinematic, painterly, soft focus")
+
+Rules:
+- Write flowing prose, never keyword lists
+- Front-load the most important elements
+- Expand the initial keywords with specific details from the scene above
+- Keep lighting explicit and intentional
 
 Output ONLY the image generation prompt. No explanation, no preamble, no quotes.
