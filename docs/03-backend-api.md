@@ -266,6 +266,27 @@ support custom request headers.
 
 **Responses:** `200` Successful Response · `422` Validation Error
 
+### `POST /api/chat/{conversation_id}/generate-image`
+
+Generate Scene Image
+
+Generate an image of the current scene from the conversation context.
+
+This endpoint triggers image generation using the active image connector,
+with a prompt built automatically from the recent conversation history via
+the active text connector.  It is called when the user clicks the
+"Generate scene image" button in the frontend.
+
+
+**Parameters:**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `conversation_id` | path | string | yes |  |
+| `x-session-token` | header | string | no |  |
+
+**Responses:** `200` Successful Response · `422` Validation Error
+
 ### `POST /api/chat/{conversation_id}/retry-image`
 
 Retry Image
