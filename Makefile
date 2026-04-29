@@ -35,7 +35,8 @@ help:
 	@printf "$(BLUE)aubergeRP$(RESET) — available commands\n\n"
 	@printf "  $(YELLOW)Development$(RESET)\n"
 	@printf "    make run              Start dev server (hot-reload, port 8123)\n"
-	@printf "    make test             Run Python test suite\n"
+	@printf "    make test                        Run Python test suite\n"
+	@printf "    make test tests/test_api.py      Run one file\n"
 	@printf "    make test-e2e         Run browser e2e tests (requires node + playwright)\n"
 	@printf "    make lint             Run ruff + mypy\n"
 	@printf "    make lint-fix         Fix linting issues automatically (ruff --fix)\n"
@@ -64,8 +65,9 @@ help:
 run:
 	python -m uvicorn aubergeRP.main:app --reload --host 0.0.0.0 --port 8123
 
+_TEST_ARGS := $(filter-out test, $(MAKECMDGOALS))
 test:
-	python -m pytest tests/
+	python -m pytest $(or $(_TEST_ARGS),tests/)
 
 test-e2e:
 	cd tests/e2e && node --test chat-streaming.test.mjs
@@ -148,3 +150,7 @@ _setup-%:
 		NAME=$(call profile_get,llm_name,$*)
 	@$(MAKE) --no-print-directory _localai-install \
 		NAME=$(call profile_get,img_name,$*)
+
+# Catch-all: silently absorb extra arguments passed to `make test <file>`
+%:
+	@:
