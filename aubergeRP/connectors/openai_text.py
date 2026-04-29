@@ -140,7 +140,7 @@ class OpenAITextConnector(TextConnector):
             )
         logger.info(
             "LLM response: model=%s resp=%d chars reasoning=%d chars ignored=%d chars",
-            model_name, total_chars, total_reasoning_chars, total_ignored_chars,
+            model_name, total_chars, total_reasoning_chars, total_ignored_chars
         )
 
     async def stream_chat_completion_with_tools(

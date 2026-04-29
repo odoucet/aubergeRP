@@ -203,7 +203,7 @@ async def test_stream_reasoning_only_yields_no_tokens(caplog):
     body = (
         b'data: {"choices": [{"delta": {"reasoning_content": "I am thinking..."}}]}\n\n'
         b'data: {"choices": [{"delta": {}, "finish_reason": "stop"}]}\n\n'
-        b"data: [DONE]\n\n"
+        b'data: [DONE]\n\n'
     )
     respx.post(f"{BASE_URL}/chat/completions").respond(
         200, content=body, headers={"content-type": "text/event-stream"}
