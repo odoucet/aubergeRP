@@ -12,18 +12,22 @@ const harnessUrl = pathToFileURL(path.join(__dirname, 'harness', 'mobile-scroll.
 async function withPage(fn, viewportOverride) {
   const browser = await chromium.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--allow-file-access-from-files'],
   });
   const page = await browser.newPage();
   if (viewportOverride) await page.setViewportSize(viewportOverride);
   try {
     await page.goto(harnessUrl, { waitUntil: 'load' });
+    // Wait for the harness module to initialise (module scripts run after load)
+    await page.waitForFunction(() => typeof window.__scrollHarness !== 'undefined');
     await fn(page);
   } finally {
     await page.close();
     await browser.close();
   }
 }
+
+// ── Scroll-pin behaviour ──────────────────────────────────────────────────────
 
 test('starts pinned to bottom', async () => {
   await withPage(async (page) => {
@@ -123,3 +127,50 @@ test('input area is visible within viewport on a mobile-sized screen', async () 
     );
   }, { width: 390, height: 844 }); // iPhone 14 viewport
 });
+
+// ── Input area visibility and scrollability across viewport sizes ──────────────
+
+// [label, width, height]
+const VIEWPORTS = [
+  ['small phone (iPhone SE)', 375, 667],
+  ['regular phone (iPhone 14)', 390, 844],
+  ['large phone (iPhone 14 Plus)', 430, 932],
+  ['tablet portrait (iPad)', 768, 1024],
+  ['desktop', 1280, 800],
+];
+
+for (const [label, width, height] of VIEWPORTS) {
+  test(`input area is within viewport on ${label} (${width}x${height})`, async () => {
+    await withPage(async (page) => {
+      const { inputBottom, viewportHeight } = await page.evaluate(() => {
+        window.__scrollHarness.seed(20);
+        return {
+          inputBottom: window.__scrollHarness.getInputAreaBottom(),
+          viewportHeight: window.__scrollHarness.getViewportHeight(),
+        };
+      });
+      assert.ok(
+        inputBottom <= viewportHeight,
+        `input bottom (${inputBottom}) should be within viewport height (${viewportHeight})`
+      );
+    }, { width, height });
+  });
+}
+
+for (const [label, width, height] of VIEWPORTS) {
+  test(`message list is scrollable on ${label} (${width}x${height})`, async () => {
+    await withPage(async (page) => {
+      const { scrollHeight, clientHeight } = await page.evaluate(() => {
+        window.__scrollHarness.seed(20);
+        return {
+          scrollHeight: window.__scrollHarness.getScrollHeight(),
+          clientHeight: window.__scrollHarness.getClientHeight(),
+        };
+      });
+      assert.ok(
+        scrollHeight > clientHeight,
+        `message list should be scrollable: scrollHeight (${scrollHeight}) > clientHeight (${clientHeight})`
+      );
+    }, { width, height });
+  });
+}
