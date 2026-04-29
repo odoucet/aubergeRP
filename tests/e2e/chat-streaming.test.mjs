@@ -24,18 +24,15 @@ async function withPage(fn) {
   }
 }
 
-test('shows a visible in-progress media status before assistant text arrives', async () => {
+test('shows a visible in-progress placeholder before assistant text arrives', async () => {
   await withPage(async (page) => {
     await page.evaluate(() => window.__chatHarness.startImage('a lantern-lit tavern interior'));
 
-    await page.waitForSelector('.msg-media-status', { state: 'visible' });
     await page.waitForSelector('.img-placeholder', { state: 'visible' });
 
-    const statusText = await page.textContent('.msg-media-status');
     const placeholderText = await page.textContent('.img-placeholder');
     const bubbleDisplay = await page.$eval('.msg-bubble', (el) => getComputedStyle(el).display);
 
-    assert.ok(statusText.includes('Image generation in progress'));
     assert.ok(placeholderText.includes('Generating image'));
     assert.ok(placeholderText.includes('a lantern-lit tavern interior'));
     assert.equal(bubbleDisplay, 'none');
@@ -67,7 +64,7 @@ test('dispatchSSEEvent routes image progress events to the visible placeholder',
   await withPage(async (page) => {
     await page.evaluate(() => window.__chatHarness.dispatchProgressEvent());
 
-    await page.waitForSelector('.msg-media-status', { state: 'visible' });
+    await page.waitForSelector('.img-placeholder', { state: 'visible' });
     const labelText = await page.textContent('.img-progress-label');
     const progressWidth = await page.$eval('.img-progress-bar', (el) => getComputedStyle(el).width);
 
