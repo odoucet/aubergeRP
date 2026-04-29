@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>Mobile Scroll Harness</title>
+  <link rel="stylesheet" href="../../../frontend/css/main.css">
+  <style>
+    /* Give the message list a fixed height so it becomes scrollable */
+    #message-list {
+      height: 300px;
+      flex: none;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      gap: 0.75rem;
+      padding: 1rem;
+    }
+    /* Minimal input-area for visibility test */
+    #input-area {
+      display: flex;
+    }
+  </style>
+</head>
+<body>
+  <section id="message-list" aria-label="Messages"></section>
+  <div id="input-area">
+    <textarea id="msg-input" rows="1"></textarea>
+    <button id="send-btn">Send</button>
+  </div>
+
+  <script type="module">
+    import { __test } from '../../../frontend/js/chat.js';
+
+    // Seed the list with enough messages to make it scrollable
+    function seedMessages(n = 20) {
+      const list = document.getElementById('message-list');
+      for (let i = 0; i < n; i++) {
+        const el = document.createElement('div');
+        el.className = 'msg assistant';
+        el.innerHTML = `<div class="msg-bubble">Message ${i + 1} — some content to fill vertical space.</div>`;
+        list.appendChild(el);
+      }
+    }
+
+    window.__scrollHarness = {
+      seed(n = 20) { seedMessages(n); },
+      scrollToTop() {
+        document.getElementById('message-list').scrollTop = 0;
+      },
+      scrollToBottom() {
+        const list = document.getElementById('message-list');
+        list.scrollTop = list.scrollHeight;
+      },
+      getScrollTop() {
+        return document.getElementById('message-list').scrollTop;
+      },
+      getScrollHeight() {
+        return document.getElementById('message-list').scrollHeight;
+      },
+      getClientHeight() {
+        return document.getElementById('message-list').clientHeight;
+      },
+      isAtBottom() {
+        const list = document.getElementById('message-list');
+        return list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+      },
+      getPinned: () => __test.getPinned(),
+      setPinned: (v) => __test.setPinned(v),
+      startStreaming() {
+        const s = __test.createStreamingMessage();
+        window.__streaming = s;
+        return s;
+      },
+      sendToken(text = 'hello') {
+        window.__streaming?.onToken(text);
+      },
+      getInputAreaBottom() {
+        const el = document.getElementById('input-area');
+        const rect = el.getBoundingClientRect();
+        return rect.bottom;
+      },
+      getViewportHeight() {
+        return window.innerHeight;
+      },
+    };
+  </script>
+</body>
+</html>

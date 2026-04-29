@@ -280,7 +280,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  scroll-behavior: smooth;
 }
 
 /* message bubbles */
@@ -342,17 +341,18 @@ body {
 }
 
 /* images inside messages */
-.msg-images { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+.msg-images { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; min-width: 0; }
 
 /* image wrapper: provides positioning context for copy button */
 .img-wrapper {
   position: relative;
   display: inline-block;
+  max-width: 100%;
 }
 .img-wrapper:hover .img-copy-btn,
 .img-copy-btn:focus { opacity: 1; }
 
-.msg-image { max-width: 520px; max-height: 520px; border-radius: 8px; object-fit: contain; cursor: pointer; border: 1px solid var(--color-border); display: block; }
+.msg-image { max-width: min(520px, 100%); max-height: 520px; border-radius: 8px; object-fit: contain; cursor: pointer; border: 1px solid var(--color-border); display: block; }
 
 .msg-media-status {
   margin-top: 0.45rem;
@@ -399,7 +399,7 @@ body {
 
 /* image placeholder */
 .img-placeholder {
-  width: 240px;
+  width: min(240px, 100%);
   min-height: 164px;
   background: var(--color-surface2);
   border-radius: 8px;
@@ -571,7 +571,7 @@ body {
   font-family: inherit;
   padding: 0.55rem 0.8rem;
   resize: none;
-  min-height: 42px;
+  min-height: 92px;
   max-height: 200px;
   overflow-y: auto;
   line-height: 1.5;
@@ -709,7 +709,7 @@ body {
 
 @media (max-width: 767px) {
   .msg { max-width: 90%; }
-  #input-area { padding: 0.5rem; }
+  #input-area { padding: 0.5rem; padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px)); }
   #char-header { padding: 0.5rem 0.75rem; }
   #message-list { padding: 0.75rem 0.5rem; }
 }

@@ -20,6 +20,7 @@ let _activeCharacter = null;
 let _streaming = false;
 let _healthInterval = null;
 let _lastUserMessage = null;
+let _pinnedToBottom = true;
 
 /** EventSource used by other browser tabs to receive remote SSE events. */
 let _remoteEventSource = null;
@@ -57,6 +58,29 @@ export function initChat() {
         showToast('Could not copy URL: ' + err.message);
       }
     });
+  }
+
+  // Track whether the user is scrolled to the bottom of the message list.
+  // Streaming auto-scroll only fires when pinned, so users can scroll up to
+  // read earlier messages without being yanked back on every token.
+  const messageList = document.getElementById('message-list');
+  messageList.addEventListener('scroll', () => {
+    const { scrollTop, scrollHeight, clientHeight } = messageList;
+    _pinnedToBottom = scrollHeight - scrollTop - clientHeight < 80;
+  });
+
+  // iOS Safari: the visual viewport shrinks when the keyboard appears but the
+  // layout viewport does not, so the input area would be hidden under the
+  // keyboard. Resizing #app to the visual viewport height keeps it visible.
+  if (window.visualViewport) {
+    const syncToVisualViewport = () => {
+      const app = document.getElementById('app');
+      const vv = window.visualViewport;
+      app.style.height = `${vv.height}px`;
+      app.style.transform = `translateY(${vv.offsetTop}px)`;
+    };
+    window.visualViewport.addEventListener('resize', syncToVisualViewport);
+    window.visualViewport.addEventListener('scroll', syncToVisualViewport);
   }
 
   // Health polling
@@ -434,7 +458,7 @@ function createStreamingMessage() {
   indicator.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
   typingEl.appendChild(indicator);
   list.appendChild(typingEl);
-  scrollToBottom();
+  scrollIfPinned();
 
   const wrapper = document.createElement('article');
   wrapper.className = 'msg assistant';
@@ -485,7 +509,7 @@ function createStreamingMessage() {
       bubble.style.display = '';
       bubble.innerHTML = renderMarkdown(rawText);
       applyRoleplayHintStyling(bubble);
-      scrollToBottom();
+      scrollIfPinned();
     },
     onImageStart(genId, prompt) {
       typingEl.remove();
@@ -507,7 +531,7 @@ function createStreamingMessage() {
         <span class="img-progress-label" id="img-progress-label-${genId}" style="display:none"></span>
       `;
       imagesContainer.appendChild(ph);
-      scrollToBottom();
+      scrollIfPinned();
     },
     onImageProgress(genId, step, total) {
       const spinner = document.getElementById(`img-spinner-${genId}`);
@@ -519,7 +543,7 @@ function createStreamingMessage() {
       const pct = total > 0 ? Math.round((step / total) * 100) : 0;
       if (barEl) barEl.style.width = `${pct}%`;
       if (labelEl) { labelEl.style.display = 'block'; labelEl.textContent = `${step} / ${total}`; }
-      scrollToBottom();
+      scrollIfPinned();
     },
     onImageComplete(genId, imageUrl) {
       pendingImages.delete(genId);
@@ -528,7 +552,7 @@ function createStreamingMessage() {
       if (ph) {
         ph.replaceWith(createImageElement(imageUrl));
       }
-      scrollToBottom();
+      scrollIfPinned();
     },
     onImageFailed(genId, detail) {
       pendingImages.delete(genId);
@@ -823,6 +847,13 @@ function splitRoleplayFragments(text) {
 function scrollToBottom() {
   const list = document.getElementById('message-list');
   list.scrollTop = list.scrollHeight;
+  _pinnedToBottom = true;
+}
+
+function scrollIfPinned() {
+  if (!_pinnedToBottom) return;
+  const list = document.getElementById('message-list');
+  list.scrollTop = list.scrollHeight;
 }
 
 
@@ -936,4 +967,7 @@ export function showToast(message, duration = 4000) {
 export const __test = {
   createStreamingMessage,
   dispatchSSEEvent,
+  scrollIfPinned,
+  getPinned: () => _pinnedToBottom,
+  setPinned: (v) => { _pinnedToBottom = v; },
 };
