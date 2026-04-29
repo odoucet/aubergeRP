@@ -12,7 +12,7 @@ const harnessUrl = pathToFileURL(path.join(__dirname, 'harness', 'chat-streaming
 async function withPage(fn) {
   const browser = await chromium.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--allow-file-access-from-files'],
   });
   const page = await browser.newPage();
   try {

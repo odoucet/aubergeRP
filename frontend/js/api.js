@@ -143,3 +143,21 @@ export async function sendMessage(conversationId, content) {
   }
   return res; // caller reads .body
 }
+
+export async function generateSceneImage(conversationId) {
+  const res = await fetch(`/api/chat/${encodeURIComponent(conversationId)}/generate-image`, {
+    method: 'POST',
+    headers: {
+      'X-Session-Token': getSessionToken(),
+    },
+  });
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body.detail) detail = body.detail;
+    } catch (_) {}
+    throw new Error(detail);
+  }
+  return res; // caller reads .body as SSE stream
+}

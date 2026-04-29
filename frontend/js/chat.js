@@ -7,6 +7,7 @@ import {
   createConversation,
   deleteConversation,
   sendMessage,
+  generateSceneImage,
   fetchHealth,
   getSessionToken,
   copyShareUrl,
@@ -21,6 +22,7 @@ let _streaming = false;
 let _healthInterval = null;
 let _lastUserMessage = null;
 let _pinnedToBottom = true;
+let _hasImageConnector = false;
 
 /** EventSource used by other browser tabs to receive remote SSE events. */
 let _remoteEventSource = null;
@@ -46,6 +48,11 @@ export function initChat() {
   });
 
   document.getElementById('new-conv-btn').addEventListener('click', handleNewConversation);
+
+  const genImgBtn = document.getElementById('generate-image-btn');
+  if (genImgBtn) {
+    genImgBtn.addEventListener('click', () => handleGenerateImage());
+  }
 
   // "Share session" button
   const shareBtn = document.getElementById('share-session-btn');
@@ -573,6 +580,32 @@ function createStreamingMessage() {
 
 // ── Sending ──────────────────────────────────────────────────────────────────
 
+async function handleGenerateImage() {
+  if (_streaming || !_activeConversationId) return;
+
+  setStreaming(true);
+  const streaming = createStreamingMessage();
+
+  let res;
+  try {
+    res = await generateSceneImage(_activeConversationId);
+  } catch (err) {
+    streaming.finalize();
+    appendErrorMessage('Generate image failed: ' + err.message);
+    setStreaming(false);
+    return;
+  }
+
+  try {
+    await readSSE(res, streaming);
+  } catch (err) {
+    streaming.finalize();
+    appendErrorMessage('Stream error: ' + err.message);
+  }
+
+  setStreaming(false);
+}
+
 async function handleSend(contentOverride) {
   if (_streaming || !_activeConversationId) return;
 
@@ -704,6 +737,8 @@ function setStreaming(streaming) {
   _streaming = streaming;
   document.getElementById('msg-input').disabled = streaming;
   document.getElementById('send-btn').disabled = streaming;
+  const genImgBtn = document.getElementById('generate-image-btn');
+  if (genImgBtn) genImgBtn.disabled = streaming;
   if (!streaming) {
     // Scroll to bottom before focusing to ensure the latest message is visible
     // even when the mobile keyboard opens and shrinks the viewport.
@@ -737,6 +772,15 @@ async function updateHealth() {
   const c = data.connectors || {};
   setStatusItem('text', c.text);
   setStatusItem('image', c.image);
+  updateImageConnectorStatus(!!c.image);
+}
+
+function updateImageConnectorStatus(hasConnector) {
+  _hasImageConnector = hasConnector;
+  const btn = document.getElementById('generate-image-btn');
+  if (btn) {
+    btn.style.display = hasConnector ? '' : 'none';
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -948,4 +992,6 @@ export const __test = {
   scrollIfPinned,
   getPinned: () => _pinnedToBottom,
   setPinned: (v) => { _pinnedToBottom = v; },
+  updateImageConnectorStatus,
+  getHasImageConnector: () => _hasImageConnector,
 };

@@ -982,3 +982,75 @@ async def test_no_image_connector_multiple_turns(tmp_path):
 
     reloaded = conv_svc.get_conversation(conv.id)
     assert len([m for m in reloaded.messages if m.role == "assistant"]) == 2
+
+
+# ---------------------------------------------------------------------------
+# generate_scene_image
+# ---------------------------------------------------------------------------
+
+async def test_generate_scene_image_emits_start_and_complete(tmp_path):
+    """generate_scene_image yields image_start then image_complete on success."""
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=_FakeText(["an enhanced scene prompt"]),
+        image_conn=_FakeImage(b"SCENEIMG"),
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.generate_scene_image(conv.id))
+    assert any(e["type"] == "image_start" for e in events)
+    assert any(e["type"] == "image_complete" for e in events)
+
+
+async def test_generate_scene_image_no_image_connector(tmp_path):
+    """generate_scene_image yields image_failed when no image connector is configured."""
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=_FakeText(["prompt"]),
+        image_conn=None,
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.generate_scene_image(conv.id))
+    assert any(e["type"] == "image_failed" for e in events)
+    failed = next(e for e in events if e["type"] == "image_failed")
+    assert "connector" in failed["detail"].lower()
+
+
+async def test_generate_scene_image_invalid_conversation(tmp_path):
+    """generate_scene_image yields image_failed for a non-existent conversation."""
+    _, _, svc = make_chat_service(tmp_path, image_conn=_FakeImage())
+    events = await collect(svc.generate_scene_image("nonexistent-conv"))
+    assert events[0]["type"] == "image_failed"
+
+
+async def test_generate_scene_image_uses_image_connector(tmp_path):
+    """generate_scene_image calls the image connector and saves an image to disk."""
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=_FakeText(["scene description"]),
+        image_conn=_FakeImage(b"BYTES"),
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.generate_scene_image(conv.id))
+    complete = next(e for e in events if e["type"] == "image_complete")
+    filename = complete["image_url"].split("/")[-1]
+    # Image was written to disk
+    images_dir = tmp_path / "images"
+    assert any(images_dir.rglob(filename))
+
+
+async def test_generate_scene_image_works_without_text_connector(tmp_path):
+    """generate_scene_image should still yield image events with no text connector."""
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=None,
+        image_conn=_FakeImage(b"IMG"),
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.generate_scene_image(conv.id))
+    # Should have image_start + image_complete (no text connector means no prompt enhancement)
+    assert any(e["type"] == "image_start" for e in events)
+    assert any(e["type"] == "image_complete" for e in events)
