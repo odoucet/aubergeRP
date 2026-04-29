@@ -72,12 +72,15 @@ export function initChat() {
   // iOS Safari: the visual viewport shrinks when the keyboard appears but the
   // layout viewport does not, so the input area would be hidden under the
   // keyboard. Resizing #app to the visual viewport height keeps it visible.
+  // We also scroll to bottom when pinned so new messages remain visible after
+  // the keyboard opens.
   if (window.visualViewport) {
     const syncToVisualViewport = () => {
       const app = document.getElementById('app');
       const vv = window.visualViewport;
       app.style.height = `${vv.height}px`;
       app.style.transform = `translateY(${vv.offsetTop}px)`;
+      scrollIfPinned();
     };
     window.visualViewport.addEventListener('resize', syncToVisualViewport);
     window.visualViewport.addEventListener('scroll', syncToVisualViewport);
@@ -469,11 +472,6 @@ function createStreamingMessage() {
   bubble.style.display = 'none';
   wrapper.appendChild(bubble);
 
-  const mediaStatus = document.createElement('div');
-  mediaStatus.className = 'msg-media-status';
-  mediaStatus.style.display = 'none';
-  wrapper.appendChild(mediaStatus);
-
   const imagesContainer = document.createElement('div');
   imagesContainer.className = 'msg-images';
   wrapper.appendChild(imagesContainer);
@@ -483,23 +481,6 @@ function createStreamingMessage() {
   let rawText = '';
   const pendingImages = new Set();
   const imagePrompts = new Map(); // genId -> prompt mapping for retries
-
-  function updateMediaStatus() {
-    if (pendingImages.size === 0) {
-      mediaStatus.style.display = 'none';
-      mediaStatus.innerHTML = '';
-      return;
-    }
-
-    wrapper.style.display = '';
-    mediaStatus.style.display = '';
-    mediaStatus.innerHTML = `
-      <div class="msg-media-status-title">Image generation in progress</div>
-      <div class="msg-media-status-subtitle">
-        ${pendingImages.size === 1 ? 'An image is being generated for this reply.' : `${pendingImages.size} images are being generated for this reply.`}
-      </div>
-    `;
-  }
 
   return {
     onToken(token) {
@@ -516,7 +497,6 @@ function createStreamingMessage() {
       wrapper.style.display = '';
       pendingImages.add(genId);
       imagePrompts.set(genId, prompt);
-      updateMediaStatus();
 
       const ph = document.createElement('div');
       ph.className = 'img-placeholder';
@@ -547,16 +527,14 @@ function createStreamingMessage() {
     },
     onImageComplete(genId, imageUrl) {
       pendingImages.delete(genId);
-      updateMediaStatus();
       const ph = document.getElementById(`img-ph-${genId}`);
       if (ph) {
         ph.replaceWith(createImageElement(imageUrl));
       }
-      scrollIfPinned();
+      scrollToBottom();
     },
     onImageFailed(genId, detail) {
       pendingImages.delete(genId);
-      updateMediaStatus();
       const ph = document.getElementById(`img-ph-${genId}`);
       const errEl = document.createElement('div');
       errEl.className = 'img-error';
@@ -589,7 +567,6 @@ function createStreamingMessage() {
       typingEl.remove();
       wrapper.style.display = '';
       if (rawText) bubble.style.display = '';
-      updateMediaStatus();
     },
   };
 }
@@ -728,6 +705,9 @@ function setStreaming(streaming) {
   document.getElementById('msg-input').disabled = streaming;
   document.getElementById('send-btn').disabled = streaming;
   if (!streaming) {
+    // Scroll to bottom before focusing to ensure the latest message is visible
+    // even when the mobile keyboard opens and shrinks the viewport.
+    scrollToBottom();
     document.getElementById('msg-input').focus();
   }
 }
@@ -757,8 +737,6 @@ async function updateHealth() {
   const c = data.connectors || {};
   setStatusItem('text', c.text);
   setStatusItem('image', c.image);
-  setStatusItem('video', c.video);
-  setStatusItem('audio', c.audio);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
