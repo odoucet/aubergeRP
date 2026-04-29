@@ -1,4 +1,4 @@
-const STATUS_TYPES = ['text', 'image', 'video', 'audio'];
+const STATUS_TYPES = ['text', 'image'];
 
 const STATUS_HELP_TEXT =
   'These are capability categories. A green dot means the active connector for that type ' +

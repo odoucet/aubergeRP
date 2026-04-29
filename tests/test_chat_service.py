@@ -891,3 +891,94 @@ async def test_stream_image_tool_call_uses_llm_enhanced_prompt(tmp_path):
     events = await collect(svc.stream_chat(conv.id, "Show me the scene"))
     assert any(e["type"] == "image_complete" for e in events)
     assert img_conn.last_prompt == "llm enhanced tool call prompt"
+
+
+# ---------------------------------------------------------------------------
+# No image connector — conversation-only mode
+# ---------------------------------------------------------------------------
+
+async def test_no_image_connector_plain_text_conversation_works(tmp_path):
+    """A plain text conversation must succeed when no image connector is set."""
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=_FakeText(["Hello", " there!"]),
+        image_conn=None,
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.stream_chat(conv.id, "Hi"))
+
+    # No errors at all
+    assert not any(e["type"] == "error" for e in events)
+    # Text tokens are delivered
+    tokens = [e for e in events if e["type"] == "token"]
+    assert len(tokens) == 2
+    assert tokens[0]["content"] == "Hello"
+    assert tokens[1]["content"] == " there!"
+    # Stream ends with done
+    assert events[-1]["type"] == "done"
+
+
+async def test_no_image_connector_conversation_saves_messages(tmp_path):
+    """Messages must be persisted even when no image connector is configured."""
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=_FakeText(["Nice to meet you."]),
+        image_conn=None,
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    await collect(svc.stream_chat(conv.id, "Hello"))
+
+    reloaded = conv_svc.get_conversation(conv.id)
+    roles = [m.role for m in reloaded.messages]
+    assert "user" in roles
+    assert "assistant" in roles
+    assistant_msg = next(m for m in reloaded.messages if m.role == "assistant")
+    assert assistant_msg.content == "Nice to meet you."
+    assert assistant_msg.images == []
+
+
+async def test_no_image_connector_no_image_generation_called(tmp_path):
+    """No image generation must be attempted when there is no image connector."""
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=_FakeText(["Just text, no images."]),
+        image_conn=None,
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+    events = await collect(svc.stream_chat(conv.id, "Tell me something"))
+
+    # No image events should be emitted
+    image_event_types = {"image_start", "image_complete", "image_failed", "image_progress"}
+    assert not any(e["type"] in image_event_types for e in events)
+
+
+async def test_no_image_connector_multiple_turns(tmp_path):
+    """Multiple conversation turns must work correctly with no image connector."""
+    char_svc, conv_svc, svc = make_chat_service(
+        tmp_path,
+        text_conn=_FakeText(["reply"]),
+        image_conn=None,
+    )
+    char = char_svc.create_character(CharacterData(name="X", description="Y"))
+    conv = conv_svc.create_conversation(char.id)
+
+    # First turn
+    events1 = await collect(svc.stream_chat(conv.id, "First message"))
+    assert events1[-1]["type"] == "done"
+
+    # Second turn — service must re-create connector each time
+    svc2 = ChatService(
+        conversation_service=conv_svc,
+        character_service=char_svc,
+        connector_manager=_manager(_FakeText(["second reply"]), None),
+        images_dir=tmp_path / "images",
+    )
+    events2 = await collect(svc2.stream_chat(conv.id, "Second message"))
+    assert not any(e["type"] == "error" for e in events2)
+    assert events2[-1]["type"] == "done"
+
+    reloaded = conv_svc.get_conversation(conv.id)
+    assert len([m for m in reloaded.messages if m.role == "assistant"]) == 2
