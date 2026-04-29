@@ -79,5 +79,10 @@ The Docker setup ships with a bundled [LocalAI](https://localai.io/) instance �
 * ⚙️ [Configuration](docs/09-configuration-and-setup.md) – `config.yaml` reference.
 * 🏗 [Architecture](docs/00-architecture-overview.md) – High-level design for contributors.
 
+## About me
+I'm Olivier. I have nearly 30 years XP in dev/ops and I'm thrilled of the new AI era that allows me to develop this kind of project without putting too much time into it.
+I have a very busy work (I'm CEO), a beautiful family I like to spend time with, and many hobbies.
+This project is the 99th priority in my life. I work on it on my (small) free time, and I try to keep it as simple and maintainable as possible for the long term, so I can keep improving it for years to come without it becoming a burden.
+If you want to contribute, please maintain this philosophy in mind and try to keep things simple and well documented. 
 
 **AubergeRP** is a labor of love. If you like the project, consider giving it a ⭐ on GitHub!
