@@ -54,6 +54,7 @@ const configFields  = document.getElementById('conn-config-fields');
 const clearKeyRow   = document.getElementById('conn-clear-key-row');
 const clearKeyChk   = document.getElementById('conn-clear-key');
 const nameError     = document.getElementById('conn-name-error');
+const backendWarning = document.getElementById('conn-backend-warning');
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -275,6 +276,7 @@ async function openDialog(id) {
   editingId = id;
   clearKeyChk.checked = false;
   clearKeyRow.style.display = 'none';
+  backendWarning.style.display = 'none';
   dialogFeedback.innerHTML = '';
   nameError.textContent = '';
   existingApiKeySet = false;
@@ -287,6 +289,7 @@ async function openDialog(id) {
       typeSelect.value = conn.type || 'text';
       updateBackendOptions();
       backendSelect.value = conn.backend || 'openai_api';
+      updateBackendWarning();
       renderConfigFields(conn.backend, conn.config || {});
       existingApiKeySet = !!(conn.config && conn.config.api_key_set);
       clearKeyRow.style.display = existingApiKeySet ? '' : 'none';
@@ -316,7 +319,13 @@ function onTypeChange() {
   renderConfigFields(backendSelect.value, {});
 }
 
+function updateBackendWarning() {
+  if (!backendWarning) return;
+  backendWarning.style.display = backendSelect.value.toLowerCase().includes('comfyui') ? '' : 'none';
+}
+
 function onBackendChange() {
+  updateBackendWarning();
   renderConfigFields(backendSelect.value, {});
 }
 
@@ -330,6 +339,7 @@ function updateBackendOptions() {
     `<option value="${escHtml(b.id)}">${escHtml(b.name || b.id)}</option>`
   ).join('');
   if (compatible.find(b => b.id === prev)) backendSelect.value = prev;
+  updateBackendWarning();
 }
 
 function renderConfigFields(backendId, existingConfig) {

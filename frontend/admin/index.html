@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>aubergeRP — Admin</title>
-  <link rel="stylesheet" href="/css/main.css">
-  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/main.css?v=2">
+  <link rel="stylesheet" href="/css/admin.css?v=2">
 
   <!-- AubergeRP favicon pack -->
   <link rel="icon" href="/favicons/favicon.svg" type="image/svg+xml"/>
@@ -275,6 +275,9 @@
           <option value="openai_api">openai_api</option>
         </select>
       </div>
+      <div id="conn-backend-warning" class="warning-banner" style="display:none">
+        ⚠️ <strong>Experimental:</strong> ComfyUI support is experimental and has not been fully tested. Expect rough edges.
+      </div>
       <div class="field-divider">Backend Configuration</div>
       <div id="conn-config-fields">
         <!-- Rendered dynamically -->
@@ -413,15 +416,15 @@
 
 <!-- App modules -->
 <script type="module">
-  import { initAdminAuth } from '/js/admin/auth.js';
-  import { initConnectors, applyHealthBadges } from '/js/admin/connectors.js';
-  import { initCharacters } from '/js/admin/characters.js';
-  import { initMedias }    from '/js/admin/medias.js';
-  import { initConfig }     from '/js/admin/config.js';
-  import { initStatistics } from '/js/admin/statistics.js';
-  import { initPrompts }    from '/js/admin/prompts.js';
-  import { applyGuiCustomization } from '/js/gui-customization.js';
-  import { initStatusBar, setStatusItem, initHeaderLogo } from '/js/layout.js';
+  import { initAdminAuth } from '/js/admin/auth.js?v=2';
+  import { initConnectors, applyHealthBadges } from '/js/admin/connectors.js?v=2';
+  import { initCharacters } from '/js/admin/characters.js?v=2';
+  import { initMedias }    from '/js/admin/medias.js?v=2';
+  import { initConfig }     from '/js/admin/config.js?v=2';
+  import { initStatistics } from '/js/admin/statistics.js?v=2';
+  import { initPrompts }    from '/js/admin/prompts.js?v=2';
+  import { applyGuiCustomization } from '/js/gui-customization.js?v=2';
+  import { initStatusBar, setStatusItem, initHeaderLogo } from '/js/layout.js?v=2';
 
   initStatusBar();
   initHeaderLogo({ badge: 'Admin' });
