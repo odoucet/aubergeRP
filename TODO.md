@@ -20,6 +20,13 @@ One consequence too : the max_tokens parameter is not correctly handled for reas
 - [ ] Check if no image connector is set that everything is working correctly: no call to image generation, no error, and that the user can still have a conversation with the LLM. This is a common use case for users who just want to use the chat feature without images. Add unit tests for this case.
 
 - [ ] add a cache buster on static assets (js/css) to avoid browser caching issues after updates (needs to think twice about implementation on this one).
+
+- [ ] add a button on front to generate a picture of the scene : it's self-explanatory and avoid "[ ]" markers for this. The button should be visible only if an image connector is configured, and when clicked it should send a message to the backend to trigger image generation with the current conversation context. On mobile there is some room for this just up the "send" button". Use a nice icon and a different color to make it stand out.
+
+- [ ] review the conversation UI when an image generation is triggered : actually we have two messages for this and it's confusing. Remove the first one that is useless. 
+
+- [ ] on mobile, always keep the scrollbar at the bottom when a new message is added, to avoid users missing new messages or images. With the focus on textarea, it makes it worse because it opens the keyboard but the chat window is not scrolled to the bottom.
+
 ---
 
 ## Medium priority
