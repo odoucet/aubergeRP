@@ -35,6 +35,19 @@ make lint                                    # ruff check + mypy
 Tests use `pytest-asyncio` + `respx` for mocking httpx calls. Fixtures create
 a temp-dir SQLite DB — see `tests/conftest.py`.
 
+## Prompts
+
+Every LLM prompt must be stored as a `.txt` file in `aubergeRP/prompts/` **and** have an
+identical embedded fallback in `PROMPT_DEFAULTS` inside `prompt_service.py`.
+
+Rules:
+- When adding a new prompt key, create `aubergeRP/prompts/<key>.txt` whose content matches
+  the string you add to `PROMPT_DEFAULTS`.
+- When editing the default text of an existing prompt, update **both** the `.txt` file
+  and the `PROMPT_DEFAULTS` entry so they stay in sync.
+- The `.txt` file is the authoritative on-disk version (admin-editable at runtime).
+  `PROMPT_DEFAULTS` is the fallback used when the file is missing or empty.
+
 ## post-actions
 
 After your job is done, make sure `make lint` returns no error or fix them.

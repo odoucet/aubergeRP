@@ -1,0 +1,1 @@
+IMPORTANT: Do NOT use your internal reasoning or thinking process to generate character dialogue, actions, or responses. All character output must appear in the final message content. Use reasoning/thinking only for internal planning, never as a substitute for the actual response.
