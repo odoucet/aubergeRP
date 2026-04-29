@@ -86,6 +86,32 @@ def test_openapi_json_accessible(client):
     assert schema["info"]["title"] == "aubergeRP"
 
 
+def test_static_css_has_revalidation_cache_control_and_etag(client):
+    resp = client.get("/css/main.css")
+    assert resp.status_code == 200
+    cache_control = resp.headers.get("cache-control", "")
+    assert "no-cache" in cache_control
+    assert "must-revalidate" in cache_control
+    assert "etag" in resp.headers
+
+
+def test_static_css_conditional_request_returns_304(client):
+    first = client.get("/css/main.css")
+    etag = first.headers.get("etag")
+    assert etag
+
+    second = client.get("/css/main.css", headers={"If-None-Match": etag})
+    assert second.status_code == 304
+
+
+def test_index_html_has_no_cache_revalidation_header(client):
+    resp = client.get("/")
+    assert resp.status_code == 200
+    cache_control = resp.headers.get("cache-control", "")
+    assert "no-cache" in cache_control
+    assert "must-revalidate" in cache_control
+
+
 # ===========================================================================
 # 3. CORS auto-detection
 # ===========================================================================

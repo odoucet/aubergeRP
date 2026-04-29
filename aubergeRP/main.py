@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import logging
 import shutil
-from collections.abc import AsyncGenerator, Awaitable, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable, MutableMapping
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
@@ -27,6 +28,25 @@ from .services.example_seed_service import seed_example_characters
 
 _BUILTIN_WORKFLOWS_DIR = Path(__file__).parent / "comfyui_workflows"
 logger = logging.getLogger(__name__)
+
+
+class FrontendStaticFiles(StaticFiles):
+    """Serve frontend files with explicit cache revalidation headers.
+
+    Starlette already provides ETag/Last-Modified and handles conditional
+    requests (304). We add Cache-Control directives so browsers always
+    revalidate HTML/JS/CSS after updates.
+    """
+
+    async def get_response(self, path: str, scope: MutableMapping[str, Any]) -> Response:
+        response = await super().get_response(path, scope)
+        if response.status_code in {200, 304}:
+            content_type = response.headers.get("content-type", "").lower()
+            if "text/css" in content_type or "javascript" in content_type:
+                response.headers["Cache-Control"] = "public, no-cache, must-revalidate"
+            elif "text/html" in content_type:
+                response.headers["Cache-Control"] = "no-cache, must-revalidate"
+        return response
 
 
 def _init_data_dirs(data_dir: str) -> None:
@@ -254,7 +274,7 @@ def create_app() -> FastAPI:
 
     frontend = Path("frontend")
     if frontend.exists():
-        app.mount("/", StaticFiles(directory=str(frontend), html=True), name="frontend")
+        app.mount("/", FrontendStaticFiles(directory=str(frontend), html=True), name="frontend")
 
     return app
 
