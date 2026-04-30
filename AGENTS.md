@@ -54,4 +54,4 @@ Rules:
 ## post-actions
 
 After your job is done, make sure `make lint` returns no error or fix them.
-
+Also, always run `make doc` to update the documentation. 
