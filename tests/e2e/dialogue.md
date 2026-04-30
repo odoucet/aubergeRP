@@ -337,3 +337,25 @@ or "Disconnected" — the status must be absent or shown as unknown.
 - WAIT_FOR: #health-content
 - EXPECT_NOT_VISIBLE: .health-status-connected
 - SCREENSHOT: health-status-null-before-test
+
+---
+
+## Scenario: Markdown Italic Renders in Assistant Messages
+
+Verify that Markdown italic text (*...*) inside assistant message bubbles
+is rendered as an <em> element and not plain text.
+
+- NAVIGATE: /admin/#characters
+- WAIT_FOR: #new-char-btn
+- CLICK: #new-char-btn
+- WAIT_FOR: #char-dialog
+- FILL: #char-name | MarkdownBot
+- FILL: #char-description | A bot that uses Markdown formatting.
+- CLICK: #char-dialog-save
+- WAIT_FOR: .char-card
+- NAVIGATE: /
+- WAIT_FOR: #char-list li[role="button"]
+- CLICK: #char-list li[role="button"]
+- WAIT_FOR: #input-area
+- SCREENSHOT: markdown-chat-ready
+

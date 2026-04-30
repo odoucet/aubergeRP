@@ -317,6 +317,18 @@ body {
 .msg-bubble pre code { background: none; }
 .msg-bubble :not(pre) > code { background: rgba(0,0,0,0.25); border-radius: 3px; padding: 0.1em 0.35em; }
 
+/* Markdown-formatted roleplay: stage directions (italic) and character names (bold) */
+.msg.assistant .msg-bubble em,
+.msg.system .msg-bubble em {
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+.msg.assistant .msg-bubble strong,
+.msg.system .msg-bubble strong {
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
 .msg-bubble .rp-hint {
   display: inline-block;
   padding: 0.13em 0.65em;
