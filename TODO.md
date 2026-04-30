@@ -8,12 +8,7 @@ When using the project and navigating, I sometimes add items here that I think a
 
 ## High priority
 
-- [ ] **Full user authentication** — password or IP-allowlist protecting the chat UI (the admin panel already has its own password). Config: `app.auth_mode` (`none` | `password` | `ip_allowlist`).
-
-- [ ] Improve system prompt to format roleplay dialogs : use italic for the ambiance and actions, and normal text for dialogues. This will make it easier to read and understand the generated content, especially when the LLM is generating complex scenes.
-
-- [ ] Handle "reasoning" models: sometimes, model use reasoning output to shows character thougts or actions, and they are not transcribed in the final message content. We need to use a better system prompt to avoid this because "reasoning" is often used for out-of-roleplay thoughts.
-One consequence too : the max_tokens parameter is not correctly handled for reasoning models, because reasoning is counted and sometimes it makes the final message content empty, even if the model is generating a lot of text. If we do receive a response with 0 char but many ignored chars, we should log a warning about this and suggest to 1) use a better system prompt to avoid thinking and 2) raise the max_tokens limit to accomodate reasoning output. Also print a friendly message to the frontend user.
+(nothing yet)
 
 ---
 
@@ -26,11 +21,11 @@ On frontend, all images generated with an NSFW connector must be blurried by def
 
 - [ ] Improve media listing on admin : able to view dozens of file easily (table formating, pagination, ...). A small preview must be available ; view easily image full-size on click. In the future, there will be video and audio files, so prepare the UI for this.
 
-
 ---
 
 ## Low priority / Future
 
+- [ ] **Full user authentication** — password or IP-allowlist protecting the chat UI (the admin panel already has its own password). Config: `app.auth_mode` (`none` | `password` | `ip_allowlist`).
 - [ ] **Multi-character conversations** — more than one character per conversation.
 - [ ] **Multi-model support** — separate connectors for chat, summarization, and classification.
 - [ ] **Proactive image triggering** — LLM decides on its own when to emit an image (not only on explicit user request). Maybe work on the system prompt to let the LLM know it can do this ?
