@@ -69,13 +69,35 @@
     <section id="section-medias" class="admin-section" style="display:none" aria-label="Generated medias">
       <div class="section-header">
         <h1>Medias</h1>
-        <button class="btn btn-secondary" id="refresh-medias-btn">Refresh</button>
+        <div class="btn-group">
+          <select id="medias-type-filter" aria-label="Filter by media type" class="select-inline">
+            <option value="">All types</option>
+            <option value="image">Images</option>
+            <option value="video">Videos</option>
+            <option value="audio">Audio</option>
+          </select>
+          <select id="medias-per-page" aria-label="Items per page" class="select-inline">
+            <option value="25">25 / page</option>
+            <option value="50" selected>50 / page</option>
+            <option value="100">100 / page</option>
+          </select>
+          <button class="btn btn-secondary" id="refresh-medias-btn">Refresh</button>
+        </div>
       </div>
       <div id="medias-feedback"></div>
-      <div id="medias-list" class="medias-list" aria-live="polite">
+      <div id="medias-pagination-top" class="medias-pagination" aria-label="Pagination"></div>
+      <div id="medias-list" class="medias-table-wrap" aria-live="polite">
         <div class="loading-row">Loading…</div>
       </div>
+      <div id="medias-pagination-bottom" class="medias-pagination" aria-label="Pagination"></div>
     </section>
+
+    <!-- ── Media lightbox ── -->
+    <dialog id="media-lightbox" aria-label="Media preview" class="media-lightbox">
+      <button class="media-lightbox-close" id="media-lightbox-close" aria-label="Close preview">&#x2715;</button>
+      <div id="media-lightbox-body" class="media-lightbox-body"></div>
+      <div id="media-lightbox-caption" class="media-lightbox-caption"></div>
+    </dialog>
 
     <!-- ── Health ── -->
     <section id="section-health" class="admin-section" style="display:none" aria-label="System health">
@@ -417,7 +439,7 @@
   import { initAdminAuth } from '/js/admin/auth.js?v=2';
   import { initConnectors, applyHealthBadges } from '/js/admin/connectors.js?v=2';
   import { initCharacters } from '/js/admin/characters.js?v=2';
-  import { initMedias }    from '/js/admin/medias.js?v=2';
+  import { initMedias }    from '/js/admin/medias.js?v=3';
   import { initConfig }     from '/js/admin/config.js?v=2';
   import { initStatistics } from '/js/admin/statistics.js?v=2';
   import { initPrompts }    from '/js/admin/prompts.js?v=2';

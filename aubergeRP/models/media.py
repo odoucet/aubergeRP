@@ -15,3 +15,10 @@ class MediaItem(BaseModel):
     prompt: str = ""
     generated_via_connector: bool = True
     created_at: datetime
+
+
+class MediaPage(BaseModel):
+    items: list[MediaItem]
+    total: int
+    page: int
+    per_page: int
