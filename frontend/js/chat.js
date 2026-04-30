@@ -818,7 +818,8 @@ function escapeHtml(text) {
 
 /**
  * Highlight roleplay instruction segments wrapped in [ ... ] or { ... }
- * without altering code blocks.
+ * without altering code blocks or Markdown-rendered italic/bold elements
+ * (the LLM uses *[stage direction]* which marked.js renders as <em>[...]</em>).
  */
 function applyRoleplayHintStyling(rootEl) {
   const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT);
@@ -826,7 +827,7 @@ function applyRoleplayHintStyling(rootEl) {
   let node;
   while ((node = walker.nextNode())) {
     const parentTag = node.parentElement ? node.parentElement.tagName : '';
-    if (parentTag === 'CODE' || parentTag === 'PRE') continue;
+    if (parentTag === 'CODE' || parentTag === 'PRE' || parentTag === 'EM' || parentTag === 'STRONG') continue;
     textNodes.push(node);
   }
 
@@ -1008,4 +1009,7 @@ export const __test = {
   setPinned: (v) => { _pinnedToBottom = v; },
   updateImageConnectorStatus,
   getHasImageConnector: () => _hasImageConnector,
+  renderMarkdown,
+  applyRoleplayHintStyling,
+  splitRoleplayFragments,
 };

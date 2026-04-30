@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markdown Rendering Harness</title>
+  <link rel="stylesheet" href="../../../frontend/css/main.css">
+</head>
+<body>
+  <section id="message-list" aria-label="Messages"></section>
+  <div id="input-area" style="display:none">
+    <div id="input-actions">
+      <button id="generate-image-btn" style="display:none" aria-label="Generate a picture of the scene">🖼</button>
+      <button id="send-btn">Send</button>
+    </div>
+  </div>
+
+  <!-- marked.js for Markdown parsing -->
+  <script src="../../../frontend/vendor/marked.min.js"></script>
+
+  <script type="module">
+    import { __test } from '../../../frontend/js/chat.js';
+
+    window.__markdownHarness = {
+      /**
+       * Render Markdown text into an assistant bubble and return the bubble element.
+       */
+      renderAssistantMessage(text) {
+        const list = document.getElementById('message-list');
+        const wrapper = document.createElement('article');
+        wrapper.className = 'msg assistant';
+        const bubble = document.createElement('div');
+        bubble.className = 'msg-bubble';
+        bubble.innerHTML = __test.renderMarkdown(text);
+        __test.applyRoleplayHintStyling(bubble);
+        wrapper.appendChild(bubble);
+        list.appendChild(wrapper);
+        return bubble;
+      },
+      /**
+       * Render text into a user bubble and return the bubble element.
+       */
+      renderUserMessage(text) {
+        const list = document.getElementById('message-list');
+        const wrapper = document.createElement('article');
+        wrapper.className = 'msg user';
+        const bubble = document.createElement('div');
+        bubble.className = 'msg-bubble';
+        bubble.innerHTML = __test.renderMarkdown(text);
+        __test.applyRoleplayHintStyling(bubble);
+        wrapper.appendChild(bubble);
+        list.appendChild(wrapper);
+        return bubble;
+      },
+    };
+  </script>
+</body>
+</html>

@@ -396,6 +396,55 @@ def test_build_prompt_formats_user_roleplay_bracket_content():
 
 
 # ---------------------------------------------------------------------------
+# Markdown formatting rules in system prompt
+# ---------------------------------------------------------------------------
+
+def test_default_system_prompt_contains_markdown_rules():
+    """The default system prompt must include Markdown formatting instructions."""
+    from aubergeRP.services.prompt_service import get_prompt
+    prompt = get_prompt("default_system")
+    assert "Markdown" in prompt
+    assert "italic" in prompt.lower()
+    assert "bold" in prompt.lower()
+
+
+def test_default_system_prompt_contains_stage_direction_example():
+    """The default system prompt must explain how to format stage directions."""
+    from aubergeRP.services.prompt_service import get_prompt
+    prompt = get_prompt("default_system")
+    # Stage directions use *[...]*
+    assert "*[" in prompt
+
+
+def test_roleplay_bracket_instruction_references_markdown_italic():
+    """The bracket instruction must tell the LLM to use Markdown italic for stage directions."""
+    from aubergeRP.services.prompt_service import get_prompt
+    instruction = get_prompt("roleplay_bracket_instruction")
+    assert "*[" in instruction
+
+
+def test_build_prompt_default_system_includes_markdown_formatting():
+    """When no custom system prompt is set, built prompt must contain Markdown rules."""
+    char = _char()
+    conv = _conv(char)
+    msgs = build_prompt(conv, char)
+    system = next(m for m in msgs if m["role"] == "system")
+    assert "Markdown" in system["content"]
+    assert "*[" in system["content"]
+
+
+def test_build_prompt_custom_system_prompt_no_markdown_override():
+    """A custom system prompt is used as-is; Markdown rules are not injected into it."""
+    char = _char(system_prompt="Custom prompt without markdown.")
+    conv = _conv(char)
+    msgs = build_prompt(conv, char)
+    system = next(m for m in msgs if m["role"] == "system")
+    # The custom prompt is the base; the roleplay_bracket_instruction (which now
+    # references Markdown italic) is still appended, but the base itself is custom.
+    assert "Custom prompt without markdown." in system["content"]
+
+
+# ---------------------------------------------------------------------------
 # stream_chat — no connector
 # ---------------------------------------------------------------------------
 
