@@ -61,6 +61,7 @@ const backendWarning = document.getElementById('conn-backend-warning');
 let backends = [];         // from GET /api/connectors/backends
 let editingId = null;      // null = new, string = existing id
 let existingApiKeySet = false;
+let baselineConfig = {};
 const testFeedbackById = new Map();
 let showToastFn = () => {};
 let showConfirmFn = () => Promise.resolve(false);
@@ -280,6 +281,7 @@ async function openDialog(id) {
   dialogFeedback.innerHTML = '';
   nameError.textContent = '';
   existingApiKeySet = false;
+  baselineConfig = {};
 
   if (id) {
     dialogTitle.textContent = 'Edit Connector';
@@ -290,6 +292,7 @@ async function openDialog(id) {
       updateBackendOptions();
       backendSelect.value = conn.backend || 'openai_api';
       updateBackendWarning();
+      baselineConfig = sanitizeConfig(conn.config || {});
       renderConfigFields(conn.backend, conn.config || {});
       existingApiKeySet = !!(conn.config && conn.config.api_key_set);
       clearKeyRow.style.display = existingApiKeySet ? '' : 'none';
@@ -315,6 +318,7 @@ function closeDialog() {
 }
 
 function onTypeChange() {
+  baselineConfig = {};
   updateBackendOptions();
   renderConfigFields(backendSelect.value, {});
 }
@@ -325,6 +329,7 @@ function updateBackendWarning() {
 }
 
 function onBackendChange() {
+  baselineConfig = {};
   updateBackendWarning();
   renderConfigFields(backendSelect.value, {});
 }
@@ -383,16 +388,55 @@ function renderConfigFields(backendId, existingConfig) {
 }
 
 function renderConfigSections(commonEntries, typeEntries, selectedType, existingConfig) {
-  const commonHtml = renderSchemaEntries(commonEntries, existingConfig);
-  const typeHtml = renderSchemaEntries(typeEntries, existingConfig);
+  const quickEntries = [];
+  const advancedCommonEntries = [];
+  const advancedTypeEntries = [];
+
+  for (const [key, schema] of commonEntries) {
+    if (key === 'nsfw') {
+      quickEntries.push([key, schema]);
+    } else {
+      advancedCommonEntries.push([key, schema]);
+    }
+  }
+
+  for (const [key, schema] of typeEntries) {
+    if (key === 'nsfw') {
+      quickEntries.push([key, schema]);
+    } else {
+      advancedTypeEntries.push([key, schema]);
+    }
+  }
+
+  if (!quickEntries.length) {
+    quickEntries.push(['nsfw', { type: 'boolean', required: true }]);
+  }
+
+  const quickHtml = renderSchemaEntries(quickEntries, existingConfig);
+  const advancedCommonHtml = renderSchemaEntries(advancedCommonEntries, existingConfig);
+  const advancedTypeHtml = renderSchemaEntries(advancedTypeEntries, existingConfig);
 
   let html = '';
-  if (commonHtml) {
-    html += `<div class="field-divider">Common Fields</div>${commonHtml}`;
+  html += `
+    <div class="field-divider">Quick Setup</div>
+    <div class="quick-setup-note">
+      Configure the essentials now. You can fine-tune advanced parameters later in Advanced Configuration.
+    </div>
+    ${quickHtml}
+  `;
+
+  if (advancedCommonHtml || advancedTypeHtml) {
+    html += `
+      <details class="advanced-config-details">
+        <summary>Advanced Configuration (optional)</summary>
+        <div class="advanced-config-body">
+          ${advancedCommonHtml ? `<div class="field-divider">Common Fields</div>${advancedCommonHtml}` : ''}
+          ${advancedTypeHtml ? `<div class="field-divider">Type-Specific Fields (${escHtml(selectedType)})</div>${advancedTypeHtml}` : ''}
+        </div>
+      </details>
+    `;
   }
-  if (typeHtml) {
-    html += `<div class="field-divider">Type-Specific Fields (${escHtml(selectedType)})</div>${typeHtml}`;
-  }
+
   return html;
 }
 
@@ -401,6 +445,7 @@ function renderSchemaEntries(entries, existingConfig) {
     .filter(([key]) => key !== 'api_key_set')
     .map(([key, schema]) => {
       const isApiKey = key === 'api_key';
+      const isNsfw = key === 'nsfw';
       const value = isApiKey ? '' : (existingConfig[key] !== undefined ? existingConfig[key] : '');
       const placeholder = isApiKey && existingApiKeySet ? '(set — leave blank to keep)' : '';
       if (schema.type === 'workflow_select') {
@@ -410,7 +455,7 @@ function renderSchemaEntries(entries, existingConfig) {
         key,
         schemaLabel(key),
         schema.type || 'string',
-        schema.required || false,
+        isNsfw ? true : (schema.required || false),
         value,
         placeholder,
         isApiKey ? 'password' : null,
@@ -475,7 +520,7 @@ function schemaLabel(key) {
     base_url: 'Base URL', api_key: 'API Key', model: 'Model',
     max_tokens: 'Max Tokens', context_window: 'Context Window (tokens)',
     temperature: 'Temperature', timeout: 'Timeout (s)',
-    supports_tool_calling: 'Tool Calling', workflow: 'Workflow', nsfw: 'NSFW',
+    supports_tool_calling: 'Tool Calling', workflow: 'Workflow', nsfw: 'NSFW Content',
   };
   return map[key] || key.replace(/_/g, ' ');
 }
@@ -499,6 +544,27 @@ function schemaTooltip(key) {
 
 function renderField(key, label, type, required, value, placeholder = '', inputType = null) {
   if (type === 'boolean') {
+    if (key === 'nsfw') {
+      const req = required ? '<span class="required">*</span>' : '';
+      const tooltip = schemaTooltip(key);
+      const tooltipAttr = tooltip ? ` title="${escHtml(tooltip)}"` : '';
+      const checked = !!value ? ' checked' : '';
+      return `
+        <div class="field-row field-row-nsfw">
+          <label for="cfg-${key}"${tooltipAttr}>${escHtml(label)} ${req}</label>
+          <label class="nsfw-toggle" for="cfg-${key}">
+            <input type="checkbox" id="cfg-${key}" name="${key}" class="nsfw-toggle-input"${checked}>
+            <span class="nsfw-toggle-track" aria-hidden="true">
+              <span class="nsfw-toggle-option nsfw-toggle-option-off">Filtered</span>
+              <span class="nsfw-toggle-option nsfw-toggle-option-on">Allowed</span>
+              <span class="nsfw-toggle-knob"></span>
+            </span>
+          </label>
+          <div class="field-help">This choice controls content filtering and safety guardrails for this connector.</div>
+        </div>
+      `;
+    }
+
     const tooltip = schemaTooltip(key);
     const tooltipAttr = tooltip ? ` title="${escHtml(tooltip)}"` : '';
     const checked = !!value ? ' checked' : '';
@@ -558,7 +624,7 @@ async function populateWorkflowSelect(selectedValue) {
 }
 
 function collectConfig() {
-  const cfg = {};
+  const cfg = { ...baselineConfig };
   configFields.querySelectorAll('input[name], select[name]').forEach(inp => {
     const key = inp.name;
     const val = inp.type === 'checkbox' ? '' : inp.value.trim();
@@ -575,6 +641,12 @@ function collectConfig() {
     }
   });
   return cfg;
+}
+
+function sanitizeConfig(config) {
+  const safe = { ...config };
+  delete safe.api_key_set;
+  return safe;
 }
 
 async function handleTest() {
