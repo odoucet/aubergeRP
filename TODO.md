@@ -19,8 +19,6 @@ When using the project and navigating, I sometimes add items here that I think a
 - [ ] **Configurable NSFW filter** — pre/post-processing layer. Config: `chat.nsfw_filter` (`off` | `warn` | `block`). Actually the implementation is very incomplete, with just a declaration on connectors but no actual filtering logic. There is a prompt for this, make sure it is used correctly. 
 On frontend, all images generated with an NSFW connector must be blurried by default and visible only when the user clicks on them.
 
-- [ ] Improve media listing on admin : able to view dozens of file easily (table formating, pagination, ...). A small preview must be available ; view easily image full-size on click. In the future, there will be video and audio files, so prepare the UI for this.
-
 - [ ] **Rate-limit on admin login** — the `/api/admin/login` endpoint is currently not rate-limited. For a self-hosted instance exposed to the internet, brute-force attacks are possible. A simple in-memory counter (e.g. 10 attempts / minute) would be sufficient.
 
 ---
