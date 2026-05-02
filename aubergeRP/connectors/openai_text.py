@@ -26,6 +26,57 @@ class OpenAITextConnector(TextConnector):
             headers["Authorization"] = f"Bearer {self.config.api_key}"
         return headers
 
+    def _build_payload(
+        self,
+        messages: list[dict[str, Any]],
+        model: str | None,
+        temperature: float | None,
+        max_tokens: int | None,
+        top_p: float | None,
+        presence_penalty: float | None,
+        frequency_penalty: float | None,
+        extra_body: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Build the common OpenAI-compatible chat completion payload.
+
+        Caller-supplied values take precedence over connector-level config.
+        Optional parameters (top_p, presence_penalty, frequency_penalty,
+        extra_body) are omitted from the payload when neither the caller nor
+        the connector config specifies them, to avoid sending nulls to APIs
+        that reject unknown fields.
+        """
+        payload: dict[str, Any] = {
+            "model": model or self.config.model,
+            "messages": messages,
+            "stream": True,
+            "max_tokens": max_tokens if max_tokens is not None else self.config.max_tokens,
+            "temperature": temperature if temperature is not None else self.config.temperature,
+        }
+
+        if top_p is not None:
+            payload["top_p"] = top_p
+        elif self.config.top_p is not None:
+            payload["top_p"] = self.config.top_p
+
+        if presence_penalty is not None:
+            payload["presence_penalty"] = presence_penalty
+        elif self.config.presence_penalty is not None:
+            payload["presence_penalty"] = self.config.presence_penalty
+
+        if frequency_penalty is not None:
+            payload["frequency_penalty"] = frequency_penalty
+        elif self.config.frequency_penalty is not None:
+            payload["frequency_penalty"] = self.config.frequency_penalty
+
+        # Merge extra_body: caller overrides connector config.
+        extra_body_config = self.config.extra_body or {}
+        if extra_body:
+            extra_body_config = {**extra_body_config, **extra_body}
+        if extra_body_config:
+            payload.update(extra_body_config)
+
+        return payload
+
     async def test_connection(self) -> dict[str, Any]:
         try:
             async with httpx.AsyncClient(timeout=self.config.timeout) as client:
@@ -58,36 +109,18 @@ class OpenAITextConnector(TextConnector):
         frequency_penalty: float | None = None,
         extra_body: dict[str, Any] | None = None,
     ) -> AsyncIterator[str]:
-        payload: dict[str, Any] = {
-            "model": model or self.config.model,
-            "messages": messages,
-            "stream": True,
-            "max_tokens": max_tokens if max_tokens is not None else self.config.max_tokens,
-            "temperature": temperature if temperature is not None else self.config.temperature,
-        }
+        """Stream raw text tokens from a plain chat completion (no tool calls).
 
-        # Add optional parameters if provided or configured
-        if top_p is not None:
-            payload["top_p"] = top_p
-        elif self.config.top_p is not None:
-            payload["top_p"] = self.config.top_p
-
-        if presence_penalty is not None:
-            payload["presence_penalty"] = presence_penalty
-        elif self.config.presence_penalty is not None:
-            payload["presence_penalty"] = self.config.presence_penalty
-
-        if frequency_penalty is not None:
-            payload["frequency_penalty"] = frequency_penalty
-        elif self.config.frequency_penalty is not None:
-            payload["frequency_penalty"] = self.config.frequency_penalty
-
-        # Merge extra_body (runtime overrides config)
-        extra_body_config = self.config.extra_body or {}
-        if extra_body:
-            extra_body_config = {**extra_body_config, **extra_body}
-        if extra_body_config:
-            payload.update(extra_body_config)
+        Unlike stream_chat_completion_with_tools, this method yields plain
+        strings (one per SSE token chunk) and also tracks reasoning-only
+        content so the caller can detect empty responses from thinking models.
+        Tools are not sent; the LLM expresses image generation through the
+        [IMG:…] text marker convention instead.
+        """
+        payload = self._build_payload(
+            messages, model, temperature, max_tokens,
+            top_p, presence_penalty, frequency_penalty, extra_body,
+        )
 
         model_name = payload["model"]
         req_bytes = len(json.dumps(payload).encode())
@@ -105,7 +138,7 @@ class OpenAITextConnector(TextConnector):
         ) as response:
             response.raise_for_status()
             async for line in response.aiter_lines():
-                if not line.strip(): # Ignorer les lignes vides (Keep-alive)
+                if not line.strip():  # Skip blank lines (keep-alive)
                     continue
                 if not line.startswith("data: "):
                     continue
@@ -157,42 +190,22 @@ class OpenAITextConnector(TextConnector):
     ) -> AsyncIterator[dict[str, Any]]:
         """Stream a chat completion that may produce text tokens and/or tool calls.
 
+        Unlike stream_chat_completion, this method sends the tools list and
+        tool_choice to the API and yields typed event dicts instead of raw
+        strings.  Tool-call argument fragments are accumulated across chunks
+        and emitted as complete events after the stream closes.
+
         Yields:
           {"type": "token", "content": str}
           {"type": "tool_call", "name": str, "arguments": dict}
         """
-        payload: dict[str, Any] = {
-            "model": model or self.config.model,
-            "messages": messages,
-            "stream": True,
-            "max_tokens": max_tokens if max_tokens is not None else self.config.max_tokens,
-            "temperature": temperature if temperature is not None else self.config.temperature,
-            "tools": tools,
-            "tool_choice": "auto",
-        }
-
-        # Add optional parameters if provided or configured
-        if top_p is not None:
-            payload["top_p"] = top_p
-        elif self.config.top_p is not None:
-            payload["top_p"] = self.config.top_p
-
-        if presence_penalty is not None:
-            payload["presence_penalty"] = presence_penalty
-        elif self.config.presence_penalty is not None:
-            payload["presence_penalty"] = self.config.presence_penalty
-
-        if frequency_penalty is not None:
-            payload["frequency_penalty"] = frequency_penalty
-        elif self.config.frequency_penalty is not None:
-            payload["frequency_penalty"] = self.config.frequency_penalty
-
-        # Merge extra_body (runtime overrides config)
-        extra_body_config = self.config.extra_body or {}
-        if extra_body:
-            extra_body_config = {**extra_body_config, **extra_body}
-        if extra_body_config:
-            payload.update(extra_body_config)
+        payload = self._build_payload(
+            messages, model, temperature, max_tokens,
+            top_p, presence_penalty, frequency_penalty, extra_body,
+        )
+        # Extend with tool-calling fields absent from the plain completion path.
+        payload["tools"] = tools
+        payload["tool_choice"] = "auto"
 
         model_name = payload["model"]
         req_bytes = len(json.dumps(payload).encode())

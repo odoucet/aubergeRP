@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+from . import __version__
 from .config import Config, get_config
 from .routers import admin as admin_router
 from .routers import characters as characters_router
@@ -222,7 +223,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="aubergeRP",
-        version="0.1.0",
+        version=__version__,
         description="A lightweight roleplay frontend with pluggable connectors",
         lifespan=lifespan,
         # Disable default docs paths — we serve our own at /api-docs

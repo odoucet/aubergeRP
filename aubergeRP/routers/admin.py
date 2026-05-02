@@ -29,7 +29,9 @@ def get_admin_token(x_admin_token: str = Header(default="")) -> str:
     Raises:
         HTTPException: 401 if token is missing or invalid.
     """
-    # Test-only bypass to preserve existing test suite behavior.
+    # DANGER: this env var disables all admin authentication.
+    # It exists solely for the automated test suite and must NEVER be set in
+    # any real deployment — doing so leaves the admin panel completely open.
     if os.environ.get("AUBERGE_DISABLE_ADMIN_AUTH", "").strip() == "1":
         return "test-bypass"
 

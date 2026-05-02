@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,13 +13,27 @@ from .admin import get_admin_token
 
 router = APIRouter(prefix="/images", tags=["images"])
 
+# Only allow alphanumeric characters, hyphens, and underscores in path components
+_SAFE_COMPONENT_RE = re.compile(r"^[\w\-]+$")
+
+
+def _safe_component(value: str) -> bool:
+    """Return True if *value* is safe to use as a path component."""
+    return bool(_SAFE_COMPONENT_RE.match(value))
+
 
 @router.get("/{session_token}/{image_id}")
 def get_image(session_token: str, image_id: str) -> FileResponse:
     config = get_config()
+    if not _safe_component(session_token) or not _safe_component(image_id):
+        raise HTTPException(status_code=404, detail="Image not found")
+    images_root = (Path(config.app.data_dir) / "images").resolve()
     # image_id may or may not include extension; normalise to bare stem + .png
     stem = image_id[:-4] if image_id.lower().endswith(".png") else image_id
-    image_path = Path(config.app.data_dir) / "images" / session_token / f"{stem}.png"
+    image_path = (images_root / session_token / f"{stem}.png").resolve()
+    # Guard against path-traversal: the resolved path must stay under images_root
+    if not image_path.is_relative_to(images_root):
+        raise HTTPException(status_code=404, detail="Image not found")
     if not image_path.exists():
         raise HTTPException(status_code=404, detail="Image not found")
     return FileResponse(str(image_path), media_type="image/png")

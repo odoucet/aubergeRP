@@ -44,12 +44,7 @@ def _to_response() -> ConfigResponse:
 
 def _save_config(save_path: Path) -> None:
     config = get_config()
-    data = {
-        "app": config.app.model_dump(),
-        "active_connectors": config.active_connectors.model_dump(),
-        "user": config.user.model_dump(),
-        "gui": config.gui.model_dump(),
-    }
+    data = config.model_dump()
     with save_path.open("w") as f:
         yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
 

@@ -64,11 +64,7 @@ class ConnectorManager:
         write_json(self._dir / f"{instance.id}.json", instance.model_dump(mode="json"))
 
     def _save_config(self) -> None:
-        data = {
-            "app": self._config.app.model_dump(),
-            "active_connectors": self._config.active_connectors.model_dump(),
-            "user": self._config.user.model_dump(),
-        }
+        data = self._config.model_dump()
         with self._config_path.open("w") as f:
             yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
 
