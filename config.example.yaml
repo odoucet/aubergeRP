@@ -16,6 +16,7 @@ app:
 #   AUBERGE_PORT      → app.port
 #   AUBERGE_LOG_LEVEL → app.log_level
 #   AUBERGE_USER_NAME → user.name
+#   AUBERGE_ADMIN_PASSWORD_HASH → app.admin_password_hash (stable password across restarts)
 
 # Active connector IDs. The Admin UI writes these.
 # Leave empty on first start.
@@ -29,6 +30,15 @@ user:
   # Display name for the user in chat (used for {{user}} macro)
   name: "User"
 
+# Chat / AI quality settings
+chat:
+  # Estimated context window of the active text model in tokens.
+  context_window: 4096
+  # Trigger conversation summarization when this fraction of the context is used.
+  summarization_threshold: 0.75
+  # Inject a guardrail when out-of-character jailbreak attempts are detected.
+  ooc_protection: true
+
 # Background media-cleanup scheduler (default: disabled)
 scheduler:
   enabled: false
@@ -36,3 +46,12 @@ scheduler:
   interval_seconds: 86400
   # Delete images older than this many days.
   cleanup_older_than_days: 30
+
+# GUI customization (also editable in Admin → Customization)
+gui:
+  # Arbitrary CSS injected into every page.
+  custom_css: ""
+  # Raw HTML inserted just after the opening <header> tag.
+  custom_header_html: ""
+  # Raw HTML inserted just before the closing </footer> tag.
+  custom_footer_html: ""

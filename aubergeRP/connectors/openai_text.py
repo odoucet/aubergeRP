@@ -105,7 +105,7 @@ class OpenAITextConnector(TextConnector):
         ) as response:
             response.raise_for_status()
             async for line in response.aiter_lines():
-                if not line.strip(): # Ignorer les lignes vides (Keep-alive)
+                if not line.strip():  # Skip blank lines (keep-alive)
                     continue
                 if not line.startswith("data: "):
                     continue
