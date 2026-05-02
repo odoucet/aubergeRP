@@ -29,6 +29,10 @@ def hash_password(password: str) -> str:
     Returns:
         The hashed password as a hex string.
     """
+    # SHA-256 without a salt is used intentionally here.
+    # The risk is low because the admin password is always a 16-character
+    # randomly generated string (64^16 ≈ 2^96 possible values), making
+    # pre-computed rainbow-table attacks computationally infeasible.
     return hashlib.sha256(password.encode()).hexdigest()
 
 

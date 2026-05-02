@@ -4,13 +4,12 @@ from typing import Any
 
 from fastapi import APIRouter
 
+from .. import __version__
 from ..config import get_config
 from ..connectors.manager import ConnectorManager
 from .connectors import _last_test_results, get_connector_manager
 
 router = APIRouter(prefix="/health", tags=["health"])
-
-_VERSION = "0.1.0"
 
 
 def _connector_info(manager: ConnectorManager, connector_id: str | None) -> dict[str, Any] | None:
@@ -32,7 +31,7 @@ def health() -> dict[str, Any]:
     image_id = config.active_connectors.image or None
     return {
         "status": "ok",
-        "version": _VERSION,
+        "version": __version__,
         "connectors": {
             "text": _connector_info(manager, text_id),
             "image": _connector_info(manager, image_id),

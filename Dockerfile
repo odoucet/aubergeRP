@@ -11,6 +11,9 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
+# pyproject.toml is the single source of truth for the version number.
+COPY pyproject.toml ./
+
 # Data directory lives on a volume — create the mount point
 # Source (aubergeRP/ frontend/) is bind-mounted at runtime; see docker/docker-compose.yml
 RUN mkdir -p /data && chown auberge:auberge /data
