@@ -4,6 +4,7 @@ import contextlib
 import logging
 import os
 import re
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Literal
 
@@ -13,42 +14,80 @@ from pydantic import BaseModel, field_validator
 # ---------------------------------------------------------------------------
 # HTML sanitization helpers
 # ---------------------------------------------------------------------------
-# We use possessive quantifiers (atomic groups via re) to avoid ReDoS, and
-# a length cap to prevent pathological inputs from reaching the regex engine.
 
 _MAX_HTML_LEN = 65_536  # 64 KiB — generous limit for any custom header/footer
 
-# Match <script …> … </script> including any whitespace/attributes in the tags.
-# Uses reluctant quantifiers on character classes, not on wildcards, to prevent
-# catastrophic backtracking.
-_SCRIPT_TAG_RE = re.compile(
-    r"<\s*script[^>]*>.*?<\s*/\s*script[^>]*>",
-    re.IGNORECASE | re.DOTALL,
-)
-# Match inline event handler attributes (onclick=…, onload=…, …).
-_EVENT_HANDLER_RE = re.compile(
-    r"""\s+on[a-zA-Z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)""",
-    re.IGNORECASE,
-)
-# Match javascript: pseudo-protocol in href attributes.
-_JAVASCRIPT_HREF_RE = re.compile(
-    r"""href\s*=\s*["']?\s*javascript\s*:""",
-    re.IGNORECASE,
-)
+# Simple regex for stripping javascript: pseudo-protocol in href (no DOTALL,
+# no alternation with overlapping patterns → no ReDoS risk).
+_JAVASCRIPT_HREF_RE = re.compile(r"javascript\s*:", re.IGNORECASE)
+
+
+class _JSSanitizer(HTMLParser):
+    """Walk the HTML tree and drop <script> tags and inline event handlers.
+
+    Using HTMLParser avoids the ReDoS risk that comes with regex-based
+    HTML parsing while correctly handling edge cases like whitespace or
+    extra attributes in closing tags.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=False)
+        self._output: list[str] = []
+        self._in_script: bool = False
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() == "script":
+            self._in_script = True
+            return
+        # Rebuild opening tag, dropping event-handler attributes and
+        # javascript: hrefs.
+        safe_attrs: list[str] = []
+        for name, value in attrs:
+            if name.lower().startswith("on"):
+                continue
+            if name.lower() == "href" and value and _JAVASCRIPT_HREF_RE.search(value):
+                safe_attrs.append('href="#"')
+                continue
+            if value is None:
+                safe_attrs.append(name)
+            else:
+                safe_attrs.append(f'{name}="{value}"')
+        attr_str = (" " + " ".join(safe_attrs)) if safe_attrs else ""
+        self._output.append(f"<{tag}{attr_str}>")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() == "script":
+            self._in_script = False
+            return
+        self._output.append(f"</{tag}>")
+
+    def handle_data(self, data: str) -> None:
+        if not self._in_script:
+            self._output.append(data)
+
+    def handle_entityref(self, name: str) -> None:
+        if not self._in_script:
+            self._output.append(f"&{name};")
+
+    def handle_charref(self, name: str) -> None:
+        if not self._in_script:
+            self._output.append(f"&#{name};")
+
+    def get_output(self) -> str:
+        return "".join(self._output)
 
 
 def _strip_js(html: str) -> str:
     """Remove <script> blocks, inline event handlers and javascript: hrefs.
 
-    Applies a maximum length cap before the regex pass to bound worst-case
-    processing time on adversarial input.
+    Uses Python's HTMLParser to avoid regex-based ReDoS vulnerabilities.
+    Applies a maximum length cap before parsing to bound worst-case time.
     """
     if len(html) > _MAX_HTML_LEN:
         html = html[:_MAX_HTML_LEN]
-    html = _SCRIPT_TAG_RE.sub("", html)
-    html = _EVENT_HANDLER_RE.sub("", html)
-    html = _JAVASCRIPT_HREF_RE.sub('href="#"', html)
-    return html
+    sanitizer = _JSSanitizer()
+    sanitizer.feed(html)
+    return sanitizer.get_output()
 
 
 class AppConfig(BaseModel):
