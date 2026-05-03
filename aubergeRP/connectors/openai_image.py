@@ -104,7 +104,7 @@ class OpenAIImageConnector(ImageConnector):
             "size": size,
             "n": 1,
         }
-        logger.debug(f"[OpenAI Images API] Sending: {json.dumps(payload, default=str)}")
+        logger.debug("[OpenAI Images API] Sending: %s", json.dumps(payload, default=str))
         response = await client.post(
             f"{self.config.base_url}/images/generations",
             headers=self._headers(),
@@ -112,7 +112,7 @@ class OpenAIImageConnector(ImageConnector):
         )
         if response.status_code >= 400:
             error_msg = self._format_http_error(response, "[OpenAI Images API]")
-            logger.error(f"{error_msg}\nPrompt: {full_prompt[:500]}")
+            logger.error("%s\nPrompt: %s", error_msg, full_prompt[:500])
             raise ValueError(error_msg)
         item = response.json()["data"][0]
         return await self._extract_image_bytes(item, client)
@@ -131,8 +131,8 @@ class OpenAIImageConnector(ImageConnector):
             "stream": False,
             "image_config": {"size": size},
         }
-        logger.debug(f"[OpenRouter Chat API] Model: {model}, Size: {size}")
-        logger.debug(f"[OpenRouter Chat API] Payload: {json.dumps(payload, default=str)}")
+        logger.debug("[OpenRouter Chat API] Model: %s, Size: %s", model, size)
+        logger.debug("[OpenRouter Chat API] Payload: %s", json.dumps(payload, default=str))
         response = await client.post(
             f"{self.config.base_url}/chat/completions",
             headers=self._headers(),
@@ -140,7 +140,7 @@ class OpenAIImageConnector(ImageConnector):
         )
         if response.status_code >= 400:
             error_msg = self._format_http_error(response, "[OpenRouter Chat API]")
-            logger.error(f"{error_msg}\nPrompt: {full_prompt[:500]}")
+            logger.error("%s\nPrompt: %s", error_msg, full_prompt[:500])
             raise ValueError(error_msg)
 
         data = response.json()

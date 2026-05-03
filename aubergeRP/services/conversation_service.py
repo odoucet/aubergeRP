@@ -5,7 +5,7 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from ..db_models import ConversationRow, MessageRow
 from ..models.conversation import Conversation, ConversationSummary, Message
@@ -69,6 +69,19 @@ class ConversationService:
     def _get_session(self) -> Session:
         from ..database import get_engine
         return Session(get_engine(self._data_dir))
+
+    @staticmethod
+    def _summary_from_row(conv_row: ConversationRow, message_count: int) -> ConversationSummary:
+        return ConversationSummary(
+            id=conv_row.id,
+            character_id=conv_row.character_id,
+            character_name=conv_row.character_name,
+            title=conv_row.title,
+            owner=conv_row.owner,
+            message_count=message_count,
+            created_at=_ensure_utc(conv_row.created_at),
+            updated_at=_ensure_utc(conv_row.updated_at),
+        )
 
     @staticmethod
     def _summary(conv: Conversation) -> ConversationSummary:
@@ -159,21 +172,29 @@ class ConversationService:
         result = []
         with self._get_session() as session:
             conv_rows = list(session.exec(select(ConversationRow)).all())
+
+            # Fetch message counts for all conversations in a single query.
+            count_rows = session.exec(
+                select(MessageRow.conversation_id, func.count(MessageRow.id).label("cnt"))  # type: ignore[arg-type]
+                .group_by(MessageRow.conversation_id)
+            ).all()
+            counts: dict[str, int] = {row[0]: row[1] for row in count_rows}
+
             for conv_row in conv_rows:
                 if not self._should_include(conv_row, character_id, owner):
                     continue
-                msg_rows = list(session.exec(
-                    select(MessageRow)
-                    .where(MessageRow.conversation_id == conv_row.id)
-                    .order_by(MessageRow.timestamp)  # type: ignore[arg-type]
-                ).all())
-                messages = _build_messages(msg_rows)
-                conv = _build_conv(conv_row, messages)
-                result.append(self._summary(conv))
+                result.append(
+                    self._summary_from_row(conv_row, counts.get(conv_row.id, 0))
+                )
         return result
 
-    def delete_conversation(self, conversation_id: str) -> None:
-        self._load(conversation_id)  # raises if not found
+    def delete_conversation(self, conversation_id: str, owner: str = "") -> None:
+        conv = self._load(conversation_id)  # raises if not found
+        # If an owner token is provided and the conversation has one, they must match.
+        if owner and conv.owner and conv.owner != owner:
+            raise ConversationNotFoundError(
+                f"Conversation '{conversation_id}' not found"
+            )
         with self._get_session() as session:
             msg_rows = list(session.exec(
                 select(MessageRow).where(MessageRow.conversation_id == conversation_id)

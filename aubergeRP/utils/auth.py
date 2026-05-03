@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import secrets
 
 
@@ -46,7 +47,7 @@ def verify_password(password: str, password_hash: str) -> bool:
     Returns:
         True if the password matches the hash, False otherwise.
     """
-    return hash_password(password) == password_hash
+    return hmac.compare_digest(hash_password(password), password_hash)
 
 
 def get_or_create_admin_password_hash(

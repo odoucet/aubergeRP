@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 
@@ -62,7 +63,6 @@ def admin_login(request: AdminLoginRequest) -> AdminLoginResponse:
         raise HTTPException(status_code=401, detail="Invalid password")
 
     # Generate a new session token
-    import secrets
     token = secrets.token_urlsafe(32)
     _admin_sessions.add(token)
 

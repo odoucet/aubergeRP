@@ -573,7 +573,16 @@ class ChatService:
 
         except Exception as exc:
             call_error = str(exc)
-            yield {"type": "error", "detail": str(exc)}
+            logger.exception(
+                "Chat generation failed for conversation %s", conversation_id
+            )
+            yield {
+                "type": "error",
+                "detail": (
+                    "An error occurred while generating a response. "
+                    "Please check the server logs for details."
+                ),
+            }
         finally:
             if self._statistics_service is not None:
                 with suppress(Exception):
@@ -676,12 +685,15 @@ class ChatService:
             yield {
                 "type": "image_failed",
                 "generation_id": gen_id,
-                "detail": "No active image connector",
+                "detail": (
+                    "No image connector is configured. "
+                    "Please add and activate an image connector in the admin panel."
+                ),
             }
             return
         full_prompt = prompt
         try:
-            logger.debug(f"[Image Gen] Starting image generation for gen_id={gen_id}")
+            logger.debug("[Image Gen] Starting image generation for gen_id=%s", gen_id)
             if text_connector is not None and messages is not None:
                 prompt = await self._generate_image_prompt(
                     text_connector, char, messages, prompt
@@ -691,7 +703,7 @@ class ChatService:
             negative = auberge.get("negative_prompt", "")
             full_prompt = f"{prefix} {prompt}".strip() if prefix else prompt
             logger.debug(
-                f"[Image Gen] Full prompt: {full_prompt[:200]}... (len={len(full_prompt)})"
+                "[Image Gen] Full prompt: %s... (len=%d)", full_prompt[:200], len(full_prompt)
             )
             img_bytes: bytes | None = None
             async for event in img_connector.generate_image_with_progress(
@@ -718,13 +730,16 @@ class ChatService:
             (self._images_dir / filename).write_bytes(img_bytes)
             url = f"/api/images/{self._session_token}/{filename}"
             logger.debug(
-                f"[Image Gen] Successfully generated image (gen_id={gen_id}, size={len(img_bytes)} bytes)"
+                "[Image Gen] Successfully generated image (gen_id=%s, size=%d bytes)",
+                gen_id,
+                len(img_bytes),
             )
             yield {"type": "image_complete", "generation_id": gen_id, "image_url": url}
         except Exception as exc:
             logger.exception(
-                f"[Image Gen] Error generating image (gen_id={gen_id}, prompt={full_prompt[:200]!r}): {exc}",
-                exc_info=True,
+                "[Image Gen] Error generating image (gen_id=%s, prompt=%r)",
+                gen_id,
+                full_prompt[:200],
             )
             yield {
                 "type": "image_failed",
@@ -744,10 +759,11 @@ class ChatService:
         try:
             conv = self._conversation_service.get_conversation(conversation_id)
             char = self._character_service.get_character(conv.character_id)
-        except Exception as exc:
+        except Exception:
             logger.error(
-                f"[Generate Scene Image] Failed to load conversation/character "
-                f"(conversation_id={conversation_id!r}): {exc}"
+                "[Generate Scene Image] Failed to load conversation/character "
+                "(conversation_id=%r)",
+                conversation_id,
             )
             gen_id = str(uuid.uuid4())
             yield {

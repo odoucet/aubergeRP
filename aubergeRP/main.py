@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import os
 import shutil
+import stat
 from collections.abc import AsyncGenerator, Awaitable, Callable, MutableMapping
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -29,6 +31,10 @@ from .services.example_seed_service import seed_example_characters
 
 _BUILTIN_WORKFLOWS_DIR = Path(__file__).parent / "comfyui_workflows"
 logger = logging.getLogger(__name__)
+
+# Explicit list of headers allowed with credentialed CORS requests.
+# The wildcard "*" is rejected by browsers when credentials are included.
+_CORS_ALLOW_HEADERS = "Content-Type, Authorization, X-Admin-Token, X-Session-Token"
 
 
 class FrontendStaticFiles(StaticFiles):
@@ -58,6 +64,33 @@ def _init_data_dirs(data_dir: str) -> None:
         "comfyui_workflows",
     ]:
         (base / subdir).mkdir(parents=True, exist_ok=True)
+
+    # Restrict connectors/ to the owner only — it contains API keys in plain text.
+    connectors_dir = base / "connectors"
+    try:
+        connectors_dir.chmod(0o700)
+    except OSError as exc:
+        logger.warning(
+            "Could not restrict permissions on connectors directory (%s): %s",
+            connectors_dir,
+            exc,
+        )
+
+    # Warn if the directory is still readable by group or others (e.g. when
+    # running inside Docker as a bind-mount with permissive host perms).
+    try:
+        mode = connectors_dir.stat().st_mode
+        if mode & (stat.S_IRGRP | stat.S_IROTH):
+            logger.warning(
+                "SECURITY: connectors directory %s is readable by group/others "
+                "(mode %s). API keys stored inside may be accessible to other "
+                "users on this system. Run: chmod 700 %s",
+                connectors_dir,
+                oct(stat.S_IMODE(mode)),
+                connectors_dir,
+            )
+    except OSError:
+        pass
 
     # Seed built-in workflow templates into the user data dir (never overwrite)
     user_wf_dir = base / "comfyui_workflows"
@@ -114,8 +147,6 @@ def _autoprovision_connectors(config: Config, data_dir: str) -> None:
         AUBERGE_IMG_API_URL        Image API base URL
         AUBERGE_IMG_MODEL          Image model name
     """
-    import os
-
     from .connectors.manager import ConnectorManager
     from .models.connector import ConnectorCreate, ConnectorType
 
@@ -171,8 +202,6 @@ def _init_admin_password(config: Config) -> None:
     in stdout — it is never persisted, so a new one appears at each restart.
     To get a stable password across restarts, set AUBERGE_ADMIN_PASSWORD_HASH.
     """
-    import os
-
     from .utils.auth import generate_random_password, hash_password
 
     env_hash = os.environ.get("AUBERGE_ADMIN_PASSWORD_HASH", "").strip()
@@ -198,6 +227,15 @@ def create_app() -> FastAPI:
         config.app.port,
         config.app.log_level,
     )
+
+    # ── Warn loudly if the admin auth bypass is active ──────────────────────
+    if os.environ.get("AUBERGE_DISABLE_ADMIN_AUTH", "").strip() == "1":
+        logger.warning("=" * 70)
+        logger.warning("WARNING: AUBERGE_DISABLE_ADMIN_AUTH=1 is set.")
+        logger.warning("Admin authentication is COMPLETELY DISABLED.")
+        logger.warning("Anyone can access the admin panel without a password.")
+        logger.warning("NEVER use this setting in a production deployment.")
+        logger.warning("=" * 70)
     _init_data_dirs(config.app.data_dir)
     _init_sentry(config.app.sentry_dsn)
     _init_admin_password(config)
@@ -234,12 +272,20 @@ def create_app() -> FastAPI:
     # ── CORS auto-detection middleware ──────────────────────────────────────
     # Reads the Host header from each request and adds it as an allowed origin
     # so that browsers on the same machine always pass CORS checks.
+    # When credentials are included the Allow-Headers value must be an explicit
+    # list — the wildcard "*" is rejected by browsers in that case.
+
     @app.middleware("http")
     async def cors_auto_detect(
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
-        response = await call_next(request)
+        # Handle CORS preflight without forwarding to the route handlers.
+        if request.method == "OPTIONS":
+            response = Response(status_code=204)
+        else:
+            response = await call_next(request)
+
         host = request.headers.get("host", "")
         origin = request.headers.get("origin", "")
         if origin and host:
@@ -250,10 +296,24 @@ def create_app() -> FastAPI:
                 if origin_netloc == host:
                     response.headers["Access-Control-Allow-Origin"] = origin
                     response.headers["Access-Control-Allow-Credentials"] = "true"
-                    response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-                    response.headers["Access-Control-Allow-Headers"] = "*"
+                    response.headers["Access-Control-Allow-Methods"] = (
+                        "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+                    )
+                    response.headers["Access-Control-Allow-Headers"] = _CORS_ALLOW_HEADERS
             except Exception:
                 pass
+        return response
+
+    # ── Security headers middleware ──────────────────────────────────────────
+    @app.middleware("http")
+    async def security_headers(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         return response
 
     app.include_router(characters_router.router, prefix="/api")

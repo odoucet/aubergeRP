@@ -69,6 +69,13 @@ class ConnectorManager:
             yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
 
     def _build_connector(self, instance: ConnectorInstance) -> BaseConnector:
+        return self.build_connector(instance)
+
+    def build_connector(self, instance: ConnectorInstance) -> BaseConnector:
+        """Build and return the connector object for *instance*.
+
+        Raises ``ValueError`` for unsupported backend/type combinations.
+        """
         if instance.backend == "openai_api":
             if instance.type == "text":
                 return OpenAITextConnector(OpenAITextConfig(**instance.config))

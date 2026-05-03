@@ -4,6 +4,7 @@ services:
       context: ..
       dockerfile: Dockerfile
     container_name: auberge-app
+    restart: unless-stopped
     user: "${UID}:${GID}"
     volumes:
       - ../data:/data

@@ -29,7 +29,14 @@ function _uuid() {
 }
 
 function _initSessionToken() {
-  // Check if the URL carries a shared token
+  // Check if the URL carries a shared token.
+  // SECURITY NOTE: The ?token= parameter is intentionally used for the
+  // "Share session" feature so users can open a shared session in another
+  // browser.  The token is written to localStorage immediately and the
+  // query-string is removed from the address bar via history.replaceState()
+  // BEFORE any network request is made.  This prevents the token from
+  // leaking into server access logs or the Referer header of subsequent
+  // navigations.  Do not re-add the token to any URLs after this point.
   const params = new URLSearchParams(window.location.search);
   const urlToken = params.get('token');
   if (urlToken) {

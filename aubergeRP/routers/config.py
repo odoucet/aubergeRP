@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml  # type: ignore[import-untyped]
 from fastapi import APIRouter, Depends
 
-from ..config import get_config
+from ..config import _strip_js, get_config
 from ..models.config import (
     ActiveConnectorsResponse,
     AppConfigResponse,
@@ -129,8 +129,8 @@ def update_gui_config(
 ) -> GuiConfigResponse:
     config = get_config()
     config.gui.custom_css = update.custom_css
-    config.gui.custom_header_html = update.custom_header_html
-    config.gui.custom_footer_html = update.custom_footer_html
+    config.gui.custom_header_html = _strip_js(update.custom_header_html)
+    config.gui.custom_footer_html = _strip_js(update.custom_footer_html)
     _save_config(save_path)
     return GuiConfigResponse(
         custom_css=config.gui.custom_css,

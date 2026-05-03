@@ -283,7 +283,7 @@ async def test_connector_chat(
         )
 
     try:
-        conn = manager._build_connector(instance)
+        conn = manager.build_connector(instance)
         from ..connectors.base import TextConnector
         if not isinstance(conn, TextConnector):
             raise HTTPException(

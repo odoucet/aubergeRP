@@ -22,7 +22,7 @@ class TextConnector(BaseConnector):
     supports_tool_calling: bool = False
 
     @abstractmethod
-    def stream_chat_completion(
+    async def stream_chat_completion(
         self,
         messages: list[dict[str, Any]],
         model: str | None = None,
@@ -34,6 +34,11 @@ class TextConnector(BaseConnector):
         extra_body: dict[str, Any] | None = None,
     ) -> AsyncIterator[str]:
         """Yield text tokens from a streaming chat completion."""
+        # Concrete implementations are async generators (async def … yield …).
+        # The abstract signature uses AsyncIterator so subclasses that return
+        # AsyncIterator satisfy the override without a type error.
+        raise NotImplementedError  # pragma: no cover
+        yield  # make the base a generator stub so subclasses can use `yield`
 
     async def stream_chat_completion_with_tools(
         self,
