@@ -60,8 +60,9 @@ def get_conversation(
 def delete_conversation(
     conversation_id: str,
     service: ConversationService = Depends(get_conversation_service),
+    session_token: str = Depends(get_session_token),
 ) -> None:
     try:
-        service.delete_conversation(conversation_id)
+        service.delete_conversation(conversation_id, owner=session_token)
     except ConversationNotFoundError:
         raise _not_found(conversation_id)

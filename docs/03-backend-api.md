@@ -615,6 +615,7 @@ Delete Conversation
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
 | `conversation_id` | path | string | yes |  |
+| `x-session-token` | header | string | no |  |
 
 **Responses:** `204` Successful Response · `422` Validation Error
 

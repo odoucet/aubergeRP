@@ -10,7 +10,6 @@ from fastapi import APIRouter, Depends, Header
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from ..connectors.manager import ConnectorManager
 from ..event_bus import EventBus, get_event_bus
 from ..models.chat import ChatMessageRequest
 from ..services.character_service import CharacterService
@@ -18,6 +17,7 @@ from ..services.chat_service import ChatService
 from ..services.conversation_service import ConversationService
 from ..services.media_service import MediaService
 from ..services.statistics_service import StatisticsService
+from .connectors import get_connector_manager
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ def get_chat_service(
     conv_svc = ConversationService(data_dir=data_dir, character_service=char_svc)
     stats_svc = StatisticsService(data_dir=data_dir)
     media_svc = MediaService(data_dir=data_dir)
-    manager = ConnectorManager(data_dir=data_dir, config=config)
+    manager = get_connector_manager()
     images_dir = Path(data_dir) / "images" / (session_token or "anonymous")
     return ChatService(
         conversation_service=conv_svc,
@@ -152,15 +152,14 @@ async def retry_image(
                 generation_id=body.generation_id,
             ):
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-        except Exception as exc:
+        except Exception:
             logger.exception(
-                f"[Retry Image] Error generating image (gen_id={body.generation_id}): {exc}",
-                exc_info=True,
+                "[Retry Image] Error generating image (gen_id=%s)", body.generation_id
             )
             yield f"data: {json.dumps({
                 'type': 'image_failed',
                 'generation_id': body.generation_id,
-                'detail': str(exc),
+                'detail': 'Image generation failed. Check server logs for details.',
             },
             ensure_ascii=False
             )}\n\n"
