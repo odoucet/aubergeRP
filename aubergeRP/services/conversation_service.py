@@ -175,7 +175,7 @@ class ConversationService:
 
             # Fetch message counts for all conversations in a single query.
             count_rows = session.exec(
-                select(MessageRow.conversation_id, func.count(MessageRow.id).label("cnt"))  # type: ignore[arg-type]
+                select(MessageRow.conversation_id, func.count(MessageRow.id).label("message_count"))  # type: ignore[arg-type]
                 .group_by(MessageRow.conversation_id)
             ).all()
             counts: dict[str, int] = {row[0]: row[1] for row in count_rows}

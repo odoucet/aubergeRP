@@ -80,9 +80,9 @@ def _init_data_dirs(data_dir: str) -> None:
     # running inside Docker as a bind-mount with permissive host perms).
     try:
         mode = connectors_dir.stat().st_mode
-        if mode & (stat.S_IRGRP | stat.S_IROTH):
+        if mode & (stat.S_IRWXG | stat.S_IRWXO):
             logger.warning(
-                "SECURITY: connectors directory %s is readable by group/others "
+                "SECURITY: connectors directory %s has group/other permissions "
                 "(mode %s). API keys stored inside may be accessible to other "
                 "users on this system. Run: chmod 700 %s",
                 connectors_dir,
