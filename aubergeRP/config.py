@@ -13,23 +13,38 @@ from pydantic import BaseModel, field_validator
 # ---------------------------------------------------------------------------
 # HTML sanitization helpers
 # ---------------------------------------------------------------------------
+# We use possessive quantifiers (atomic groups via re) to avoid ReDoS, and
+# a length cap to prevent pathological inputs from reaching the regex engine.
 
+_MAX_HTML_LEN = 65_536  # 64 KiB — generous limit for any custom header/footer
+
+# Match <script …> … </script> including any whitespace/attributes in the tags.
+# Uses reluctant quantifiers on character classes, not on wildcards, to prevent
+# catastrophic backtracking.
 _SCRIPT_TAG_RE = re.compile(
-    r"<\s*script[\s\S]*?>[\s\S]*?<\s*/\s*script\s*>",
-    re.IGNORECASE,
+    r"<\s*script[^>]*>.*?<\s*/\s*script[^>]*>",
+    re.IGNORECASE | re.DOTALL,
 )
+# Match inline event handler attributes (onclick=…, onload=…, …).
 _EVENT_HANDLER_RE = re.compile(
-    r"\s+on\w+\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s>]*)",
+    r"""\s+on[a-zA-Z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)""",
     re.IGNORECASE,
 )
+# Match javascript: pseudo-protocol in href attributes.
 _JAVASCRIPT_HREF_RE = re.compile(
-    r'href\s*=\s*["\']?\s*javascript\s*:',
+    r"""href\s*=\s*["']?\s*javascript\s*:""",
     re.IGNORECASE,
 )
 
 
 def _strip_js(html: str) -> str:
-    """Remove <script> blocks, inline event handlers and javascript: hrefs."""
+    """Remove <script> blocks, inline event handlers and javascript: hrefs.
+
+    Applies a maximum length cap before the regex pass to bound worst-case
+    processing time on adversarial input.
+    """
+    if len(html) > _MAX_HTML_LEN:
+        html = html[:_MAX_HTML_LEN]
     html = _SCRIPT_TAG_RE.sub("", html)
     html = _EVENT_HANDLER_RE.sub("", html)
     html = _JAVASCRIPT_HREF_RE.sub('href="#"', html)

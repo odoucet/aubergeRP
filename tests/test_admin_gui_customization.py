@@ -4,7 +4,44 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from aubergeRP.config import reset_config
+from aubergeRP.config import GuiConfig, _strip_js, reset_config
+
+# ---------------------------------------------------------------------------
+# Direct unit tests for _strip_js and GuiConfig validator
+# ---------------------------------------------------------------------------
+
+def test_strip_js_removes_script_tags():
+    result = _strip_js('<p>Hello</p><script>alert(1)</script>')
+    assert "<script" not in result
+    assert "<p>Hello</p>" in result
+
+
+def test_strip_js_removes_script_with_whitespace_in_closing_tag():
+    result = _strip_js('<script>evil()</script \t\n bar>')
+    assert "evil" not in result
+
+
+def test_strip_js_removes_event_handlers():
+    result = _strip_js('<div onclick="evil()">text</div>')
+    assert "onclick" not in result
+    assert "text" in result
+
+
+def test_strip_js_removes_javascript_href():
+    result = _strip_js('<a href="javascript:alert(1)">link</a>')
+    assert "javascript:" not in result
+
+
+def test_guiconfig_validator_strips_script():
+    cfg = GuiConfig(custom_header_html='<p>ok</p><script>evil()</script>')
+    assert "<script" not in cfg.custom_header_html
+    assert "<p>ok</p>" in cfg.custom_header_html
+
+
+def test_guiconfig_validator_strips_footer_event_handler():
+    cfg = GuiConfig(custom_footer_html='<img src="x" onerror="bad()">')
+    assert "onerror" not in cfg.custom_footer_html
+
 
 # ---------------------------------------------------------------------------
 # App fixture — fresh config per test, save path redirected to tmp_path
