@@ -1,3 +1,5 @@
+<!-- Instructions: When filling this template, DELETE any checkbox line that does not apply to this PR. Do not leave irrelevant checkboxes unchecked. -->
+
 ## Summary
 
 <!-- One or two sentences describing what this PR does and why. -->
@@ -34,7 +36,8 @@
 <!-- If this PR adds or modifies a DB schema, describe the migration. Leave blank if N/A. -->
 
 ## Checklist
-
+- [ ] This code respects the philosophy of "keep it as simple and maintainable as possible for the long term".
+- [ ] This code respects the philosophy of "Hide complexity, expose simplicity".
 - [ ] My code follows the architecture rules in `AGENTS.md` (routers stay thin, services own logic, connectors are isolated).
 - [ ] I added or updated tests for new/changed behaviour.
 - [ ] I added or updated docstrings / comments where appropriate.
