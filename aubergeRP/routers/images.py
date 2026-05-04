@@ -25,11 +25,11 @@ def _safe_component(value: str) -> bool:
 @router.get("/{session_token}/{image_id}")
 def get_image(session_token: str, image_id: str) -> FileResponse:
     config = get_config()
-    if not _safe_component(session_token) or not _safe_component(image_id):
-        raise HTTPException(status_code=404, detail="Image not found")
     images_root = (Path(config.app.data_dir) / "images").resolve()
     # image_id may or may not include extension; normalise to bare stem + .png
     stem = image_id[:-4] if image_id.lower().endswith(".png") else image_id
+    if not _safe_component(session_token) or not _safe_component(stem):
+        raise HTTPException(status_code=404, detail="Image not found")
     image_path = (images_root / session_token / f"{stem}.png").resolve()
     # Guard against path-traversal: the resolved path must stay under images_root
     if not image_path.is_relative_to(images_root):
