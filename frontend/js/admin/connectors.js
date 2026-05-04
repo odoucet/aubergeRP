@@ -392,8 +392,9 @@ function renderConfigSections(commonEntries, typeEntries, selectedType, existing
   const advancedCommonEntries = [];
   const advancedTypeEntries = [];
 
+  const backendConfigKeys = new Set(['base_url', 'api_key', 'model']);
   for (const [key, schema] of commonEntries) {
-    if (key === 'nsfw') {
+    if (key === 'nsfw' || backendConfigKeys.has(key)) {
       quickEntries.push([key, schema]);
     } else {
       advancedCommonEntries.push([key, schema]);
@@ -416,14 +417,7 @@ function renderConfigSections(commonEntries, typeEntries, selectedType, existing
   const advancedCommonHtml = renderSchemaEntries(advancedCommonEntries, existingConfig);
   const advancedTypeHtml = renderSchemaEntries(advancedTypeEntries, existingConfig);
 
-  let html = '';
-  html += `
-    <div class="field-divider">Quick Setup</div>
-    <div class="quick-setup-note">
-      Configure the essentials now. You can fine-tune advanced parameters later in Advanced Configuration.
-    </div>
-    ${quickHtml}
-  `;
+  let html = quickHtml;
 
   if (advancedCommonHtml || advancedTypeHtml) {
     html += `
