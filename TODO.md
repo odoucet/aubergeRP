@@ -25,6 +25,8 @@ On frontend, all images generated with an NSFW connector must be blurried by def
 
 - [ ] **Periodic connector health checks** — `_TestResultsStore` in `routers/connectors.py` currently reloads from disk on every call to `.get()` (including the `/api/health` endpoint). A better approach: run `test_connector()` for each active connector on a schedule (e.g. every 5 minutes) in the background scheduler, persist the result once, and have `/api/health` return the last known state. This avoids disk I/O on every health poll and gives operators a real-time liveness signal without user-triggered tests.
 
+- [ ] Test ComfyUI connector with a real Comfy instance and fix any issues. The connector code is currently untested and may require adjustments to work with the actual Comfy API.
+
 ---
 
 ## Low priority / Future
