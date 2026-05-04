@@ -734,7 +734,7 @@ class ChatService:
                 gen_id,
                 len(img_bytes),
             )
-            yield {"type": "image_complete", "generation_id": gen_id, "image_url": url}
+            yield {"type": "image_complete", "generation_id": gen_id, "image_url": url, "prompt": full_prompt}
         except Exception as exc:
             logger.exception(
                 "[Image Gen] Error generating image (gen_id=%s, prompt=%r)",
@@ -784,6 +784,7 @@ class ChatService:
             except Exception:
                 messages = None
 
+        generated_media: list[tuple[str, str]] = []
         async for event in self._handle_image(
             char=char,
             gen_id=gen_id,
@@ -791,7 +792,16 @@ class ChatService:
             text_connector=text_connector,
             messages=messages,
         ):
+            if event["type"] == "image_complete":
+                generated_media.append((event["image_url"], event.get("prompt", "")))
             yield event
+
+        if self._media_service is not None and generated_media:
+            self._media_service.record_generated_media(
+                conversation_id=conversation_id,
+                message_id="",
+                media_items=generated_media,
+            )
 
     async def retry_generate_image(
         self,
@@ -820,6 +830,7 @@ class ChatService:
         # Re-generate the image with the stored prompt (no LLM enhancement).
         # Pass text_connector=None and messages=None so that _handle_image skips
         # the prompt refinement step and uses the prompt as-is.
+        generated_media: list[tuple[str, str]] = []
         async for event in self._handle_image(
             char=char,
             gen_id=generation_id,
@@ -827,5 +838,14 @@ class ChatService:
             text_connector=None,
             messages=None,
         ):
+            if event["type"] == "image_complete":
+                generated_media.append((event["image_url"], event.get("prompt", "")))
             yield event
+
+        if self._media_service is not None and generated_media:
+            self._media_service.record_generated_media(
+                conversation_id=conversation_id,
+                message_id="",
+                media_items=generated_media,
+            )
 
