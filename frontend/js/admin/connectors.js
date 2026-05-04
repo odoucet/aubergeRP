@@ -515,6 +515,7 @@ function schemaLabel(key) {
     max_tokens: 'Max Tokens', context_window: 'Context Window (tokens)',
     temperature: 'Temperature', timeout: 'Timeout (s)',
     supports_tool_calling: 'Tool Calling', workflow: 'Workflow', nsfw: 'NSFW Content',
+    extra_body: 'Extra Body',
   };
   return map[key] || key.replace(/_/g, ' ');
 }
@@ -532,6 +533,7 @@ function schemaTooltip(key) {
     size: 'Image size (example: 1024x1024).',
     workflow: 'ComfyUI workflow template used for image generation.',
     nsfw: 'Allow NSFW behavior for this connector. Disabled by default.',
+    extra_body: 'Extra JSON fields merged into the API request body (e.g. provider-specific options).',
   };
   return map[key] || '';
 }
@@ -572,10 +574,21 @@ function renderField(key, label, type, required, value, placeholder = '', inputT
     `;
   }
 
-  const itype = inputType || (type === 'number' ? 'number' : 'text');
   const req = required ? '<span class="required">*</span>' : '';
   const tooltip = schemaTooltip(key);
   const tooltipAttr = tooltip ? ` title="${escHtml(tooltip)}"` : '';
+
+  if (type === 'object') {
+    const jsonValue = value && typeof value === 'object' ? JSON.stringify(value, null, 2) : (value || '');
+    return `
+      <div class="field-row">
+        <label for="cfg-${key}"${tooltipAttr}>${escHtml(label)} ${req}</label>
+        <textarea id="cfg-${key}" name="${key}" data-type="object" rows="4" placeholder='{"key": "value"}'>${escHtml(jsonValue)}</textarea>
+      </div>
+    `;
+  }
+
+  const itype = inputType || (type === 'number' ? 'number' : 'text');
   return `
     <div class="field-row">
       <label for="cfg-${key}"${tooltipAttr}>${escHtml(label)} ${req}</label>
@@ -619,15 +632,16 @@ async function populateWorkflowSelect(selectedValue) {
 
 function collectConfig() {
   const cfg = { ...baselineConfig };
-  configFields.querySelectorAll('input[name], select[name]').forEach(inp => {
+  configFields.querySelectorAll('input[name], select[name], textarea[name]').forEach(inp => {
     const key = inp.name;
+    if (inp.tagName === 'TEXTAREA' && inp.dataset.type === 'object') {
+      const raw = inp.value.trim();
+      try { cfg[key] = raw ? JSON.parse(raw) : {}; } catch (_) { cfg[key] = raw; }
+      return;
+    }
     const val = inp.type === 'checkbox' ? '' : inp.value.trim();
     if (key === 'api_key') {
-      // Include only if user typed something, or if clearKeyChk is checked (empty = clear)
-      if (val !== '' || clearKeyChk.checked) {
-        cfg[key] = val;
-      }
-      // else omit → server preserves existing key
+      if (val !== '' || clearKeyChk.checked) cfg[key] = val;
     } else if (inp.type === 'checkbox') {
       cfg[key] = inp.checked;
     } else {
