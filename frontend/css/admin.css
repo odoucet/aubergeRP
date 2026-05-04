@@ -448,7 +448,7 @@
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface2);
-  margin-top: 0.15rem;
+  margin-top: 1rem;
 }
 
 .advanced-config-details > summary {
