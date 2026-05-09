@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import secrets
@@ -225,8 +226,8 @@ def _init_admin_jwt_secret(config: Config) -> None:
     Priority order:
     1. AUBERGE_ADMIN_JWT_SECRET env var
     2. config.app.admin_jwt_secret (from config.yaml)
-    3. data_dir/admin_jwt_secret (persisted on disk)
-    4. generate a new random secret and persist it to disk
+    3. secret derived from app.admin_password_hash
+    4. generate a new random process-local secret
     """
     env_secret = os.environ.get("AUBERGE_ADMIN_JWT_SECRET", "").strip()
     if env_secret:
@@ -236,20 +237,18 @@ def _init_admin_jwt_secret(config: Config) -> None:
     if config.app.admin_jwt_secret.strip():
         return
 
-    secret_path = Path(config.app.data_dir) / "admin_jwt_secret"
-    if secret_path.exists():
-        secret = secret_path.read_text(encoding="utf-8").strip()
-        if secret:
-            config.app.admin_jwt_secret = secret
-            return
+    admin_hash = config.app.admin_password_hash.strip()
+    if admin_hash:
+        config.app.admin_jwt_secret = hashlib.sha256(
+            f"aubergeRP-admin-jwt:{admin_hash}".encode()
+        ).hexdigest()
+        return
 
-    secret = secrets.token_urlsafe(48)
-    try:
-        secret_path.write_text(secret, encoding="utf-8")
-        secret_path.chmod(0o600)
-    except OSError:
-        logger.warning("Could not persist admin JWT secret at %s", secret_path)
-    config.app.admin_jwt_secret = secret
+    config.app.admin_jwt_secret = secrets.token_urlsafe(48)
+    logger.warning(
+        "Admin JWT secret generated in-memory because no explicit secret or "
+        "admin password hash is configured; tokens will not survive restarts."
+    )
 
 
 def create_app() -> FastAPI:

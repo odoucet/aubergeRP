@@ -98,7 +98,7 @@ class AppConfig(BaseModel):
     sentry_dsn: str = ""
     admin_password_hash: str = ""
     # Optional explicit signing secret for admin JWTs.
-    # If empty, startup auto-generates and persists a random secret in data_dir.
+    # If empty, startup derives a stable secret from app.admin_password_hash.
     admin_jwt_secret: str = ""
     admin_token_ttl_seconds: int = 86400
 

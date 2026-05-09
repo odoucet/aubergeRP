@@ -159,5 +159,6 @@ def admin_logout(token: str = Depends(get_admin_token)) -> dict[str, str]:
         tokens. This endpoint is kept for backward compatibility; clients
         should delete their stored token.
     """
+    # token parameter kept for API compatibility but unused in stateless JWT auth.
     _ = token
     return {"message": "Logged out"}
