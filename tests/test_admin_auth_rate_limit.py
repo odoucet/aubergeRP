@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -132,7 +134,7 @@ def test_admin_auth_rejects_tampered_token(client: TestClient) -> None:
     assert logout.json() == {"detail": "Unauthorized"}
 
 
-def test_admin_token_expiry_is_enforced(tmp_path, monkeypatch) -> None:
+def test_admin_token_expiry_is_enforced(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AUBERGE_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("AUBERGE_ADMIN_PASSWORD_HASH", hash_password("correct horse"))
     monkeypatch.setenv("AUBERGE_ADMIN_TOKEN_TTL_SECONDS", "60")
@@ -158,7 +160,7 @@ def test_admin_token_expiry_is_enforced(tmp_path, monkeypatch) -> None:
     reset_config()
 
 
-def test_admin_token_works_after_app_restart(tmp_path, monkeypatch) -> None:
+def test_admin_token_works_after_app_restart(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AUBERGE_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("AUBERGE_ADMIN_PASSWORD_HASH", hash_password("correct horse"))
     monkeypatch.delenv("AUBERGE_DISABLE_ADMIN_AUTH", raising=False)
