@@ -21,7 +21,7 @@ Authenticate to admin panel with password.
 |---|---|---|
 | `password` | string | yes |
 
-**Responses:** `200` Successful Response · `422` Validation Error
+**Responses:** `200` Successful Response · `429` Too many login attempts · `422` Validation Error
 
 ### `POST /api/admin/logout`
 
