@@ -698,6 +698,10 @@ class ChatService:
                 prompt = await self._generate_image_prompt(
                     text_connector, char, messages, prompt
                 )
+            if not prompt:
+                # Fallback when no text connector or prompt generation failed
+                char_desc = (char.data.description or "")[:300]
+                prompt = f"{char.data.name}. {char_desc}".strip() if char_desc else char.data.name
             auberge = char.data.extensions.get("aubergeRP", {})
             prefix = auberge.get("image_prompt_prefix", "")
             negative = auberge.get("negative_prompt", "")

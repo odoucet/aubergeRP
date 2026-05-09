@@ -532,8 +532,9 @@ function createStreamingMessage() {
       if (labelEl) { labelEl.style.display = 'block'; labelEl.textContent = `${step} / ${total}`; }
       scrollIfPinned();
     },
-    onImageComplete(genId, imageUrl) {
+    onImageComplete(genId, imageUrl, prompt) {
       pendingImages.delete(genId);
+      if (prompt) imagePrompts.set(genId, prompt);
       const ph = document.getElementById(`img-ph-${genId}`);
       if (ph) {
         ph.replaceWith(createImageElement(imageUrl));
@@ -694,7 +695,7 @@ function dispatchSSEEvent(event, handlers) {
       handlers.onImageProgress(event.generation_id, event.step, event.total);
       break;
     case 'image_complete':
-      handlers.onImageComplete(event.generation_id, event.image_url);
+      handlers.onImageComplete(event.generation_id, event.image_url, event.prompt);
       break;
     case 'image_failed':
       handlers.onImageFailed(event.generation_id, event.detail);
