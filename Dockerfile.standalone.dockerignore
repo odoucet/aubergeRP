@@ -1,0 +1,43 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Test / lint artefacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+tests/
+
+# Local data (never bake into the image)
+data/
+*.db
+
+# Local config override (image ships config.example.yaml as default)
+config.yaml
+
+# Dev / infra files not needed at runtime
+docker/
+scripts/
+docs/
+Makefile
+requirements-dev.txt
+
+# CI / repo metadata
+.github/
+.git/
+.gitignore
+.claude/
+.vscode/
+*.md
