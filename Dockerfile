@@ -7,15 +7,20 @@ RUN groupadd --gid 1001 auberge \
 
 WORKDIR /app
 
-# Install Python dependencies first (layer-cache friendly)
+# Install runtime dependencies first (layer-cache friendly)
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # pyproject.toml is the single source of truth for the version number.
 COPY pyproject.toml ./
 
+# Bake the application into the image so it can run without bind mounts.
+# The local docker-compose setup may still override these paths during development.
+COPY aubergeRP ./aubergeRP
+COPY frontend ./frontend
+COPY config.example.yaml ./config.example.yaml
+
 # Data directory lives on a volume — create the mount point
-# Source (aubergeRP/ frontend/) is bind-mounted at runtime; see docker/docker-compose.yml
 RUN mkdir -p /data && chown auberge:auberge /data
 
 # Switch to the non-root user

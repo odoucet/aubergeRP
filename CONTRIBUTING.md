@@ -14,6 +14,7 @@ If you want to contribute, please maintain this philosophy in mind and try to ke
 ## Setup
 
 ```bash
+python -m pip install -r requirements-dev.txt
 cp config.example.yaml config.yaml   # add your connector credentials
 make run    # dev server with hot-reload
 make test   # must pass before any PR

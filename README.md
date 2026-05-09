@@ -1,8 +1,13 @@
 # 🏰 AubergeRP
 
+[![CI](https://github.com/aubergeRP/aubergeRP/actions/workflows/ci.yml/badge.svg)](https://github.com/aubergeRP/aubergeRP/actions/workflows/ci.yml)
+[![E2E Tests](https://github.com/aubergeRP/aubergeRP/actions/workflows/e2e.yml/badge.svg)](https://github.com/aubergeRP/aubergeRP/actions/workflows/e2e.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](pyproject.toml)
+
 **The cozy, distraction-free roleplay engine.** *Stop configuring, start roleplaying.*
 
-AubergeRP is a lightweight, self-hostable alternative to SillyTavern. It’s designed for those who want a beautiful, "plug-and-play" experience with local or remote LLMs, featuring native AI image generation without the headache of complex extensions.
+AubergeRP is a lightweight, self-hostable roleplay engine for people who want a beautiful, plug-and-play experience with local or remote LLMs, plus native AI image generation without the headache of complex extensions.
 
 The Docker setup ships with a bundled [LocalAI](https://localai.io/) instance — text and image models are **downloaded automatically** on first run, so you get a fully working text + image stack with a single command and no manual model management.
 
@@ -14,6 +19,13 @@ The Docker setup ships with a bundled [LocalAI](https://localai.io/) instance �
 | **Interface**      | Minimalist & Cozy  | Complex "Control Room"      |
 | **Image Gen**      | Native & Automatic | Requires complex extensions |
 | **Learning Curve** | None (Plug & Play) | High (Many sliders/tabs)    |
+
+## 🎯 Who is it for?
+
+- People who want **self-hosted roleplay** without spending hours tuning a control panel first
+- Users who want to plug in **OpenRouter, OpenAI, Ollama, vLLM, LocalAI, ComfyUI, or SD-WebUI**
+- Writers and worldbuilders who care about a **clean UI**, mobile support, and fast setup
+- SillyTavern users who want to **reuse their existing character cards** in a simpler stack
 
 ## 📸 Preview
 
@@ -36,7 +48,7 @@ The Docker setup ships with a bundled [LocalAI](https://localai.io/) instance �
 
 1. **Clone & Config**
    ```bash
-   git clone https://github.com/odoucet/aubergeRP.git
+   git clone https://github.com/aubergeRP/aubergeRP.git
    cd aubergeRP
    cp config.example.yaml config.yaml
    ```
@@ -66,10 +78,22 @@ The Docker setup ships with a bundled [LocalAI](https://localai.io/) instance �
 
 ## 🏗 Technology Stack
 
-* **Backend:** Python 3.11+, FastAPI, SQLite.
+* **Backend:** Python 3.12+, FastAPI, SQLite.
 * **Frontend:** Vanilla HTML/JS + Tailwind CSS (No heavy frameworks).
 * **Protocols:** SSE (Server-Sent Events) for real-time streaming.
 * **License:** Apache 2.0.
+
+## 🤝 Contributing
+
+If you want to help, start with [CONTRIBUTING.md](CONTRIBUTING.md) and the architecture docs in [`docs/`](docs/).
+
+The project aims to stay:
+
+- simple to run
+- simple to understand
+- simple to maintain over the long term
+
+If AubergeRP is useful to you, please give it a ⭐ on GitHub.
 
 
 ## 📚 Documentation
@@ -78,11 +102,3 @@ The Docker setup ships with a bundled [LocalAI](https://localai.io/) instance �
 * 🧩 [Connector System](docs/06-connector-system.md) – How to add new AI backends.
 * ⚙️ [Configuration](docs/09-configuration-and-setup.md) – `config.yaml` reference.
 * 🏗 [Architecture](docs/00-architecture-overview.md) – High-level design for contributors.
-
-## About me
-I'm Olivier. I have nearly 30 years XP in dev/ops and I'm thrilled of the new AI era that allows me to develop this kind of project without putting too much time into it.
-I have a very busy work (I'm CEO), a beautiful family I like to spend time with, and many hobbies.
-This project is the 99th priority in my life. I work on it on my (small) free time, and I try to keep it as simple and maintainable as possible for the long term, so I can keep improving it for years to come without it becoming a burden.
-If you want to contribute, please maintain this philosophy in mind and try to keep things simple and well documented. 
-
-**AubergeRP** is a labor of love. If you like the project, consider giving it a ⭐ on GitHub!

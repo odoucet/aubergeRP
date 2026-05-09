@@ -20,10 +20,6 @@ env/
 htmlcov/
 .coverage
 
-# Source code — bind-mounted at runtime, not baked into the image
-aubergeRP/
-frontend/
-
 # Local data (never bake data into the image)
 data/
 *.db
