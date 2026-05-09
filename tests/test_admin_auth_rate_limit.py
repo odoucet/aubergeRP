@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from aubergeRP.config import reset_config
+from aubergeRP.utils import auth as auth_utils
 from aubergeRP.utils.auth import hash_password
 
 
@@ -11,19 +12,18 @@ from aubergeRP.utils.auth import hash_password
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("AUBERGE_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("AUBERGE_ADMIN_PASSWORD_HASH", hash_password("correct horse"))
+    monkeypatch.delenv("AUBERGE_DISABLE_ADMIN_AUTH", raising=False)
     reset_config()
 
     from aubergeRP.main import create_app
     from aubergeRP.routers import admin as admin_router
 
     admin_router._admin_login_failures.clear()
-    admin_router._admin_sessions.clear()
 
     with TestClient(create_app()) as test_client:
         yield test_client
 
     admin_router._admin_login_failures.clear()
-    admin_router._admin_sessions.clear()
     reset_config()
 
 
@@ -105,3 +105,78 @@ def test_successful_admin_login_resets_failed_attempt_counter(client: TestClient
 
     blocked = _login(client, "wrong password", headers=headers)
     assert blocked.status_code == 429
+
+
+def test_admin_login_issues_jwt_that_authenticates(client: TestClient) -> None:
+    login = _login(client, "correct horse")
+    assert login.status_code == 200
+
+    token = login.json()["token"]
+    assert token.count(".") == 2
+
+    logout = client.post("/api/admin/logout", headers={"x-admin-token": token})
+    assert logout.status_code == 200
+    assert logout.json() == {"message": "Logged out"}
+
+
+def test_admin_auth_rejects_tampered_token(client: TestClient) -> None:
+    login = _login(client, "correct horse")
+    assert login.status_code == 200
+    token = login.json()["token"]
+    tampered = f"{token[:-1]}{'A' if token[-1] != 'A' else 'B'}"
+
+    logout = client.post("/api/admin/logout", headers={"x-admin-token": tampered})
+    assert logout.status_code == 401
+    assert logout.json() == {"detail": "Unauthorized"}
+
+
+def test_admin_token_expiry_is_enforced(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AUBERGE_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("AUBERGE_ADMIN_PASSWORD_HASH", hash_password("correct horse"))
+    monkeypatch.setenv("AUBERGE_ADMIN_TOKEN_TTL_SECONDS", "60")
+    monkeypatch.delenv("AUBERGE_DISABLE_ADMIN_AUTH", raising=False)
+    reset_config()
+
+    from aubergeRP.main import create_app
+    from aubergeRP.routers import admin as admin_router
+
+    admin_router._admin_login_failures.clear()
+    monkeypatch.setattr(auth_utils.time, "time", lambda: 1_700_000_000)
+    with TestClient(create_app()) as test_client:
+        login = _login(test_client, "correct horse")
+        assert login.status_code == 200
+        token = login.json()["token"]
+
+        monkeypatch.setattr(auth_utils.time, "time", lambda: 1_700_000_061)
+        logout = test_client.post("/api/admin/logout", headers={"x-admin-token": token})
+        assert logout.status_code == 401
+        assert logout.json() == {"detail": "Unauthorized"}
+
+    admin_router._admin_login_failures.clear()
+    reset_config()
+
+
+def test_admin_token_works_after_app_restart(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AUBERGE_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("AUBERGE_ADMIN_PASSWORD_HASH", hash_password("correct horse"))
+    monkeypatch.setenv("AUBERGE_ADMIN_JWT_SECRET", "shared-jwt-secret")
+    monkeypatch.delenv("AUBERGE_DISABLE_ADMIN_AUTH", raising=False)
+    reset_config()
+
+    from aubergeRP.main import create_app
+    from aubergeRP.routers import admin as admin_router
+
+    admin_router._admin_login_failures.clear()
+    with TestClient(create_app()) as first_client:
+        login = _login(first_client, "correct horse")
+        assert login.status_code == 200
+        token = login.json()["token"]
+
+    reset_config()
+    with TestClient(create_app()) as second_client:
+        logout = second_client.post("/api/admin/logout", headers={"x-admin-token": token})
+        assert logout.status_code == 200
+        assert logout.json() == {"message": "Logged out"}
+
+    admin_router._admin_login_failures.clear()
+    reset_config()

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import secrets
 from collections import deque
 from threading import Lock
 from time import monotonic
@@ -12,13 +11,10 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from ..config import get_config
 from ..models.admin import AdminLoginRequest, AdminLoginResponse
-from ..utils.auth import verify_password
+from ..utils.auth import create_admin_jwt, verify_admin_jwt, verify_password
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-# Store active admin sessions (token -> bool)
-# In production, this could use Redis or JWT tokens
-_admin_sessions: set[str] = set()
 _ADMIN_LOGIN_RATE_LIMIT = 3
 _ADMIN_LOGIN_WINDOW_SECONDS = 60.0
 _admin_login_failures: dict[str, deque[float]] = {}
@@ -92,7 +88,17 @@ def get_admin_token(x_admin_token: str = Header(default="")) -> str:
     if os.environ.get("AUBERGE_DISABLE_ADMIN_AUTH", "").strip() == "1":
         return "test-bypass"
 
-    if not x_admin_token or x_admin_token not in _admin_sessions:
+    config = get_config()
+    secret = config.app.admin_jwt_secret.strip() or config.app.admin_password_hash.strip()
+    if not secret:
+        raise HTTPException(status_code=500, detail="Admin JWT secret is not configured")
+
+    if not x_admin_token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        verify_admin_jwt(x_admin_token, secret)
+    except ValueError:
         raise HTTPException(status_code=401, detail="Unauthorized")
     return x_admin_token
 
@@ -130,15 +136,16 @@ def admin_login(request: AdminLoginRequest, http_request: Request) -> AdminLogin
 
     _reset_admin_login_failures(client_ip)
 
-    # Generate a new session token
-    token = secrets.token_urlsafe(32)
-    _admin_sessions.add(token)
+    secret = config.app.admin_jwt_secret.strip() or config.app.admin_password_hash.strip()
+    if not secret:
+        raise HTTPException(status_code=500, detail="Admin JWT secret is not configured")
+    token = create_admin_jwt(secret, config.app.admin_token_ttl_seconds)
 
     return AdminLoginResponse(token=token)
 
 
 @router.post("/logout")
-def admin_logout(token: str = Depends(get_admin_token)) -> dict[str, str]:
+def admin_logout(_token: str = Depends(get_admin_token)) -> dict[str, str]:
     """Logout from admin panel.
 
     Args:
@@ -147,5 +154,4 @@ def admin_logout(token: str = Depends(get_admin_token)) -> dict[str, str]:
     Returns:
         Success message.
     """
-    _admin_sessions.discard(token)
     return {"message": "Logged out"}

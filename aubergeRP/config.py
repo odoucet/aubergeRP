@@ -97,6 +97,15 @@ class AppConfig(BaseModel):
     data_dir: str = "data"
     sentry_dsn: str = ""
     admin_password_hash: str = ""
+    admin_jwt_secret: str = ""
+    admin_token_ttl_seconds: int = 86400
+
+    @field_validator("admin_token_ttl_seconds")
+    @classmethod
+    def validate_admin_token_ttl_seconds(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("admin_token_ttl_seconds must be > 0")
+        return v
 
 
 class ActiveConnectorsConfig(BaseModel):
@@ -195,6 +204,8 @@ def _apply_env_overrides(config: Config) -> Config:
         AUBERGE_USER_NAME          → config.user.name
         AUBERGE_SENTRY_DSN         → config.app.sentry_dsn
         AUBERGE_ADMIN_PASSWORD_HASH → config.app.admin_password_hash
+        AUBERGE_ADMIN_JWT_SECRET   → config.app.admin_jwt_secret
+        AUBERGE_ADMIN_TOKEN_TTL_SECONDS → config.app.admin_token_ttl_seconds
     """
     if val := os.environ.get("AUBERGE_DATA_DIR"):
         config.app.data_dir = val
@@ -210,6 +221,10 @@ def _apply_env_overrides(config: Config) -> Config:
         config.app.sentry_dsn = val
     if val := os.environ.get("AUBERGE_ADMIN_PASSWORD_HASH"):
         config.app.admin_password_hash = val
+    if val := os.environ.get("AUBERGE_ADMIN_JWT_SECRET"):
+        config.app.admin_jwt_secret = val
+    if val := os.environ.get("AUBERGE_ADMIN_TOKEN_TTL_SECONDS"):
+        config.app.admin_token_ttl_seconds = int(val)
     return config
 
 def load_config(path: str | Path = "config.yaml") -> Config:
