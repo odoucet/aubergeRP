@@ -48,8 +48,13 @@ marketplace:
 | `AUBERGE_USER_NAME` | `user.name` |
 | `AUBERGE_SENTRY_DSN` | `app.sentry_dsn` |
 | `AUBERGE_ADMIN_PASSWORD_HASH` | `app.admin_password_hash` |
-| `AUBERGE_LLM_API_URL` + `AUBERGE_LLM_MODEL` | Auto-provision text connector on startup |
-| `AUBERGE_IMG_API_URL` + `AUBERGE_IMG_MODEL` | Auto-provision image connector on startup |
+| `AUBERGE_LLM_API_URL` | Auto-provision text connector on startup (OpenAI-compatible base URL) |
+| `AUBERGE_LLM_MODEL` | Text model name (e.g. `qwen3:27b`) |
+| `AUBERGE_LLM_CONTEXT_WINDOW` | Context window of the text model in tokens (default: `4096`) |
+| `AUBERGE_LLM_MAX_TOKENS` | Max tokens to generate per reply (default: `1024`) |
+| `AUBERGE_IMG_API_URL` | Auto-provision image connector on startup |
+| `AUBERGE_IMG_MODEL` | Image model name |
+| `AUBERGE_DISABLE_ADMIN_AUTH` | Set to `1` to bypass admin authentication — **dev/testing only, never use in production** |
 
 ## Admin password
 

@@ -9,14 +9,26 @@ app:
   log_level: "INFO"
   # Data directory (relative to project root or absolute path)
   data_dir: "data"
+  # Sentry DSN for error reporting (optional)
+  # sentry_dsn: ""
+  # bcrypt hash of the admin password; generated on first start if omitted
+  # admin_password_hash: ""
 
 # Environment-variable overrides (take precedence over this file):
-#   AUBERGE_DATA_DIR  → app.data_dir
-#   AUBERGE_HOST      → app.host
-#   AUBERGE_PORT      → app.port
-#   AUBERGE_LOG_LEVEL → app.log_level
-#   AUBERGE_USER_NAME → user.name
-#   AUBERGE_ADMIN_PASSWORD_HASH → app.admin_password_hash (stable password across restarts)
+#   AUBERGE_DATA_DIR             → app.data_dir
+#   AUBERGE_HOST                 → app.host
+#   AUBERGE_PORT                 → app.port
+#   AUBERGE_LOG_LEVEL            → app.log_level
+#   AUBERGE_USER_NAME            → user.name
+#   AUBERGE_SENTRY_DSN           → app.sentry_dsn
+#   AUBERGE_ADMIN_PASSWORD_HASH  → app.admin_password_hash (stable password across restarts)
+#   AUBERGE_LLM_API_URL          → auto-provision text connector on startup
+#   AUBERGE_LLM_MODEL            → text model name
+#   AUBERGE_LLM_CONTEXT_WINDOW   → text model context window in tokens (default: 4096)
+#   AUBERGE_LLM_MAX_TOKENS       → max tokens to generate per reply (default: 1024)
+#   AUBERGE_IMG_API_URL          → auto-provision image connector on startup
+#   AUBERGE_IMG_MODEL            → image model name
+#   AUBERGE_DISABLE_ADMIN_AUTH   → set to "1" to bypass admin auth (dev/testing only)
 
 # Active connector IDs. The Admin UI writes these.
 # Leave empty on first start.
@@ -55,3 +67,6 @@ gui:
   custom_header_html: ""
   # Raw HTML inserted just before the closing </footer> tag.
   custom_footer_html: ""
+
+marketplace:
+  index_url: "https://raw.githubusercontent.com/aubergeRP/aubergeRP/main/marketplace/index.json"
