@@ -23,7 +23,7 @@ Architecture docs are in `docs/`, read in numeric order. Spec files are ground t
 ## Running tests
 
 ```bash
-pip install -r requirements.txt              # once
+pip install -r requirements-dev.txt          # once for local development
 
 make test                                    # full test suite
 make test tests/test_api_chat.py             # single file

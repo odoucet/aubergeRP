@@ -2,8 +2,14 @@
 name = "aubergeRP"
 version = "0.1.0"
 description = "A lightweight roleplay frontend with pluggable connectors for LLM and image generation"
+authors = [{ name = "Olivier Doucet", email = "webmaster@ajeux.com" }]
+keywords = ["roleplay", "llm", "fastapi", "image-generation", "self-hosted"]
 requires-python = ">=3.12"
 license = "Apache-2.0"
+urls = { Homepage = "https://aubergerp.com", Repository = "https://github.com/aubergeRP/aubergeRP" }
+
+[project.optional-dependencies]
+sentry = ["sentry-sdk[fastapi]>=2.58.0,<3.0"]
 
 [tool.ruff]
 target-version = "py312"
@@ -13,7 +19,7 @@ line-length = 125
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
-"aubergeRP/plugins/base.py" = ["B027"]
+"aubergeRP/connectors/base.py" = ["B027"]
 "aubergeRP/routers/*.py" = ["B008", "B904"]
 "aubergeRP/**/__init__.py" = ["N999"]
 "tests/test_character_service.py" = ["E402", "B017"]

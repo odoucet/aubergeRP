@@ -11,8 +11,10 @@ Covers:
 """
 from __future__ import annotations
 
+import sys
+import types
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -154,10 +156,46 @@ def test_cors_mismatched_origin_no_header(client):
 # 4. Sentry integration
 # ===========================================================================
 
+
+def _mock_sentry_modules() -> dict[str, types.ModuleType]:
+    sentry_sdk = types.ModuleType("sentry_sdk")
+    sentry_sdk.__path__ = []
+    sentry_sdk.init = Mock()
+
+    integrations = types.ModuleType("sentry_sdk.integrations")
+    integrations.__path__ = []
+
+    fastapi_integration = types.ModuleType("sentry_sdk.integrations.fastapi")
+    starlette_integration = types.ModuleType("sentry_sdk.integrations.starlette")
+
+    class FastApiIntegration:
+        pass
+
+    class StarletteIntegration:
+        pass
+
+    fastapi_integration.FastApiIntegration = FastApiIntegration
+    starlette_integration.StarletteIntegration = StarletteIntegration
+
+    integrations.fastapi = fastapi_integration
+    integrations.starlette = starlette_integration
+    sentry_sdk.integrations = integrations
+
+    return {
+        "sentry_sdk": sentry_sdk,
+        "sentry_sdk.integrations": integrations,
+        "sentry_sdk.integrations.fastapi": fastapi_integration,
+        "sentry_sdk.integrations.starlette": starlette_integration,
+    }
+
+
 def test_init_sentry_no_op_when_no_dsn():
     """_init_sentry('') must not call sentry_sdk.init()."""
     from aubergeRP.main import _init_sentry
-    with patch("sentry_sdk.init") as mock_init:
+
+    mock_modules = _mock_sentry_modules()
+    with patch.dict(sys.modules, mock_modules):
+        mock_init = mock_modules["sentry_sdk"].init
         _init_sentry("")
         mock_init.assert_not_called()
 
@@ -165,7 +203,10 @@ def test_init_sentry_no_op_when_no_dsn():
 def test_init_sentry_calls_init_when_dsn_configured():
     """_init_sentry(dsn) calls sentry_sdk.init() with the given DSN."""
     from aubergeRP.main import _init_sentry
-    with patch("sentry_sdk.init") as mock_init:
+
+    mock_modules = _mock_sentry_modules()
+    with patch.dict(sys.modules, mock_modules):
+        mock_init = mock_modules["sentry_sdk"].init
         _init_sentry("https://public@sentry.example.com/1")
         mock_init.assert_called_once()
         args, kwargs = mock_init.call_args

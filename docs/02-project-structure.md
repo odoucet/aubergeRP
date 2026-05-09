@@ -34,7 +34,8 @@ aubergeRP/
 ├── config.example.yaml      # Example config — copy to config.yaml
 ├── Makefile
 ├── Dockerfile
-└── requirements.txt
+├── requirements.txt         # Runtime Python dependencies
+└── requirements-dev.txt     # Test/lint/dev-only Python dependencies
 ```
 
 ## Architecture rules
