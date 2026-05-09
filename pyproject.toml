@@ -2,11 +2,11 @@
 name = "aubergeRP"
 version = "0.1.0"
 description = "A lightweight roleplay frontend with pluggable connectors for LLM and image generation"
-authors = [{ name = "Olivier Doucet", email = "odoucet@oxeva.fr" }]
+authors = [{ name = "Olivier Doucet", email = "webmaster@ajeux.com" }]
 keywords = ["roleplay", "llm", "fastapi", "image-generation", "self-hosted"]
 requires-python = ">=3.12"
 license = "Apache-2.0"
-urls = { Homepage = "https://github.com/aubergeRP/aubergeRP", Repository = "https://github.com/aubergeRP/aubergeRP" }
+urls = { Homepage = "https://aubergerp.com", Repository = "https://github.com/aubergeRP/aubergeRP" }
 
 [project.optional-dependencies]
 sentry = ["sentry-sdk[fastapi]>=2.58.0,<3.0"]
