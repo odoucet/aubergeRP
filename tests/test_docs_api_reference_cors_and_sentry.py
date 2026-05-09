@@ -112,6 +112,15 @@ def test_index_html_has_no_cache_revalidation_header(client):
     assert "must-revalidate" in cache_control
 
 
+def test_security_headers_include_content_security_policy(client):
+    resp = client.get("/api/health/")
+    assert resp.status_code == 200
+    csp = resp.headers.get("content-security-policy")
+    assert csp is not None
+    assert "default-src 'self'" in csp
+    assert "object-src 'none'" in csp
+
+
 # ===========================================================================
 # 3. CORS auto-detection
 # ===========================================================================
