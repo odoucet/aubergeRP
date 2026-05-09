@@ -133,4 +133,7 @@ def verify_admin_jwt(token: str, secret: str) -> dict[str, int | str]:
     if not isinstance(exp, int) or int(time.time()) >= exp:
         raise ValueError("JWT expired")
 
-    return payload  # type: ignore[return-value]
+    if not all(isinstance(k, str) for k in payload):
+        raise ValueError("Invalid JWT payload keys")
+
+    return payload

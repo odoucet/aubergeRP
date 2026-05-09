@@ -123,7 +123,9 @@ def test_admin_auth_rejects_tampered_token(client: TestClient) -> None:
     login = _login(client, "correct horse")
     assert login.status_code == 200
     token = login.json()["token"]
-    tampered = f"{token[:-1]}{'A' if token[-1] != 'A' else 'B'}"
+    header, payload, signature = token.split(".")
+    tampered_payload = f"{payload[:-1]}{'A' if payload[-1] != 'A' else 'B'}"
+    tampered = ".".join([header, tampered_payload, signature])
 
     logout = client.post("/api/admin/logout", headers={"x-admin-token": tampered})
     assert logout.status_code == 401
