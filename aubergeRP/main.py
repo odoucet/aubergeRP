@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
+import secrets
 import shutil
 import stat
 from collections.abc import AsyncGenerator, Awaitable, Callable, MutableMapping
@@ -218,6 +220,37 @@ def _init_admin_password(config: Config) -> None:
     logger.info("=" * 70)
 
 
+def _init_admin_jwt_secret(config: Config) -> None:
+    """Initialize admin JWT signing secret.
+
+    Priority order:
+    1. AUBERGE_ADMIN_JWT_SECRET env var
+    2. config.app.admin_jwt_secret (from config.yaml)
+    3. secret derived from app.admin_password_hash
+    4. generate a new random process-local secret
+    """
+    env_secret = os.environ.get("AUBERGE_ADMIN_JWT_SECRET", "").strip()
+    if env_secret:
+        config.app.admin_jwt_secret = env_secret
+        return
+
+    if config.app.admin_jwt_secret.strip():
+        return
+
+    admin_hash = config.app.admin_password_hash.strip()
+    if admin_hash:
+        config.app.admin_jwt_secret = hashlib.sha256(
+            f"aubergeRP-admin-jwt:{admin_hash}".encode()
+        ).hexdigest()
+        return
+
+    config.app.admin_jwt_secret = secrets.token_urlsafe(48)
+    logger.warning(
+        "Admin JWT secret generated in-memory because no explicit secret or "
+        "admin password hash is configured; tokens will not survive restarts."
+    )
+
+
 def create_app() -> FastAPI:
     config = get_config()
     logging.basicConfig(level=getattr(logging, config.app.log_level, logging.INFO))
@@ -239,6 +272,7 @@ def create_app() -> FastAPI:
     _init_data_dirs(config.app.data_dir)
     _init_sentry(config.app.sentry_dsn)
     _init_admin_password(config)
+    _init_admin_jwt_secret(config)
     _autoprovision_connectors(config, config.app.data_dir)
 
     # Initialise SQLite database and run migrations
