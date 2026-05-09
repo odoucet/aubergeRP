@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import os
 import secrets
+from collections import deque
+from threading import Lock
+from time import monotonic
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from ..config import get_config
 from ..models.admin import AdminLoginRequest, AdminLoginResponse
@@ -16,6 +19,59 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 # Store active admin sessions (token -> bool)
 # In production, this could use Redis or JWT tokens
 _admin_sessions: set[str] = set()
+_ADMIN_LOGIN_RATE_LIMIT = 3
+_ADMIN_LOGIN_WINDOW_SECONDS = 60.0
+_admin_login_failures: dict[str, deque[float]] = {}
+_admin_login_failures_lock = Lock()
+
+
+def _prune_admin_login_failures(failures: deque[float], now: float) -> None:
+    cutoff = now - _ADMIN_LOGIN_WINDOW_SECONDS
+    while failures and failures[0] <= cutoff:
+        failures.popleft()
+
+
+def _get_admin_login_client_ip(request: Request) -> str:
+    cf_connecting_ip = request.headers.get("cf-connecting-ip", "").strip()
+    if cf_connecting_ip:
+        return cf_connecting_ip
+
+    x_forwarded_for = request.headers.get("x-forwarded-for", "")
+    if x_forwarded_for:
+        forwarded_ip = x_forwarded_for.split(",")[0].strip()
+        if forwarded_ip:
+            return forwarded_ip
+
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+def _check_admin_login_rate_limit(client_ip: str) -> None:
+    now = monotonic()
+    with _admin_login_failures_lock:
+        failures = _admin_login_failures.get(client_ip)
+        if failures is None:
+            return
+        _prune_admin_login_failures(failures, now)
+        if not failures:
+            _admin_login_failures.pop(client_ip, None)
+            return
+        if len(failures) >= _ADMIN_LOGIN_RATE_LIMIT:
+            raise HTTPException(status_code=429, detail="Too many login attempts. Please try again in a minute.")
+
+
+def _record_admin_login_failure(client_ip: str) -> None:
+    now = monotonic()
+    with _admin_login_failures_lock:
+        failures = _admin_login_failures.setdefault(client_ip, deque())
+        _prune_admin_login_failures(failures, now)
+        failures.append(now)
+
+
+def _reset_admin_login_failures(client_ip: str) -> None:
+    with _admin_login_failures_lock:
+        _admin_login_failures.pop(client_ip, None)
 
 
 def get_admin_token(x_admin_token: str = Header(default="")) -> str:
@@ -41,26 +97,38 @@ def get_admin_token(x_admin_token: str = Header(default="")) -> str:
     return x_admin_token
 
 
-@router.post("/login", response_model=AdminLoginResponse)
-def admin_login(request: AdminLoginRequest) -> AdminLoginResponse:
+@router.post(
+    "/login",
+    response_model=AdminLoginResponse,
+    responses={429: {"description": "Too many login attempts"}},
+)
+def admin_login(request: AdminLoginRequest, http_request: Request) -> AdminLoginResponse:
     """Authenticate to admin panel with password.
 
     Args:
         request: Contains the plain-text password.
+        http_request: Used to identify the client IP for rate limiting.
 
     Returns:
         AdminLoginResponse with an auth token.
 
     Raises:
-        HTTPException: 401 if password is incorrect.
+        HTTPException: 401 if password is incorrect, or 429 if too many recent
+            failed attempts came from the same IP.
     """
     config = get_config()
+    client_ip = _get_admin_login_client_ip(http_request)
 
     if not config.app.admin_password_hash:
         raise HTTPException(status_code=403, detail="Admin authentication not configured")
 
+    _check_admin_login_rate_limit(client_ip)
+
     if not verify_password(request.password, config.app.admin_password_hash):
+        _record_admin_login_failure(client_ip)
         raise HTTPException(status_code=401, detail="Invalid password")
+
+    _reset_admin_login_failures(client_ip)
 
     # Generate a new session token
     token = secrets.token_urlsafe(32)
