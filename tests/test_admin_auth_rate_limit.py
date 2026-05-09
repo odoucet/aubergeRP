@@ -124,7 +124,7 @@ def test_admin_auth_rejects_tampered_token(client: TestClient) -> None:
     assert login.status_code == 200
     token = login.json()["token"]
     header, payload, signature = token.split(".")
-    tampered_payload = f"{payload[:-1]}{'A' if payload[-1] != 'A' else 'B'}"
+    tampered_payload = payload[:-1] + ("A" if payload[-1] != "A" else "B")
     tampered = ".".join([header, tampered_payload, signature])
 
     logout = client.post("/api/admin/logout", headers={"x-admin-token": tampered})
@@ -161,7 +161,6 @@ def test_admin_token_expiry_is_enforced(tmp_path, monkeypatch) -> None:
 def test_admin_token_works_after_app_restart(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("AUBERGE_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("AUBERGE_ADMIN_PASSWORD_HASH", hash_password("correct horse"))
-    monkeypatch.setenv("AUBERGE_ADMIN_JWT_SECRET", "shared-jwt-secret")
     monkeypatch.delenv("AUBERGE_DISABLE_ADMIN_AUTH", raising=False)
     reset_config()
 

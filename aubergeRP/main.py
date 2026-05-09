@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
 import shutil
 import stat
 from collections.abc import AsyncGenerator, Awaitable, Callable, MutableMapping
@@ -218,6 +219,39 @@ def _init_admin_password(config: Config) -> None:
     logger.info("=" * 70)
 
 
+def _init_admin_jwt_secret(config: Config) -> None:
+    """Initialize admin JWT signing secret.
+
+    Priority order:
+    1. AUBERGE_ADMIN_JWT_SECRET env var
+    2. config.app.admin_jwt_secret (from config.yaml)
+    3. data_dir/admin_jwt_secret (persisted on disk)
+    4. generate a new random secret and persist it to disk
+    """
+    env_secret = os.environ.get("AUBERGE_ADMIN_JWT_SECRET", "").strip()
+    if env_secret:
+        config.app.admin_jwt_secret = env_secret
+        return
+
+    if config.app.admin_jwt_secret.strip():
+        return
+
+    secret_path = Path(config.app.data_dir) / "admin_jwt_secret"
+    if secret_path.exists():
+        secret = secret_path.read_text(encoding="utf-8").strip()
+        if secret:
+            config.app.admin_jwt_secret = secret
+            return
+
+    secret = secrets.token_urlsafe(48)
+    try:
+        secret_path.write_text(secret, encoding="utf-8")
+        secret_path.chmod(0o600)
+    except OSError:
+        logger.warning("Could not persist admin JWT secret at %s", secret_path)
+    config.app.admin_jwt_secret = secret
+
+
 def create_app() -> FastAPI:
     config = get_config()
     logging.basicConfig(level=getattr(logging, config.app.log_level, logging.INFO))
@@ -239,6 +273,7 @@ def create_app() -> FastAPI:
     _init_data_dirs(config.app.data_dir)
     _init_sentry(config.app.sentry_dsn)
     _init_admin_password(config)
+    _init_admin_jwt_secret(config)
     _autoprovision_connectors(config, config.app.data_dir)
 
     # Initialise SQLite database and run migrations

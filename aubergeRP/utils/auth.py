@@ -98,7 +98,7 @@ def _json_encode(data: object) -> bytes:
 def create_admin_jwt(secret: str, expires_in_seconds: int) -> str:
     """Create an HS256 JWT for admin authentication."""
     if expires_in_seconds <= 0:
-        raise ValueError("JWT expiry must be > 0")
+        raise ValueError("expires_in_seconds must be greater than 0")
 
     now = int(time.time())
     header = {"alg": "HS256", "typ": "JWT"}

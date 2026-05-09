@@ -89,7 +89,7 @@ def get_admin_token(x_admin_token: str = Header(default="")) -> str:
         return "test-bypass"
 
     config = get_config()
-    secret = config.app.admin_jwt_secret.strip() or config.app.admin_password_hash.strip()
+    secret = config.app.admin_jwt_secret.strip()
     if not secret:
         raise HTTPException(status_code=500, detail="Admin JWT secret is not configured")
 
@@ -136,7 +136,7 @@ def admin_login(request: AdminLoginRequest, http_request: Request) -> AdminLogin
 
     _reset_admin_login_failures(client_ip)
 
-    secret = config.app.admin_jwt_secret.strip() or config.app.admin_password_hash.strip()
+    secret = config.app.admin_jwt_secret.strip()
     if not secret:
         raise HTTPException(status_code=500, detail="Admin JWT secret is not configured")
     token = create_admin_jwt(secret, config.app.admin_token_ttl_seconds)
@@ -145,7 +145,7 @@ def admin_login(request: AdminLoginRequest, http_request: Request) -> AdminLogin
 
 
 @router.post("/logout")
-def admin_logout(_token: str = Depends(get_admin_token)) -> dict[str, str]:
+def admin_logout(token: str = Depends(get_admin_token)) -> dict[str, str]:
     """Logout from admin panel.
 
     Args:
@@ -153,5 +153,11 @@ def admin_logout(_token: str = Depends(get_admin_token)) -> dict[str, str]:
 
     Returns:
         Success message.
+
+    Note:
+        JWT auth is stateless, so server-side logout cannot invalidate existing
+        tokens. This endpoint is kept for backward compatibility; clients
+        should delete their stored token.
     """
+    _ = token
     return {"message": "Logged out"}
