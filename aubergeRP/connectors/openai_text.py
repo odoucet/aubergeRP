@@ -33,6 +33,8 @@ class OpenAITextConnector(TextConnector):
         temperature: float | None,
         max_tokens: int | None,
         top_p: float | None,
+        top_k: int | None,
+        repeat_penalty: float | None,
         presence_penalty: float | None,
         frequency_penalty: float | None,
         extra_body: dict[str, Any] | None,
@@ -57,6 +59,16 @@ class OpenAITextConnector(TextConnector):
             payload["top_p"] = top_p
         elif self.config.top_p is not None:
             payload["top_p"] = self.config.top_p
+
+        if top_k is not None:
+            payload["top_k"] = top_k
+        elif self.config.top_k is not None:
+            payload["top_k"] = self.config.top_k
+
+        if repeat_penalty is not None:
+            payload["repeat_penalty"] = repeat_penalty
+        elif self.config.repeat_penalty is not None:
+            payload["repeat_penalty"] = self.config.repeat_penalty
 
         if presence_penalty is not None:
             payload["presence_penalty"] = presence_penalty
@@ -105,6 +117,8 @@ class OpenAITextConnector(TextConnector):
         temperature: float | None = None,
         max_tokens: int | None = None,
         top_p: float | None = None,
+        top_k: int | None = None,
+        repeat_penalty: float | None = None,
         presence_penalty: float | None = None,
         frequency_penalty: float | None = None,
         extra_body: dict[str, Any] | None = None,
@@ -119,7 +133,7 @@ class OpenAITextConnector(TextConnector):
         """
         payload = self._build_payload(
             messages, model, temperature, max_tokens,
-            top_p, presence_penalty, frequency_penalty, extra_body,
+            top_p, top_k, repeat_penalty, presence_penalty, frequency_penalty, extra_body,
         )
 
         model_name = payload["model"]
@@ -184,6 +198,8 @@ class OpenAITextConnector(TextConnector):
         temperature: float | None = None,
         max_tokens: int | None = None,
         top_p: float | None = None,
+        top_k: int | None = None,
+        repeat_penalty: float | None = None,
         presence_penalty: float | None = None,
         frequency_penalty: float | None = None,
         extra_body: dict[str, Any] | None = None,
@@ -201,7 +217,7 @@ class OpenAITextConnector(TextConnector):
         """
         payload = self._build_payload(
             messages, model, temperature, max_tokens,
-            top_p, presence_penalty, frequency_penalty, extra_body,
+            top_p, top_k, repeat_penalty, presence_penalty, frequency_penalty, extra_body,
         )
         # Extend with tool-calling fields absent from the plain completion path.
         payload["tools"] = tools

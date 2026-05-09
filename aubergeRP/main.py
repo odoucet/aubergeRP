@@ -146,6 +146,10 @@ def _autoprovision_connectors(config: Config, data_dir: str) -> None:
         AUBERGE_LLM_MODEL          Model name                  (e.g. qwen3.6-27b:q4km)
         AUBERGE_LLM_CONTEXT_WINDOW Model context window in tokens (default: 4096)
         AUBERGE_LLM_MAX_TOKENS     Max tokens to generate per reply (default: 1024)
+        AUBERGE_LLM_TEMPERATURE    Sampling temperature (optional)
+        AUBERGE_LLM_TOP_P          top_p nucleus sampling (optional)
+        AUBERGE_LLM_TOP_K          top_k sampling (optional)
+        AUBERGE_LLM_REPEAT_PENALTY repeat_penalty (optional)
         AUBERGE_IMG_API_URL        Image API base URL
         AUBERGE_IMG_MODEL          Image model name
     """
@@ -154,6 +158,21 @@ def _autoprovision_connectors(config: Config, data_dir: str) -> None:
 
     llm_context_window = int(os.environ.get("AUBERGE_LLM_CONTEXT_WINDOW", "4096").strip())
     llm_max_tokens = int(os.environ.get("AUBERGE_LLM_MAX_TOKENS", "1024").strip())
+
+    _llm_temperature = os.environ.get("AUBERGE_LLM_TEMPERATURE", "").strip()
+    _llm_top_p = os.environ.get("AUBERGE_LLM_TOP_P", "").strip()
+    _llm_top_k = os.environ.get("AUBERGE_LLM_TOP_K", "").strip()
+    _llm_repeat_penalty = os.environ.get("AUBERGE_LLM_REPEAT_PENALTY", "").strip()
+
+    llm_extra: dict[str, object] = {}
+    if _llm_temperature:
+        llm_extra["temperature"] = float(_llm_temperature)
+    if _llm_top_p:
+        llm_extra["top_p"] = float(_llm_top_p)
+    if _llm_top_k:
+        llm_extra["top_k"] = int(_llm_top_k)
+    if _llm_repeat_penalty:
+        llm_extra["repeat_penalty"] = float(_llm_repeat_penalty)
 
     specs: list[tuple[ConnectorType, str, str]] = [
         ("text",  os.environ.get("AUBERGE_LLM_API_URL", "").strip(), os.environ.get("AUBERGE_LLM_MODEL", "").strip()),
@@ -183,7 +202,10 @@ def _autoprovision_connectors(config: Config, data_dir: str) -> None:
                 logger.info("Auto-provision: %s connector '%s' already active", conn_type, model)
             continue
         logger.info("Auto-provision: creating %s connector '%s' @ %s", conn_type, model, url)
-        extra = {"context_window": llm_context_window, "max_tokens": llm_max_tokens} if conn_type == "text" else {}
+        if conn_type == "text":
+            extra = {"context_window": llm_context_window, "max_tokens": llm_max_tokens, **llm_extra}
+        else:
+            extra = {}
         inst = manager.create_connector(ConnectorCreate(
             name=model,
             type=conn_type,

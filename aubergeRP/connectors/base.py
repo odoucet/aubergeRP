@@ -29,6 +29,8 @@ class TextConnector(BaseConnector):
         temperature: float | None = None,
         max_tokens: int | None = None,
         top_p: float | None = None,
+        top_k: int | None = None,
+        repeat_penalty: float | None = None,
         presence_penalty: float | None = None,
         frequency_penalty: float | None = None,
         extra_body: dict[str, Any] | None = None,
@@ -48,6 +50,8 @@ class TextConnector(BaseConnector):
         temperature: float | None = None,
         max_tokens: int | None = None,
         top_p: float | None = None,
+        top_k: int | None = None,
+        repeat_penalty: float | None = None,
         presence_penalty: float | None = None,
         frequency_penalty: float | None = None,
         extra_body: dict[str, Any] | None = None,
@@ -62,7 +66,8 @@ class TextConnector(BaseConnector):
         Connectors that support tool calling override this method.
         """
         async for chunk in self.stream_chat_completion(
-            messages, model, temperature, max_tokens, top_p, presence_penalty, frequency_penalty, extra_body
+            messages, model, temperature, max_tokens, top_p, top_k, repeat_penalty,
+            presence_penalty, frequency_penalty, extra_body
         ):
             yield {"type": "token", "content": chunk}
 

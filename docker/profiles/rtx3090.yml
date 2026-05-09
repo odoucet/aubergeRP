@@ -26,5 +26,9 @@ services:
       AUBERGE_LLM_MODEL: *llm_name
       AUBERGE_LLM_CONTEXT_WINDOW: *llm_ctx
       AUBERGE_LLM_MAX_TOKENS: *llm_max_tokens
+      AUBERGE_LLM_REPEAT_PENALTY: 1
+      AUBERGE_LLM_TEMPERATURE: 1
+      AUBERGE_LLM_TOP_K: 64
+      AUBERGE_LLM_TOP_P: 0.95
       AUBERGE_IMG_API_URL: http://localai:8080/v1
       AUBERGE_IMG_MODEL: *img_name

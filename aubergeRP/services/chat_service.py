@@ -499,6 +499,10 @@ class ChatService:
                 if connector_config:
                     if hasattr(connector_config, "top_p") and connector_config.top_p is not None:
                         kwargs["top_p"] = connector_config.top_p
+                    if hasattr(connector_config, "top_k") and connector_config.top_k is not None:
+                        kwargs["top_k"] = connector_config.top_k
+                    if hasattr(connector_config, "repeat_penalty") and connector_config.repeat_penalty is not None:
+                        kwargs["repeat_penalty"] = connector_config.repeat_penalty
                     if hasattr(connector_config, "presence_penalty") and connector_config.presence_penalty is not None:
                         kwargs["presence_penalty"] = connector_config.presence_penalty
                     if hasattr(connector_config, "frequency_penalty") and connector_config.frequency_penalty is not None:
@@ -613,6 +617,10 @@ class ChatService:
         if connector_config:
             if hasattr(connector_config, "top_p") and connector_config.top_p is not None:
                 kwargs["top_p"] = connector_config.top_p
+            if hasattr(connector_config, "top_k") and connector_config.top_k is not None:
+                kwargs["top_k"] = connector_config.top_k
+            if hasattr(connector_config, "repeat_penalty") and connector_config.repeat_penalty is not None:
+                kwargs["repeat_penalty"] = connector_config.repeat_penalty
             if hasattr(connector_config, "presence_penalty") and connector_config.presence_penalty is not None:
                 kwargs["presence_penalty"] = connector_config.presence_penalty
             if hasattr(connector_config, "frequency_penalty") and connector_config.frequency_penalty is not None:

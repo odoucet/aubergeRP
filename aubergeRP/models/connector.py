@@ -17,6 +17,8 @@ class OpenAITextConfig(BaseModel):
     context_window: int = 4096
     temperature: float = 0.8
     top_p: float | None = None
+    top_k: int | None = None
+    repeat_penalty: float | None = None
     presence_penalty: float | None = None
     frequency_penalty: float | None = None
     extra_body: dict[str, Any] = Field(default_factory=dict)
