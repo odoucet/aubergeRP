@@ -66,7 +66,7 @@ The Docker setup ships with a bundled [LocalAI](https://localai.io/) instance ‚Ä
 
 ## üèó Technology Stack
 
-* **Backend:** Python 3.11+, FastAPI, SQLite.
+* **Backend:** Python 3.12+, FastAPI, SQLite.
 * **Frontend:** Vanilla HTML/JS + Tailwind CSS (No heavy frameworks).
 * **Protocols:** SSE (Server-Sent Events) for real-time streaming.
 * **License:** Apache 2.0.
