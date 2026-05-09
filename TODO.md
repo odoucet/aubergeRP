@@ -31,7 +31,7 @@ On frontend, all images generated with an NSFW connector must be blurried by def
 
 ## Low priority / Future
 
-- [ ] **Standalone Dockerfile** — the current `Dockerfile` requires the repository to be cloned locally because `aubergeRP/` and `frontend/` are bind-mounted at runtime (see `docker/docker-compose.yml`). Add a `Dockerfile.standalone` that `COPY`s the source into the image so the app can be distributed as a self-contained Docker image (e.g. on Docker Hub) without needing the repository on the host.
+- [ ] **Publish a standalone container image** — the `Dockerfile` now bakes the app into the image, but the project still needs an automated GitHub Actions workflow to publish versioned images to GHCR or Docker Hub on release tags.
 - [ ] **Full user authentication** — password or IP-allowlist protecting the chat UI (the admin panel already has its own password). Config: `app.auth_mode` (`none` | `password` | `ip_allowlist`).
 - [ ] **Admin session expiry** — admin tokens currently live until the server restarts or an explicit logout. Add a configurable TTL (e.g. 24 h) so leaked tokens eventually expire.
 - [ ] **Multi-character conversations** — more than one character per conversation.
