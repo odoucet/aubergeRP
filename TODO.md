@@ -8,7 +8,7 @@ When using the project and navigating, I sometimes add items here that I think a
 
 ## High priority
 
-- [ ] **JWT admin authentication** — replace the current in-memory session token store (`_admin_sessions: set[str]`) with stateless JWT tokens signed with a server secret. This removes the multi-worker incompatibility (each uvicorn worker has its own in-memory set), adds configurable token expiry, and makes tokens survive server restarts without requiring Redis. See `aubergeRP/routers/admin.py`.
+- [x] **JWT admin authentication** — replace the current in-memory session token store (`_admin_sessions: set[str]`) with stateless JWT tokens signed with a server secret. This removes the multi-worker incompatibility (each uvicorn worker has its own in-memory set), adds configurable token expiry, and makes tokens survive server restarts without requiring Redis. See `aubergeRP/routers/admin.py`.
 
 - [ ] **Admin error log viewer** — expose a `/api/admin/logs` endpoint (or a dedicated admin UI page) so administrators can inspect recent server errors without SSH access. This is especially useful to diagnose image-generation failures, since connector errors are currently logged server-side only and replaced by a generic message in the UI.
 
@@ -21,8 +21,6 @@ When using the project and navigating, I sometimes add items here that I think a
 - [ ] **Configurable NSFW filter** — pre/post-processing layer. Config: `chat.nsfw_filter` (`off` | `warn` | `block`). Actually the implementation is very incomplete, with just a declaration on connectors but no actual filtering logic. There is a prompt for this, make sure it is used correctly. 
 On frontend, all images generated with an NSFW connector must be blurried by default and visible only when the user clicks on them.
 
-- [ ] **Rate-limit on admin login** — the `/api/admin/login` endpoint is currently not rate-limited. For a self-hosted instance exposed to the internet, brute-force attacks are possible. A simple in-memory counter (e.g. 10 attempts / minute / IP) would be sufficient. Handle x-forwarded-for header or cloudflare headers if behind a proxy.
-
 - [ ] **Periodic connector health checks** — `_TestResultsStore` in `routers/connectors.py` currently reloads from disk on every call to `.get()` (including the `/api/health` endpoint). A better approach: run `test_connector()` for each active connector on a schedule (e.g. every 5 minutes) in the background scheduler, persist the result once, and have `/api/health` return the last known state. This avoids disk I/O on every health poll and gives operators a real-time liveness signal without user-triggered tests.
 
 - [ ] Test ComfyUI connector with a real Comfy instance and fix any issues. The connector code is currently untested and may require adjustments to work with the actual Comfy API.
@@ -33,7 +31,7 @@ On frontend, all images generated with an NSFW connector must be blurried by def
 
 - [ ] **Standalone Dockerfile** — the current `Dockerfile` requires the repository to be cloned locally because `aubergeRP/` and `frontend/` are bind-mounted at runtime (see `docker/docker-compose.yml`). Add a `Dockerfile.standalone` that `COPY`s the source into the image so the app can be distributed as a self-contained Docker image (e.g. on Docker Hub) without needing the repository on the host.
 - [ ] **Full user authentication** — password or IP-allowlist protecting the chat UI (the admin panel already has its own password). Config: `app.auth_mode` (`none` | `password` | `ip_allowlist`).
-- [ ] **Admin session expiry** — admin tokens currently live until the server restarts or an explicit logout. Add a configurable TTL (e.g. 24 h) so leaked tokens eventually expire.
+- [x] **Admin session expiry** — admin tokens currently live until the server restarts or an explicit logout. Add a configurable TTL (e.g. 24 h) so leaked tokens eventually expire.
 - [ ] **Multi-character conversations** — more than one character per conversation.
 - [ ] **Multi-model support** — separate connectors for chat, summarization, and classification.
 - [ ] **Proactive image triggering** — LLM decides on its own when to emit an image (not only on explicit user request). Maybe work on the system prompt to let the LLM know it can do this ?
