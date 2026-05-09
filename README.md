@@ -36,7 +36,7 @@ The Docker setup ships with a bundled [LocalAI](https://localai.io/) instance â€
 
 1. **Clone & Config**
    ```bash
-   git clone https://github.com/odoucet/aubergeRP.git
+   git clone https://github.com/aubergeRP/aubergeRP.git
    cd aubergeRP
    cp config.example.yaml config.yaml
    ```

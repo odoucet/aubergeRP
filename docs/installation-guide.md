@@ -23,7 +23,7 @@ Use this if you want the easiest setup.
 ### Steps
 
 ```bash
-git clone https://github.com/odoucet/aubergeRP.git
+git clone https://github.com/aubergeRP/aubergeRP.git
 cd aubergeRP
 cp config.example.yaml config.yaml
 make docker
@@ -73,7 +73,7 @@ Use this if you want aubergeRP plus local models on your own GPU.
 ### Steps
 
 ```bash
-git clone https://github.com/odoucet/aubergeRP.git
+git clone https://github.com/aubergeRP/aubergeRP.git
 cd aubergeRP
 cp config.example.yaml config.yaml
 make docker gpu=rtx3090

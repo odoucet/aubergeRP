@@ -34,7 +34,7 @@ gui:
   custom_footer_html: ""
 
 marketplace:
-  index_url: "https://raw.githubusercontent.com/odoucet/aubergeRP/main/marketplace/index.json"
+  index_url: "https://raw.githubusercontent.com/aubergeRP/aubergeRP/main/marketplace/index.json"
 ```
 
 ## Environment variable overrides
