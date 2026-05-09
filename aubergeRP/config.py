@@ -97,6 +97,8 @@ class AppConfig(BaseModel):
     data_dir: str = "data"
     sentry_dsn: str = ""
     admin_password_hash: str = ""
+    # Optional explicit signing secret for admin JWTs.
+    # If empty, auth falls back to app.admin_password_hash.
     admin_jwt_secret: str = ""
     admin_token_ttl_seconds: int = 86400
 

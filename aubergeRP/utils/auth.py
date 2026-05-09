@@ -91,6 +91,10 @@ def _b64url_decode(data: str) -> bytes:
         raise ValueError("Invalid JWT encoding") from exc
 
 
+def _json_encode(data: object) -> bytes:
+    return json.dumps(data, separators=(",", ":"), sort_keys=True).encode("utf-8")
+
+
 def create_admin_jwt(secret: str, expires_in_seconds: int) -> str:
     """Create an HS256 JWT for admin authentication."""
     if expires_in_seconds <= 0:
@@ -99,8 +103,8 @@ def create_admin_jwt(secret: str, expires_in_seconds: int) -> str:
     now = int(time.time())
     header = {"alg": "HS256", "typ": "JWT"}
     payload = {"sub": "admin", "iat": now, "exp": now + expires_in_seconds}
-    header_b64 = _b64url_encode(json.dumps(header, separators=(",", ":"), sort_keys=True).encode("utf-8"))
-    payload_b64 = _b64url_encode(json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8"))
+    header_b64 = _b64url_encode(_json_encode(header))
+    payload_b64 = _b64url_encode(_json_encode(payload))
     signing_input = f"{header_b64}.{payload_b64}".encode("ascii")
     signature = hmac.new(secret.encode("utf-8"), signing_input, hashlib.sha256).digest()
     return f"{header_b64}.{payload_b64}.{_b64url_encode(signature)}"
@@ -126,14 +130,13 @@ def verify_admin_jwt(token: str, secret: str) -> dict[str, int | str]:
     payload = json.loads(_b64url_decode(payload_b64))
     if not isinstance(payload, dict):
         raise ValueError("Invalid JWT payload")
+    if not all(isinstance(k, str) for k in payload):
+        raise ValueError("Invalid JWT payload keys")
     if payload.get("sub") != "admin":
         raise ValueError("Invalid JWT subject")
 
     exp = payload.get("exp")
     if not isinstance(exp, int) or int(time.time()) >= exp:
         raise ValueError("JWT expired")
-
-    if not all(isinstance(k, str) for k in payload):
-        raise ValueError("Invalid JWT payload keys")
 
     return payload
